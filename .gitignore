@@ -1,0 +1,20 @@
+# Python virtual environment
+venv/
+env/
+.venv/
+
+# Weights & Dataset
+*.pt
+*.onnx
+*.engine
+*.weights
+runs/
+
+# Video & Large Media
+*.mp4
+*.avi
+*.mkv
+
+# Cache
+__pycache__/
+.vscode/
