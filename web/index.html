@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart ATCS Banyumas — Command Center</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-status="unknown">
+
+  <div id="map"></div>
+
+  <aside class="panel" id="panel">
+    <header class="panel-header">
+      <div class="brand">
+        <span class="brand-icon"><i class="fa-solid fa-shield-halved"></i></span>
+        <div class="brand-text">
+          <h1>SMART ATCS</h1>
+          <p>Dishub Kabupaten Banyumas</p>
+        </div>
+      </div>
+      <div class="fps-chip" id="fps-chip" title="Streaming FPS">
+        <i class="fa-solid fa-gauge-high"></i>
+        <span id="fps-value">--</span><small>FPS</small>
+      </div>
+    </header>
+
+    <nav class="node-list" id="node-list" aria-label="Pilih simpang"></nav>
+
+    <section class="video-wrap">
+      <img id="video-feed" src="http://localhost:8000/api/v1/video-feed/node_01" alt="CCTV Simpang">
+      <div class="video-overlay" id="video-overlay">
+        <i class="fa-solid fa-video-slash"></i>
+        <span>Tidak ada sinyal</span>
+      </div>
+      <span class="video-tag" id="cam-tag">CAM 01 · Simpang Kebon Dalem</span>
+    </section>
+
+    <section class="counters" aria-label="Rekap kendaraan">
+      <article class="counter">
+        <i class="fa-solid fa-motorcycle"></i>
+        <div>
+          <strong id="count-motor">0</strong>
+          <span>Motor</span>
+        </div>
+      </article>
+      <article class="counter">
+        <i class="fa-solid fa-car"></i>
+        <div>
+          <strong id="count-mobil">0</strong>
+          <span>Mobil</span>
+        </div>
+      </article>
+      <article class="counter">
+        <i class="fa-solid fa-truck"></i>
+        <div>
+          <strong id="count-truk">0</strong>
+          <span>Truk/Bus</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="status-block">
+      <div class="status-badge" id="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-text">MENGHUBUNGKAN…</span>
+      </div>
+      <p class="occupancy">Occupancy: <strong id="occupancy-value">--</strong></p>
+      <p class="intersection" id="intersection-name">Simpang Kebon Dalem</p>
+    </section>
+
+    <footer class="panel-footer">
+      <span class="conn" id="conn-indicator">
+        <span class="conn-dot"></span><span id="conn-text">Menyambungkan…</span>
+      </span>
+      <span class="clock" id="clock">--:--:--</span>
+    </footer>
+  </aside>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="js/script.js"></script>
+</body>
+</html>

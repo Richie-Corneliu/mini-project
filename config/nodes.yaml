@@ -1,0 +1,33 @@
+# Multi-node CCTV registry for the Smart ATCS Command Center.
+# Read by src/api/server.py (node identity + coords) and main.py --multi (streams).
+# Coordinates are best-effort Purwokerto landmarks — verify and correct them.
+nodes:
+  - id: node_01
+    nama: Simpang Jl Masjid
+    lat: -7.4228
+    lng: 109.2345
+    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_jl_masjid/video1_stream.m3u8
+
+  - id: node_02
+    nama: Simpang Sawangan
+    lat: -7.4372
+    lng: 109.2321
+    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+
+  - id: node_03
+    nama: Kamera NVR 142
+    lat: -7.4250
+    lng: 109.2400
+    source: rtsp://admin:Marktel12345@10.26.110.142:554/Streaming/Channels/101
+
+  - id: node_04
+    nama: Simpang Alun-Alun
+    lat: -7.4218
+    lng: 109.2368
+    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_alun_alun/video1_stream.m3u8
+
+  - id: node_05
+    nama: Underpass
+    lat: -7.4301
+    lng: 109.2443
+    source: https://cctv.dev.banyumaskab.go.id/cctv_underpass/video1_stream.m3u8

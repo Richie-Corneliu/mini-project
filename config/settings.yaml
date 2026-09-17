@@ -1,5 +1,5 @@
 stream:
-  source: rtsp://admin:Marktel12345@10.26.110.142:554/Streaming/Channels/101
+  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
   reconnect: true
   max_retries: 5
   backoff_sec: 2.0

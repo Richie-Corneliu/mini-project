@@ -2517,3 +2517,1068 @@
 2026-09-14 09:43:10,479 [INFO] __main__: stats: frames=79522 dets=4884455 tracked=17 counted=4817 dedup=19 cabin=138 delivered=79522 connects=3
 2026-09-14 09:43:14,429 [INFO] __main__: Final: total=4830 {'motor': 3889, 'truk/bus': 609, 'mobil': 332}
 2026-09-14 09:43:14,429 [INFO] __main__: Processed 79606 of 79606 delivered frames in 3413s (23.3 fps), dedup-suppressed=19, connects=3
+2026-09-16 09:45:53,114 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 09:45:53,114 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 09:45:58,126 [INFO] __main__: stats: frames=37 dets=2084 tracked=13 counted=0 dedup=0 cabin=0 delivered=37 connects=1
+2026-09-16 09:46:03,169 [INFO] __main__: stats: frames=161 dets=10033 tracked=15 counted=2 dedup=0 cabin=0 delivered=161 connects=1
+2026-09-16 09:46:08,179 [INFO] __main__: stats: frames=282 dets=16528 tracked=8 counted=2 dedup=0 cabin=0 delivered=282 connects=1
+2026-09-16 09:46:13,208 [INFO] __main__: stats: frames=407 dets=21625 tracked=8 counted=2 dedup=0 cabin=0 delivered=407 connects=1
+2026-09-16 09:46:18,202 [INFO] __main__: stats: frames=529 dets=27051 tracked=9 counted=2 dedup=0 cabin=0 delivered=529 connects=1
+2026-09-16 09:46:23,232 [INFO] __main__: stats: frames=653 dets=31445 tracked=6 counted=2 dedup=0 cabin=0 delivered=653 connects=1
+2026-09-16 09:46:28,240 [INFO] __main__: stats: frames=777 dets=36562 tracked=7 counted=2 dedup=0 cabin=0 delivered=777 connects=1
+2026-09-16 09:46:30,682 [INFO] __main__: Final: total=3 {'motor': 3}
+2026-09-16 09:46:30,682 [INFO] __main__: Processed 832 of 832 delivered frames in 38s (22.1 fps), dedup-suppressed=0, connects=1
+2026-09-16 09:51:16,524 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 09:51:16,526 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 09:51:21,589 [INFO] __main__: stats: frames=66 dets=4363 tracked=12 counted=0 dedup=0 cabin=0 delivered=66 connects=1
+2026-09-16 09:51:26,597 [INFO] __main__: stats: frames=184 dets=12359 tracked=14 counted=1 dedup=0 cabin=0 delivered=184 connects=1
+2026-09-16 09:51:31,614 [INFO] __main__: stats: frames=294 dets=19309 tracked=14 counted=4 dedup=0 cabin=0 delivered=294 connects=1
+2026-09-16 09:51:36,616 [INFO] __main__: stats: frames=386 dets=25639 tracked=19 counted=14 dedup=0 cabin=0 delivered=386 connects=1
+2026-09-16 09:51:41,624 [INFO] __main__: stats: frames=468 dets=31469 tracked=21 counted=30 dedup=0 cabin=0 delivered=468 connects=1
+2026-09-16 09:51:46,631 [INFO] __main__: stats: frames=560 dets=37517 tracked=18 counted=42 dedup=0 cabin=0 delivered=560 connects=1
+2026-09-16 09:51:51,633 [INFO] __main__: stats: frames=656 dets=43895 tracked=18 counted=46 dedup=1 cabin=0 delivered=656 connects=1
+2026-09-16 09:51:56,647 [INFO] __main__: stats: frames=751 dets=50550 tracked=20 counted=53 dedup=1 cabin=0 delivered=751 connects=1
+2026-09-16 09:52:01,680 [INFO] __main__: stats: frames=839 dets=56637 tracked=16 counted=63 dedup=1 cabin=0 delivered=839 connects=1
+2026-09-16 09:52:06,708 [INFO] __main__: stats: frames=933 dets=63173 tracked=14 counted=67 dedup=1 cabin=0 delivered=933 connects=1
+2026-09-16 09:52:11,749 [INFO] __main__: stats: frames=1031 dets=69661 tracked=12 counted=68 dedup=1 cabin=0 delivered=1031 connects=1
+2026-09-16 09:52:16,791 [INFO] __main__: stats: frames=1128 dets=76635 tracked=14 counted=73 dedup=1 cabin=0 delivered=1128 connects=1
+2026-09-16 09:52:21,833 [INFO] __main__: stats: frames=1224 dets=83476 tracked=9 counted=75 dedup=1 cabin=0 delivered=1224 connects=1
+2026-09-16 09:52:26,833 [INFO] __main__: stats: frames=1324 dets=90659 tracked=17 counted=89 dedup=1 cabin=0 delivered=1324 connects=1
+2026-09-16 09:52:31,838 [INFO] __main__: stats: frames=1417 dets=97107 tracked=12 counted=100 dedup=1 cabin=0 delivered=1417 connects=1
+2026-09-16 09:52:32,333 [ERROR] asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-16 09:52:36,884 [INFO] __main__: stats: frames=1516 dets=104162 tracked=15 counted=109 dedup=1 cabin=0 delivered=1516 connects=1
+2026-09-16 09:52:41,900 [INFO] __main__: stats: frames=1635 dets=110427 tracked=13 counted=114 dedup=1 cabin=2 delivered=1635 connects=1
+2026-09-16 09:52:46,921 [INFO] __main__: stats: frames=1754 dets=116330 tracked=15 counted=125 dedup=1 cabin=2 delivered=1754 connects=1
+2026-09-16 09:52:51,935 [INFO] __main__: stats: frames=1873 dets=122094 tracked=13 counted=134 dedup=1 cabin=2 delivered=1873 connects=1
+2026-09-16 09:52:56,955 [INFO] __main__: stats: frames=1994 dets=127987 tracked=13 counted=139 dedup=1 cabin=2 delivered=1994 connects=1
+2026-09-16 09:53:01,956 [INFO] __main__: stats: frames=2113 dets=133885 tracked=14 counted=143 dedup=1 cabin=4 delivered=2113 connects=1
+2026-09-16 09:53:06,990 [INFO] __main__: stats: frames=2232 dets=140140 tracked=9 counted=150 dedup=1 cabin=4 delivered=2232 connects=1
+2026-09-16 09:53:11,992 [INFO] __main__: stats: frames=2355 dets=144926 tracked=8 counted=153 dedup=1 cabin=4 delivered=2355 connects=1
+2026-09-16 09:53:16,997 [INFO] __main__: stats: frames=2478 dets=149571 tracked=8 counted=158 dedup=1 cabin=5 delivered=2478 connects=1
+2026-09-16 09:53:21,984 [INFO] __main__: stats: frames=2599 dets=155015 tracked=17 counted=173 dedup=1 cabin=5 delivered=2599 connects=1
+2026-09-16 09:53:27,016 [INFO] __main__: stats: frames=2721 dets=160510 tracked=15 counted=178 dedup=1 cabin=5 delivered=2721 connects=1
+2026-09-16 09:53:32,059 [INFO] __main__: stats: frames=2841 dets=166721 tracked=15 counted=183 dedup=1 cabin=6 delivered=2841 connects=1
+2026-09-16 09:53:37,044 [INFO] __main__: stats: frames=2959 dets=172695 tracked=11 counted=184 dedup=2 cabin=7 delivered=2959 connects=1
+2026-09-16 09:53:42,081 [INFO] __main__: stats: frames=3078 dets=178701 tracked=17 counted=190 dedup=2 cabin=7 delivered=3078 connects=1
+2026-09-16 09:53:47,114 [INFO] __main__: stats: frames=3199 dets=184731 tracked=14 counted=196 dedup=2 cabin=7 delivered=3199 connects=1
+2026-09-16 09:53:52,120 [INFO] __main__: stats: frames=3321 dets=189954 tracked=15 counted=200 dedup=2 cabin=7 delivered=3321 connects=1
+2026-09-16 09:53:57,127 [INFO] __main__: stats: frames=3443 dets=195015 tracked=12 counted=202 dedup=2 cabin=7 delivered=3443 connects=1
+2026-09-16 09:54:02,138 [INFO] __main__: stats: frames=3565 dets=200308 tracked=14 counted=203 dedup=2 cabin=7 delivered=3565 connects=1
+2026-09-16 09:54:07,153 [INFO] __main__: stats: frames=3685 dets=206594 tracked=23 counted=214 dedup=2 cabin=7 delivered=3685 connects=1
+2026-09-16 09:54:12,151 [INFO] __main__: stats: frames=3798 dets=212926 tracked=15 counted=223 dedup=2 cabin=8 delivered=3798 connects=1
+2026-09-16 09:54:17,173 [INFO] __main__: stats: frames=3913 dets=219637 tracked=15 counted=227 dedup=2 cabin=8 delivered=3913 connects=1
+2026-09-16 09:54:17,431 [INFO] __main__: Final: total=227 {'truk/bus': 30, 'motor': 173, 'mobil': 24}
+2026-09-16 09:54:17,431 [INFO] __main__: Processed 3913 of 3913 delivered frames in 181s (21.6 fps), dedup-suppressed=2, connects=1
+2026-09-16 13:36:11,995 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:36:42,529 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:36:47,592 [INFO] __main__: stats: frames=33 dets=1657 tracked=12 counted=1 dedup=0 cabin=0 delivered=33 connects=1
+2026-09-16 13:36:52,615 [INFO] __main__: stats: frames=156 dets=7889 tracked=13 counted=1 dedup=0 cabin=0 delivered=156 connects=1
+2026-09-16 13:36:57,629 [INFO] __main__: stats: frames=275 dets=14014 tracked=16 counted=1 dedup=0 cabin=0 delivered=275 connects=1
+2026-09-16 13:37:02,628 [INFO] __main__: stats: frames=397 dets=20299 tracked=17 counted=2 dedup=0 cabin=0 delivered=397 connects=1
+2026-09-16 13:37:07,639 [INFO] __main__: stats: frames=510 dets=27175 tracked=17 counted=3 dedup=0 cabin=0 delivered=510 connects=1
+2026-09-16 13:37:12,651 [INFO] __main__: stats: frames=614 dets=34310 tracked=15 counted=3 dedup=0 cabin=0 delivered=614 connects=1
+2026-09-16 13:37:17,655 [INFO] __main__: stats: frames=727 dets=42147 tracked=18 counted=4 dedup=0 cabin=0 delivered=727 connects=1
+2026-09-16 13:37:22,676 [INFO] __main__: stats: frames=841 dets=49940 tracked=18 counted=4 dedup=0 cabin=0 delivered=841 connects=1
+2026-09-16 13:37:27,717 [INFO] __main__: stats: frames=952 dets=58081 tracked=17 counted=4 dedup=0 cabin=0 delivered=952 connects=1
+2026-09-16 13:37:32,728 [INFO] __main__: stats: frames=1061 dets=65918 tracked=18 counted=5 dedup=0 cabin=0 delivered=1061 connects=1
+2026-09-16 13:37:36,861 [INFO] __main__: Final: total=5 {'truk/bus': 1, 'mobil': 3, 'motor': 1}
+2026-09-16 13:37:36,861 [INFO] __main__: Processed 1144 of 1144 delivered frames in 54s (21.1 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:37:45,928 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:37:45,929 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:37:50,989 [INFO] __main__: stats: frames=56 dets=3098 tracked=19 counted=2 dedup=0 cabin=0 delivered=56 connects=1
+2026-09-16 13:37:55,993 [INFO] __main__: stats: frames=175 dets=8937 tracked=14 counted=2 dedup=0 cabin=0 delivered=175 connects=1
+2026-09-16 13:38:01,015 [INFO] __main__: stats: frames=295 dets=14119 tracked=8 counted=2 dedup=0 cabin=0 delivered=295 connects=1
+2026-09-16 13:38:06,048 [INFO] __main__: stats: frames=416 dets=18898 tracked=11 counted=2 dedup=0 cabin=0 delivered=416 connects=1
+2026-09-16 13:38:11,057 [INFO] __main__: stats: frames=536 dets=23317 tracked=10 counted=2 dedup=0 cabin=0 delivered=536 connects=1
+2026-09-16 13:38:16,057 [INFO] __main__: stats: frames=657 dets=27734 tracked=8 counted=2 dedup=0 cabin=0 delivered=657 connects=1
+2026-09-16 13:38:18,764 [INFO] __main__: Final: total=2 {'truk/bus': 1, 'motor': 1}
+2026-09-16 13:38:18,764 [INFO] __main__: Processed 716 of 716 delivered frames in 33s (21.8 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:38:46,061 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:38:46,061 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:38:51,162 [INFO] __main__: stats: frames=28 dets=466 tracked=6 counted=0 dedup=0 cabin=0 delivered=28 connects=1
+2026-09-16 13:38:56,189 [INFO] __main__: stats: frames=152 dets=2855 tracked=9 counted=0 dedup=0 cabin=0 delivered=152 connects=1
+2026-09-16 13:39:01,197 [INFO] __main__: stats: frames=274 dets=5482 tracked=3 counted=0 dedup=0 cabin=0 delivered=274 connects=1
+2026-09-16 13:39:06,215 [INFO] __main__: stats: frames=389 dets=8754 tracked=9 counted=0 dedup=0 cabin=0 delivered=389 connects=1
+2026-09-16 13:39:11,204 [INFO] __main__: stats: frames=511 dets=11928 tracked=10 counted=0 dedup=0 cabin=0 delivered=511 connects=1
+2026-09-16 13:39:16,206 [INFO] __main__: stats: frames=633 dets=15184 tracked=7 counted=0 dedup=0 cabin=0 delivered=633 connects=1
+2026-09-16 13:39:21,200 [INFO] __main__: stats: frames=754 dets=18716 tracked=11 counted=0 dedup=0 cabin=0 delivered=754 connects=1
+2026-09-16 13:39:26,202 [INFO] __main__: stats: frames=877 dets=22781 tracked=11 counted=2 dedup=0 cabin=0 delivered=877 connects=1
+2026-09-16 13:39:31,215 [INFO] __main__: stats: frames=1000 dets=26918 tracked=8 counted=2 dedup=0 cabin=0 delivered=1000 connects=1
+2026-09-16 13:39:36,208 [INFO] __main__: stats: frames=1122 dets=30427 tracked=7 counted=2 dedup=0 cabin=0 delivered=1122 connects=1
+2026-09-16 13:39:41,227 [INFO] __main__: stats: frames=1245 dets=34789 tracked=7 counted=2 dedup=0 cabin=0 delivered=1245 connects=1
+2026-09-16 13:39:46,256 [INFO] __main__: stats: frames=1369 dets=38287 tracked=5 counted=2 dedup=0 cabin=0 delivered=1369 connects=1
+2026-09-16 13:39:51,276 [INFO] __main__: stats: frames=1492 dets=41553 tracked=4 counted=2 dedup=0 cabin=0 delivered=1492 connects=1
+2026-09-16 13:39:56,328 [INFO] __main__: stats: frames=1615 dets=45284 tracked=6 counted=2 dedup=0 cabin=0 delivered=1615 connects=1
+2026-09-16 13:40:01,357 [INFO] __main__: stats: frames=1739 dets=48861 tracked=9 counted=3 dedup=0 cabin=0 delivered=1739 connects=1
+2026-09-16 13:40:06,358 [INFO] __main__: stats: frames=1861 dets=52944 tracked=9 counted=3 dedup=0 cabin=0 delivered=1861 connects=1
+2026-09-16 13:40:11,388 [INFO] __main__: stats: frames=1953 dets=55828 tracked=14 counted=9 dedup=0 cabin=0 delivered=1953 connects=1
+2026-09-16 13:40:16,386 [INFO] __main__: stats: frames=2077 dets=58916 tracked=9 counted=16 dedup=0 cabin=0 delivered=2077 connects=1
+2026-09-16 13:40:21,412 [INFO] __main__: stats: frames=2201 dets=61467 tracked=7 counted=18 dedup=0 cabin=0 delivered=2201 connects=1
+2026-09-16 13:40:26,433 [INFO] __main__: stats: frames=2325 dets=63727 tracked=8 counted=23 dedup=0 cabin=0 delivered=2325 connects=1
+2026-09-16 13:40:31,459 [INFO] __main__: stats: frames=2449 dets=65760 tracked=5 counted=25 dedup=0 cabin=0 delivered=2449 connects=1
+2026-09-16 13:40:36,455 [INFO] __main__: stats: frames=2571 dets=67315 tracked=4 counted=25 dedup=0 cabin=0 delivered=2571 connects=1
+2026-09-16 13:40:41,480 [INFO] __main__: stats: frames=2696 dets=68801 tracked=8 counted=26 dedup=0 cabin=0 delivered=2696 connects=1
+2026-09-16 13:40:46,476 [INFO] __main__: stats: frames=2820 dets=71036 tracked=5 counted=29 dedup=0 cabin=0 delivered=2820 connects=1
+2026-09-16 13:40:48,811 [INFO] __main__: Final: total=29 {'motor': 19, 'mobil': 9, 'truk/bus': 1}
+2026-09-16 13:40:48,812 [INFO] __main__: Processed 2872 of 2872 delivered frames in 123s (23.4 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:41:58,874 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:41:58,874 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:42:03,971 [INFO] __main__: stats: frames=85 dets=2474 tracked=8 counted=0 dedup=0 cabin=0 delivered=85 connects=1
+2026-09-16 13:42:08,994 [INFO] __main__: stats: frames=207 dets=5904 tracked=5 counted=0 dedup=0 cabin=0 delivered=207 connects=1
+2026-09-16 13:42:14,008 [INFO] __main__: stats: frames=331 dets=8640 tracked=5 counted=0 dedup=0 cabin=0 delivered=331 connects=1
+2026-09-16 13:42:19,028 [INFO] __main__: stats: frames=455 dets=11923 tracked=5 counted=0 dedup=0 cabin=0 delivered=455 connects=1
+2026-09-16 13:42:24,025 [INFO] __main__: stats: frames=577 dets=16020 tracked=8 counted=0 dedup=0 cabin=0 delivered=577 connects=1
+2026-09-16 13:42:29,034 [INFO] __main__: stats: frames=700 dets=19666 tracked=7 counted=0 dedup=0 cabin=0 delivered=700 connects=1
+2026-09-16 13:42:34,034 [INFO] __main__: stats: frames=823 dets=23013 tracked=10 counted=0 dedup=0 cabin=0 delivered=823 connects=1
+2026-09-16 13:42:39,984 [INFO] __main__: stats: frames=921 dets=25857 tracked=5 counted=0 dedup=0 cabin=0 delivered=921 connects=1
+2026-09-16 13:42:45,007 [INFO] __main__: stats: frames=1047 dets=29507 tracked=10 counted=1 dedup=0 cabin=0 delivered=1047 connects=1
+2026-09-16 13:42:50,028 [INFO] __main__: stats: frames=1172 dets=34030 tracked=7 counted=2 dedup=0 cabin=0 delivered=1172 connects=1
+2026-09-16 13:42:52,955 [INFO] __main__: Counts reset
+2026-09-16 13:42:55,022 [INFO] __main__: stats: frames=1297 dets=38146 tracked=7 counted=1 dedup=0 cabin=0 delivered=1297 connects=1
+2026-09-16 13:43:00,037 [INFO] __main__: stats: frames=1422 dets=42230 tracked=8 counted=3 dedup=0 cabin=0 delivered=1422 connects=1
+2026-09-16 13:43:05,033 [INFO] __main__: stats: frames=1547 dets=46768 tracked=12 counted=4 dedup=0 cabin=0 delivered=1547 connects=1
+2026-09-16 13:43:10,033 [INFO] __main__: stats: frames=1672 dets=50796 tracked=9 counted=4 dedup=0 cabin=0 delivered=1672 connects=1
+2026-09-16 13:43:15,036 [INFO] __main__: stats: frames=1797 dets=55014 tracked=10 counted=4 dedup=0 cabin=1 delivered=1797 connects=1
+2026-09-16 13:43:20,082 [INFO] __main__: stats: frames=1923 dets=59249 tracked=13 counted=12 dedup=0 cabin=1 delivered=1923 connects=1
+2026-09-16 13:43:25,078 [INFO] __main__: stats: frames=2048 dets=63369 tracked=12 counted=19 dedup=0 cabin=1 delivered=2048 connects=1
+2026-09-16 13:43:30,086 [INFO] __main__: stats: frames=2173 dets=66718 tracked=8 counted=26 dedup=0 cabin=1 delivered=2173 connects=1
+2026-09-16 13:43:35,103 [INFO] __main__: stats: frames=2298 dets=70737 tracked=16 counted=40 dedup=0 cabin=1 delivered=2298 connects=1
+2026-09-16 13:43:40,097 [INFO] __main__: stats: frames=2423 dets=73463 tracked=5 counted=44 dedup=0 cabin=1 delivered=2423 connects=1
+2026-09-16 13:43:45,102 [INFO] __main__: stats: frames=2548 dets=75708 tracked=11 counted=51 dedup=0 cabin=1 delivered=2548 connects=1
+2026-09-16 13:43:50,095 [INFO] __main__: stats: frames=2673 dets=77865 tracked=5 counted=56 dedup=0 cabin=1 delivered=2673 connects=1
+2026-09-16 13:43:55,095 [INFO] __main__: stats: frames=2798 dets=79687 tracked=5 counted=58 dedup=0 cabin=1 delivered=2798 connects=1
+2026-09-16 13:44:00,110 [INFO] __main__: stats: frames=2923 dets=81877 tracked=8 counted=64 dedup=0 cabin=1 delivered=2923 connects=1
+2026-09-16 13:44:05,109 [INFO] __main__: stats: frames=3048 dets=84004 tracked=6 counted=67 dedup=0 cabin=1 delivered=3048 connects=1
+2026-09-16 13:44:10,115 [INFO] __main__: stats: frames=3173 dets=86265 tracked=8 counted=71 dedup=0 cabin=1 delivered=3173 connects=1
+2026-09-16 13:44:15,114 [INFO] __main__: stats: frames=3298 dets=89080 tracked=8 counted=80 dedup=0 cabin=1 delivered=3298 connects=1
+2026-09-16 13:44:20,108 [INFO] __main__: stats: frames=3423 dets=91621 tracked=7 counted=85 dedup=0 cabin=1 delivered=3423 connects=1
+2026-09-16 13:44:25,120 [INFO] __main__: stats: frames=3548 dets=93355 tracked=4 counted=87 dedup=0 cabin=1 delivered=3548 connects=1
+2026-09-16 13:44:30,114 [INFO] __main__: stats: frames=3673 dets=94829 tracked=3 counted=88 dedup=0 cabin=1 delivered=3673 connects=1
+2026-09-16 13:44:35,125 [INFO] __main__: stats: frames=3798 dets=96447 tracked=4 counted=89 dedup=0 cabin=1 delivered=3798 connects=1
+2026-09-16 13:44:40,163 [INFO] __main__: stats: frames=3924 dets=97794 tracked=5 counted=90 dedup=0 cabin=1 delivered=3924 connects=1
+2026-09-16 13:44:45,168 [INFO] __main__: stats: frames=4049 dets=98984 tracked=3 counted=91 dedup=0 cabin=1 delivered=4049 connects=1
+2026-09-16 13:44:50,155 [INFO] __main__: stats: frames=4174 dets=100334 tracked=3 counted=91 dedup=0 cabin=1 delivered=4174 connects=1
+2026-09-16 13:44:55,158 [INFO] __main__: stats: frames=4299 dets=101374 tracked=5 counted=93 dedup=0 cabin=1 delivered=4299 connects=1
+2026-09-16 13:45:00,162 [INFO] __main__: stats: frames=4424 dets=102132 tracked=4 counted=93 dedup=0 cabin=1 delivered=4424 connects=1
+2026-09-16 13:45:05,169 [INFO] __main__: stats: frames=4549 dets=102956 tracked=6 counted=94 dedup=0 cabin=1 delivered=4549 connects=1
+2026-09-16 13:45:10,177 [INFO] __main__: stats: frames=4674 dets=104577 tracked=5 counted=96 dedup=0 cabin=1 delivered=4674 connects=1
+2026-09-16 13:45:15,219 [INFO] __main__: stats: frames=4800 dets=106031 tracked=5 counted=96 dedup=0 cabin=1 delivered=4800 connects=1
+2026-09-16 13:45:20,218 [INFO] __main__: stats: frames=4925 dets=107503 tracked=5 counted=96 dedup=0 cabin=2 delivered=4925 connects=1
+2026-09-16 13:45:25,250 [INFO] __main__: stats: frames=5051 dets=109458 tracked=8 counted=96 dedup=0 cabin=2 delivered=5051 connects=1
+2026-09-16 13:45:30,263 [INFO] __main__: stats: frames=5176 dets=111967 tracked=9 counted=98 dedup=0 cabin=2 delivered=5176 connects=1
+2026-09-16 13:45:35,267 [INFO] __main__: stats: frames=5301 dets=115359 tracked=9 counted=102 dedup=0 cabin=2 delivered=5301 connects=1
+2026-09-16 13:45:40,276 [INFO] __main__: stats: frames=5426 dets=118528 tracked=6 counted=104 dedup=0 cabin=2 delivered=5426 connects=1
+2026-09-16 13:45:45,281 [INFO] __main__: stats: frames=5551 dets=121498 tracked=7 counted=107 dedup=0 cabin=2 delivered=5551 connects=1
+2026-09-16 13:45:50,279 [INFO] __main__: stats: frames=5676 dets=124080 tracked=4 counted=108 dedup=0 cabin=2 delivered=5676 connects=1
+2026-09-16 13:45:55,314 [INFO] __main__: stats: frames=5802 dets=126640 tracked=4 counted=110 dedup=0 cabin=2 delivered=5802 connects=1
+2026-09-16 13:46:00,312 [INFO] __main__: stats: frames=5927 dets=128651 tracked=4 counted=110 dedup=0 cabin=2 delivered=5927 connects=1
+2026-09-16 13:46:05,317 [INFO] __main__: stats: frames=6052 dets=131429 tracked=8 counted=112 dedup=0 cabin=2 delivered=6052 connects=1
+2026-09-16 13:46:09,933 [INFO] __main__: Final: total=112 {'mobil': 14, 'motor': 91, 'truk/bus': 7}
+2026-09-16 13:46:09,934 [INFO] __main__: Processed 6161 of 6161 delivered frames in 251s (24.5 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:46:40,435 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:46:40,435 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:46:45,492 [INFO] __main__: stats: frames=84 dets=1379 tracked=5 counted=2 dedup=0 cabin=0 delivered=84 connects=1
+2026-09-16 13:46:50,484 [INFO] __main__: stats: frames=208 dets=2564 tracked=2 counted=3 dedup=0 cabin=0 delivered=208 connects=1
+2026-09-16 13:46:55,506 [INFO] __main__: stats: frames=333 dets=3326 tracked=3 counted=3 dedup=0 cabin=0 delivered=333 connects=1
+2026-09-16 13:47:00,510 [INFO] __main__: stats: frames=458 dets=4390 tracked=5 counted=3 dedup=0 cabin=0 delivered=458 connects=1
+2026-09-16 13:47:05,510 [INFO] __main__: stats: frames=583 dets=5693 tracked=4 counted=4 dedup=0 cabin=0 delivered=583 connects=1
+2026-09-16 13:47:10,512 [INFO] __main__: stats: frames=708 dets=7135 tracked=5 counted=4 dedup=0 cabin=0 delivered=708 connects=1
+2026-09-16 13:47:15,500 [INFO] __main__: stats: frames=833 dets=8513 tracked=8 counted=5 dedup=0 cabin=0 delivered=833 connects=1
+2026-09-16 13:47:20,480 [INFO] __main__: Final: total=6 {'motor': 4, 'mobil': 1, 'truk/bus': 1}
+2026-09-16 13:47:20,481 [INFO] __main__: Processed 951 of 951 delivered frames in 40s (23.8 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:50:23,363 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:50:23,363 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:50:28,444 [INFO] __main__: stats: frames=13 dets=333 tracked=10 counted=0 dedup=0 cabin=0 delivered=13 connects=1
+2026-09-16 13:50:33,457 [INFO] __main__: stats: frames=138 dets=2946 tracked=5 counted=0 dedup=0 cabin=0 delivered=138 connects=1
+2026-09-16 13:50:38,485 [INFO] __main__: stats: frames=254 dets=5328 tracked=9 counted=0 dedup=0 cabin=0 delivered=254 connects=1
+2026-09-16 13:50:43,513 [INFO] __main__: stats: frames=377 dets=8101 tracked=9 counted=2 dedup=0 cabin=0 delivered=377 connects=1
+2026-09-16 13:50:48,521 [INFO] __main__: stats: frames=501 dets=11132 tracked=11 counted=4 dedup=0 cabin=0 delivered=501 connects=1
+2026-09-16 13:50:53,530 [INFO] __main__: stats: frames=624 dets=13586 tracked=11 counted=4 dedup=0 cabin=0 delivered=624 connects=1
+2026-09-16 13:50:56,077 [INFO] __main__: Final: total=5 {'motor': 4, 'mobil': 1}
+2026-09-16 13:50:56,077 [INFO] __main__: Processed 679 of 679 delivered frames in 33s (20.8 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:51:10,837 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:51:10,852 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:51:15,930 [INFO] __main__: stats: frames=87 dets=1500 tracked=8 counted=1 dedup=0 cabin=0 delivered=87 connects=1
+2026-09-16 13:51:20,938 [INFO] __main__: stats: frames=212 dets=3748 tracked=7 counted=1 dedup=0 cabin=0 delivered=212 connects=1
+2026-09-16 13:51:25,941 [INFO] __main__: stats: frames=337 dets=6917 tracked=8 counted=1 dedup=0 cabin=0 delivered=337 connects=1
+2026-09-16 13:51:30,955 [INFO] __main__: stats: frames=462 dets=11069 tracked=7 counted=2 dedup=0 cabin=0 delivered=462 connects=1
+2026-09-16 13:51:35,979 [INFO] __main__: stats: frames=587 dets=15476 tracked=9 counted=3 dedup=0 cabin=0 delivered=587 connects=1
+2026-09-16 13:51:40,972 [INFO] __main__: stats: frames=711 dets=19355 tracked=9 counted=3 dedup=0 cabin=0 delivered=711 connects=1
+2026-09-16 13:51:45,986 [INFO] __main__: stats: frames=836 dets=23240 tracked=7 counted=3 dedup=0 cabin=0 delivered=836 connects=1
+2026-09-16 13:51:51,026 [INFO] __main__: stats: frames=960 dets=27483 tracked=10 counted=3 dedup=0 cabin=0 delivered=960 connects=1
+2026-09-16 13:51:56,031 [INFO] __main__: stats: frames=1084 dets=32013 tracked=9 counted=4 dedup=0 cabin=0 delivered=1084 connects=1
+2026-09-16 13:52:01,046 [INFO] __main__: stats: frames=1208 dets=36070 tracked=10 counted=4 dedup=0 cabin=0 delivered=1208 connects=1
+2026-09-16 13:52:06,065 [INFO] __main__: stats: frames=1333 dets=40509 tracked=9 counted=4 dedup=0 cabin=0 delivered=1333 connects=1
+2026-09-16 13:52:06,829 [INFO] __main__: Final: total=4 {'motor': 4}
+2026-09-16 13:52:06,830 [INFO] __main__: Processed 1346 of 1346 delivered frames in 56s (24.1 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:52:13,794 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:52:13,794 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:52:18,845 [INFO] __main__: stats: frames=85 dets=2810 tracked=8 counted=0 dedup=0 cabin=0 delivered=85 connects=1
+2026-09-16 13:52:22,163 [INFO] __main__: Final: total=0 {}
+2026-09-16 13:52:22,163 [INFO] __main__: Processed 162 of 162 delivered frames in 8s (19.5 fps), dedup-suppressed=0, connects=1
+2026-09-16 13:52:43,737 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-16 13:52:43,737 [INFO] __main__: API server on http://localhost:8000
+2026-09-16 13:52:48,813 [INFO] __main__: stats: frames=86 dets=1512 tracked=9 counted=2 dedup=0 cabin=0 delivered=86 connects=1
+2026-09-16 13:52:53,837 [INFO] __main__: stats: frames=210 dets=3621 tracked=8 counted=3 dedup=0 cabin=0 delivered=210 connects=1
+2026-09-16 13:52:58,845 [INFO] __main__: stats: frames=333 dets=5611 tracked=6 counted=5 dedup=0 cabin=0 delivered=333 connects=1
+2026-09-16 13:53:03,856 [INFO] __main__: stats: frames=456 dets=7407 tracked=4 counted=7 dedup=1 cabin=0 delivered=456 connects=1
+2026-09-16 13:53:08,875 [INFO] __main__: stats: frames=579 dets=9196 tracked=5 counted=7 dedup=1 cabin=0 delivered=579 connects=1
+2026-09-16 13:53:13,904 [INFO] __main__: stats: frames=704 dets=11653 tracked=7 counted=8 dedup=1 cabin=0 delivered=704 connects=1
+2026-09-16 13:53:18,924 [INFO] __main__: stats: frames=827 dets=13923 tracked=8 counted=8 dedup=1 cabin=0 delivered=827 connects=1
+2026-09-16 13:53:23,941 [INFO] __main__: stats: frames=951 dets=16228 tracked=7 counted=9 dedup=1 cabin=0 delivered=951 connects=1
+2026-09-16 13:53:28,960 [INFO] __main__: stats: frames=1074 dets=18567 tracked=9 counted=11 dedup=1 cabin=0 delivered=1074 connects=1
+2026-09-16 13:53:33,966 [INFO] __main__: stats: frames=1199 dets=20981 tracked=9 counted=13 dedup=1 cabin=0 delivered=1199 connects=1
+2026-09-16 13:53:38,968 [INFO] __main__: stats: frames=1322 dets=23607 tracked=8 counted=13 dedup=1 cabin=0 delivered=1322 connects=1
+2026-09-16 13:53:43,992 [INFO] __main__: stats: frames=1446 dets=26479 tracked=10 counted=15 dedup=1 cabin=0 delivered=1446 connects=1
+2026-09-16 13:53:49,020 [INFO] __main__: stats: frames=1568 dets=29564 tracked=11 counted=16 dedup=1 cabin=0 delivered=1568 connects=1
+2026-09-16 13:53:54,043 [INFO] __main__: stats: frames=1691 dets=32955 tracked=13 counted=19 dedup=1 cabin=1 delivered=1691 connects=1
+2026-09-16 13:53:59,054 [INFO] __main__: stats: frames=1813 dets=36297 tracked=6 counted=20 dedup=1 cabin=1 delivered=1813 connects=1
+2026-09-16 13:54:04,048 [INFO] __main__: stats: frames=1936 dets=39180 tracked=11 counted=21 dedup=1 cabin=1 delivered=1936 connects=1
+2026-09-16 13:54:09,063 [INFO] __main__: stats: frames=2059 dets=42698 tracked=13 counted=24 dedup=1 cabin=1 delivered=2059 connects=1
+2026-09-16 13:54:14,078 [INFO] __main__: stats: frames=2182 dets=45934 tracked=9 counted=24 dedup=1 cabin=1 delivered=2182 connects=1
+2026-09-16 13:54:19,124 [INFO] __main__: stats: frames=2306 dets=49335 tracked=11 counted=25 dedup=1 cabin=1 delivered=2306 connects=1
+2026-09-16 13:54:24,127 [INFO] __main__: stats: frames=2429 dets=52607 tracked=7 counted=26 dedup=1 cabin=1 delivered=2429 connects=1
+2026-09-16 13:54:29,124 [INFO] __main__: stats: frames=2552 dets=55133 tracked=3 counted=26 dedup=1 cabin=1 delivered=2552 connects=1
+2026-09-16 13:54:34,137 [INFO] __main__: stats: frames=2674 dets=59618 tracked=11 counted=26 dedup=1 cabin=1 delivered=2674 connects=1
+2026-09-16 13:54:39,150 [INFO] __main__: stats: frames=2796 dets=63205 tracked=7 counted=26 dedup=1 cabin=1 delivered=2796 connects=1
+2026-09-16 13:54:44,176 [INFO] __main__: stats: frames=2919 dets=66941 tracked=7 counted=26 dedup=1 cabin=1 delivered=2919 connects=1
+2026-09-16 13:54:49,192 [INFO] __main__: stats: frames=3041 dets=70643 tracked=8 counted=26 dedup=1 cabin=1 delivered=3041 connects=1
+2026-09-16 13:54:54,211 [INFO] __main__: stats: frames=3163 dets=75212 tracked=10 counted=26 dedup=1 cabin=1 delivered=3163 connects=1
+2026-09-16 13:54:59,205 [INFO] __main__: stats: frames=3284 dets=79776 tracked=13 counted=26 dedup=1 cabin=1 delivered=3284 connects=1
+2026-09-16 13:55:04,224 [INFO] __main__: stats: frames=3406 dets=83800 tracked=16 counted=27 dedup=1 cabin=1 delivered=3406 connects=1
+2026-09-16 13:55:09,216 [INFO] __main__: stats: frames=3527 dets=88291 tracked=9 counted=27 dedup=1 cabin=1 delivered=3527 connects=1
+2026-09-16 13:55:14,244 [INFO] __main__: stats: frames=3650 dets=92110 tracked=10 counted=27 dedup=1 cabin=1 delivered=3650 connects=1
+2026-09-16 13:55:19,233 [INFO] __main__: stats: frames=3771 dets=95439 tracked=9 counted=29 dedup=1 cabin=1 delivered=3771 connects=1
+2026-09-16 13:55:24,241 [INFO] __main__: stats: frames=3894 dets=100179 tracked=7 counted=30 dedup=1 cabin=1 delivered=3894 connects=1
+2026-09-16 13:55:29,249 [INFO] __main__: stats: frames=4019 dets=104671 tracked=7 counted=30 dedup=1 cabin=1 delivered=4019 connects=1
+2026-09-16 13:55:34,312 [INFO] __main__: stats: frames=4145 dets=109086 tracked=10 counted=30 dedup=1 cabin=1 delivered=4145 connects=1
+2026-09-16 13:55:39,351 [INFO] __main__: stats: frames=4271 dets=114803 tracked=6 counted=30 dedup=1 cabin=1 delivered=4271 connects=1
+2026-09-16 13:55:44,356 [INFO] __main__: stats: frames=4396 dets=119172 tracked=18 counted=38 dedup=1 cabin=1 delivered=4396 connects=1
+2026-09-16 13:55:49,358 [INFO] __main__: stats: frames=4521 dets=122718 tracked=13 counted=47 dedup=1 cabin=1 delivered=4521 connects=1
+2026-09-16 13:55:54,365 [INFO] __main__: stats: frames=4646 dets=125916 tracked=12 counted=53 dedup=1 cabin=1 delivered=4646 connects=1
+2026-09-16 13:55:59,372 [INFO] __main__: stats: frames=4771 dets=127974 tracked=9 counted=56 dedup=1 cabin=1 delivered=4771 connects=1
+2026-09-16 13:56:04,414 [INFO] __main__: stats: frames=4897 dets=129756 tracked=8 counted=58 dedup=1 cabin=1 delivered=4897 connects=1
+2026-09-16 13:56:09,414 [INFO] __main__: stats: frames=5022 dets=131657 tracked=8 counted=58 dedup=1 cabin=1 delivered=5022 connects=1
+2026-09-16 13:56:14,410 [INFO] __main__: stats: frames=5147 dets=133389 tracked=5 counted=60 dedup=1 cabin=1 delivered=5147 connects=1
+2026-09-16 13:56:19,418 [INFO] __main__: stats: frames=5272 dets=134535 tracked=7 counted=61 dedup=1 cabin=1 delivered=5272 connects=1
+2026-09-16 13:56:24,438 [INFO] __main__: stats: frames=5397 dets=136438 tracked=10 counted=64 dedup=1 cabin=1 delivered=5397 connects=1
+2026-09-16 13:56:29,441 [INFO] __main__: stats: frames=5522 dets=138501 tracked=10 counted=65 dedup=1 cabin=1 delivered=5522 connects=1
+2026-09-16 13:56:34,487 [INFO] __main__: stats: frames=5648 dets=140700 tracked=10 counted=65 dedup=1 cabin=1 delivered=5648 connects=1
+2026-09-16 13:56:39,528 [INFO] __main__: stats: frames=5774 dets=142686 tracked=10 counted=68 dedup=1 cabin=1 delivered=5774 connects=1
+2026-09-16 13:56:44,518 [INFO] __main__: stats: frames=5899 dets=145594 tracked=10 counted=70 dedup=1 cabin=1 delivered=5899 connects=1
+2026-09-16 13:56:49,514 [INFO] __main__: stats: frames=6024 dets=148183 tracked=8 counted=71 dedup=1 cabin=1 delivered=6024 connects=1
+2026-09-16 13:56:54,553 [INFO] __main__: stats: frames=6150 dets=150852 tracked=11 counted=72 dedup=1 cabin=1 delivered=6150 connects=1
+2026-09-16 13:56:59,556 [INFO] __main__: stats: frames=6275 dets=153502 tracked=10 counted=74 dedup=1 cabin=1 delivered=6275 connects=1
+2026-09-16 13:57:04,557 [INFO] __main__: stats: frames=6400 dets=156470 tracked=9 counted=75 dedup=1 cabin=1 delivered=6400 connects=1
+2026-09-16 13:57:09,569 [INFO] __main__: stats: frames=6525 dets=159080 tracked=10 counted=76 dedup=1 cabin=1 delivered=6525 connects=1
+2026-09-16 13:57:14,566 [INFO] __main__: stats: frames=6650 dets=161925 tracked=7 counted=77 dedup=1 cabin=1 delivered=6650 connects=1
+2026-09-16 13:57:19,562 [INFO] __main__: stats: frames=6775 dets=164423 tracked=9 counted=77 dedup=1 cabin=1 delivered=6775 connects=1
+2026-09-16 13:57:24,574 [INFO] __main__: stats: frames=6900 dets=166982 tracked=10 counted=78 dedup=1 cabin=1 delivered=6900 connects=1
+2026-09-16 13:57:29,567 [INFO] __main__: stats: frames=7025 dets=169365 tracked=8 counted=78 dedup=1 cabin=1 delivered=7025 connects=1
+2026-09-16 13:57:34,576 [INFO] __main__: stats: frames=7150 dets=171701 tracked=7 counted=78 dedup=1 cabin=1 delivered=7150 connects=1
+2026-09-16 13:57:39,583 [INFO] __main__: stats: frames=7275 dets=173984 tracked=8 counted=79 dedup=1 cabin=1 delivered=7275 connects=1
+2026-09-16 13:57:44,578 [INFO] __main__: stats: frames=7400 dets=177316 tracked=7 counted=79 dedup=1 cabin=1 delivered=7400 connects=1
+2026-09-16 13:57:49,617 [INFO] __main__: stats: frames=7526 dets=179962 tracked=6 counted=79 dedup=1 cabin=1 delivered=7526 connects=1
+2026-09-16 13:57:54,633 [INFO] __main__: stats: frames=7651 dets=182596 tracked=6 counted=79 dedup=1 cabin=1 delivered=7651 connects=1
+2026-09-16 13:57:59,632 [INFO] __main__: stats: frames=7776 dets=185285 tracked=6 counted=79 dedup=1 cabin=1 delivered=7776 connects=1
+2026-09-16 13:58:04,628 [INFO] __main__: stats: frames=7901 dets=188539 tracked=10 counted=79 dedup=1 cabin=1 delivered=7901 connects=1
+2026-09-16 13:58:09,646 [INFO] __main__: stats: frames=8026 dets=192719 tracked=13 counted=81 dedup=1 cabin=1 delivered=8026 connects=1
+2026-09-16 13:58:14,654 [INFO] __main__: stats: frames=8151 dets=196194 tracked=8 counted=81 dedup=1 cabin=1 delivered=8151 connects=1
+2026-09-16 13:58:19,655 [INFO] __main__: stats: frames=8276 dets=199808 tracked=9 counted=81 dedup=1 cabin=1 delivered=8276 connects=1
+2026-09-16 13:58:24,675 [INFO] __main__: stats: frames=8401 dets=203445 tracked=8 counted=81 dedup=1 cabin=1 delivered=8401 connects=1
+2026-09-16 13:58:29,701 [INFO] __main__: stats: frames=8527 dets=206808 tracked=7 counted=81 dedup=1 cabin=1 delivered=8527 connects=1
+2026-09-16 13:58:34,705 [INFO] __main__: stats: frames=8652 dets=210286 tracked=5 counted=82 dedup=1 cabin=1 delivered=8652 connects=1
+2026-09-16 13:58:39,717 [INFO] __main__: stats: frames=8777 dets=214241 tracked=9 counted=82 dedup=1 cabin=1 delivered=8777 connects=1
+2026-09-16 13:58:44,757 [INFO] __main__: stats: frames=8903 dets=218550 tracked=9 counted=83 dedup=1 cabin=1 delivered=8903 connects=1
+2026-09-16 13:58:49,751 [INFO] __main__: stats: frames=9028 dets=222698 tracked=14 counted=93 dedup=1 cabin=1 delivered=9028 connects=1
+2026-09-16 13:58:54,755 [INFO] __main__: stats: frames=9153 dets=226585 tracked=11 counted=103 dedup=2 cabin=2 delivered=9153 connects=1
+2026-09-16 13:58:59,761 [INFO] __main__: stats: frames=9278 dets=228283 tracked=6 counted=106 dedup=2 cabin=2 delivered=9278 connects=1
+2026-09-16 13:59:04,769 [INFO] __main__: stats: frames=9403 dets=229235 tracked=4 counted=108 dedup=2 cabin=2 delivered=9403 connects=1
+2026-09-16 13:59:09,797 [INFO] __main__: stats: frames=9529 dets=230020 tracked=2 counted=108 dedup=2 cabin=2 delivered=9529 connects=1
+2026-09-16 13:59:14,807 [INFO] __main__: stats: frames=9654 dets=230543 tracked=1 counted=108 dedup=2 cabin=2 delivered=9654 connects=1
+2026-09-16 13:59:19,802 [INFO] __main__: stats: frames=9779 dets=231026 tracked=2 counted=108 dedup=2 cabin=2 delivered=9779 connects=1
+2026-09-16 13:59:24,807 [INFO] __main__: stats: frames=9904 dets=231616 tracked=2 counted=108 dedup=2 cabin=2 delivered=9904 connects=1
+2026-09-16 13:59:29,811 [INFO] __main__: stats: frames=10029 dets=233184 tracked=8 counted=110 dedup=2 cabin=2 delivered=10029 connects=1
+2026-09-16 13:59:34,810 [INFO] __main__: stats: frames=10154 dets=234879 tracked=4 counted=112 dedup=2 cabin=2 delivered=10154 connects=1
+2026-09-16 13:59:39,817 [INFO] __main__: stats: frames=10279 dets=235778 tracked=3 counted=113 dedup=2 cabin=2 delivered=10279 connects=1
+2026-09-16 13:59:44,843 [INFO] __main__: stats: frames=10405 dets=236569 tracked=3 counted=114 dedup=2 cabin=2 delivered=10405 connects=1
+2026-09-16 13:59:49,864 [INFO] __main__: stats: frames=10530 dets=237638 tracked=6 counted=116 dedup=2 cabin=2 delivered=10530 connects=1
+2026-09-16 13:59:54,858 [INFO] __main__: stats: frames=10655 dets=239615 tracked=6 counted=119 dedup=2 cabin=2 delivered=10655 connects=1
+2026-09-16 13:59:59,900 [INFO] __main__: stats: frames=10781 dets=240985 tracked=6 counted=121 dedup=2 cabin=2 delivered=10781 connects=1
+2026-09-16 14:00:04,895 [INFO] __main__: stats: frames=10906 dets=243068 tracked=8 counted=123 dedup=2 cabin=2 delivered=10906 connects=1
+2026-09-16 14:00:09,895 [INFO] __main__: stats: frames=11031 dets=245436 tracked=7 counted=124 dedup=2 cabin=2 delivered=11031 connects=1
+2026-09-16 14:00:14,901 [INFO] __main__: stats: frames=11156 dets=247929 tracked=8 counted=126 dedup=2 cabin=2 delivered=11156 connects=1
+2026-09-16 14:00:19,903 [INFO] __main__: stats: frames=11281 dets=250853 tracked=8 counted=126 dedup=2 cabin=2 delivered=11281 connects=1
+2026-09-16 14:00:24,904 [INFO] __main__: stats: frames=11406 dets=253236 tracked=8 counted=127 dedup=2 cabin=2 delivered=11406 connects=1
+2026-09-16 14:00:29,920 [INFO] __main__: stats: frames=11531 dets=256264 tracked=11 counted=127 dedup=2 cabin=2 delivered=11531 connects=1
+2026-09-16 14:00:34,966 [INFO] __main__: stats: frames=11657 dets=259320 tracked=11 counted=128 dedup=2 cabin=2 delivered=11657 connects=1
+2026-09-16 14:00:39,991 [INFO] __main__: stats: frames=11783 dets=262641 tracked=11 counted=129 dedup=2 cabin=2 delivered=11783 connects=1
+2026-09-16 14:00:44,997 [INFO] __main__: stats: frames=11908 dets=265327 tracked=9 counted=129 dedup=2 cabin=2 delivered=11908 connects=1
+2026-09-16 14:00:50,002 [INFO] __main__: stats: frames=12033 dets=268218 tracked=10 counted=129 dedup=2 cabin=2 delivered=12033 connects=1
+2026-09-16 14:00:54,998 [INFO] __main__: stats: frames=12158 dets=270794 tracked=7 counted=129 dedup=2 cabin=2 delivered=12158 connects=1
+2026-09-16 14:01:00,004 [INFO] __main__: stats: frames=12283 dets=273655 tracked=10 counted=130 dedup=2 cabin=2 delivered=12283 connects=1
+2026-09-16 14:01:04,043 [INFO] __main__: Counts reset
+2026-09-16 14:01:05,008 [INFO] __main__: stats: frames=12408 dets=276325 tracked=9 counted=0 dedup=0 cabin=0 delivered=12408 connects=1
+2026-09-16 14:01:09,998 [INFO] __main__: stats: frames=12533 dets=279288 tracked=8 counted=0 dedup=0 cabin=0 delivered=12533 connects=1
+2026-09-16 14:01:14,999 [INFO] __main__: stats: frames=12658 dets=281719 tracked=9 counted=2 dedup=0 cabin=0 delivered=12658 connects=1
+2026-09-16 14:01:20,011 [INFO] __main__: stats: frames=12783 dets=284313 tracked=7 counted=3 dedup=0 cabin=0 delivered=12783 connects=1
+2026-09-16 14:01:25,035 [INFO] __main__: stats: frames=12909 dets=287052 tracked=8 counted=4 dedup=0 cabin=0 delivered=12909 connects=1
+2026-09-16 14:01:30,050 [INFO] __main__: stats: frames=13034 dets=289708 tracked=10 counted=5 dedup=0 cabin=0 delivered=13034 connects=1
+2026-09-16 14:01:35,055 [INFO] __main__: stats: frames=13159 dets=292613 tracked=11 counted=9 dedup=0 cabin=0 delivered=13159 connects=1
+2026-09-16 14:01:40,048 [INFO] __main__: stats: frames=13284 dets=295596 tracked=11 counted=11 dedup=0 cabin=0 delivered=13284 connects=1
+2026-09-16 14:01:45,067 [INFO] __main__: stats: frames=13409 dets=298809 tracked=10 counted=13 dedup=0 cabin=0 delivered=13409 connects=1
+2026-09-16 14:01:50,085 [INFO] __main__: stats: frames=13534 dets=302362 tracked=13 counted=16 dedup=0 cabin=0 delivered=13534 connects=1
+2026-09-16 14:01:55,085 [INFO] __main__: stats: frames=13659 dets=305734 tracked=15 counted=28 dedup=0 cabin=0 delivered=13659 connects=1
+2026-09-16 14:02:00,085 [INFO] __main__: stats: frames=13784 dets=308046 tracked=7 counted=31 dedup=0 cabin=1 delivered=13784 connects=1
+2026-09-16 14:02:05,080 [INFO] __main__: stats: frames=13909 dets=309517 tracked=6 counted=36 dedup=0 cabin=1 delivered=13909 connects=1
+2026-09-16 14:02:10,088 [INFO] __main__: stats: frames=14034 dets=311621 tracked=6 counted=39 dedup=0 cabin=1 delivered=14034 connects=1
+2026-09-16 14:02:15,081 [INFO] __main__: stats: frames=14159 dets=312925 tracked=5 counted=41 dedup=0 cabin=1 delivered=14159 connects=1
+2026-09-16 14:02:20,087 [INFO] __main__: stats: frames=14284 dets=314940 tracked=9 counted=45 dedup=0 cabin=1 delivered=14284 connects=1
+2026-09-16 14:02:25,082 [INFO] __main__: stats: frames=14409 dets=316140 tracked=3 counted=48 dedup=0 cabin=1 delivered=14409 connects=1
+2026-09-16 14:02:30,093 [INFO] __main__: stats: frames=14534 dets=317392 tracked=8 counted=52 dedup=0 cabin=1 delivered=14534 connects=1
+2026-09-16 14:02:35,136 [INFO] __main__: stats: frames=14660 dets=320065 tracked=11 counted=59 dedup=0 cabin=1 delivered=14660 connects=1
+2026-09-16 14:02:40,157 [INFO] __main__: stats: frames=14786 dets=322540 tracked=6 counted=64 dedup=0 cabin=1 delivered=14786 connects=1
+2026-09-16 14:02:45,174 [INFO] __main__: stats: frames=14911 dets=324389 tracked=9 counted=66 dedup=0 cabin=1 delivered=14911 connects=1
+2026-09-16 14:02:50,216 [INFO] __main__: stats: frames=15037 dets=326902 tracked=10 counted=69 dedup=0 cabin=1 delivered=15037 connects=1
+2026-09-16 14:02:55,216 [INFO] __main__: stats: frames=15162 dets=329601 tracked=10 counted=72 dedup=0 cabin=1 delivered=15162 connects=1
+2026-09-16 14:03:00,205 [INFO] __main__: stats: frames=15287 dets=332724 tracked=13 counted=76 dedup=0 cabin=1 delivered=15287 connects=1
+2026-09-16 14:03:05,218 [INFO] __main__: stats: frames=15412 dets=335717 tracked=10 counted=77 dedup=0 cabin=1 delivered=15412 connects=1
+2026-09-16 14:03:10,266 [INFO] __main__: stats: frames=15538 dets=338521 tracked=10 counted=78 dedup=0 cabin=1 delivered=15538 connects=1
+2026-09-16 14:03:15,272 [INFO] __main__: stats: frames=15663 dets=341280 tracked=9 counted=80 dedup=0 cabin=1 delivered=15663 connects=1
+2026-09-16 14:03:20,267 [INFO] __main__: stats: frames=15788 dets=343871 tracked=13 counted=83 dedup=0 cabin=1 delivered=15788 connects=1
+2026-09-16 14:03:25,274 [INFO] __main__: stats: frames=15913 dets=347108 tracked=11 counted=89 dedup=0 cabin=1 delivered=15913 connects=1
+2026-09-16 14:03:30,264 [INFO] __main__: stats: frames=16038 dets=350449 tracked=10 counted=89 dedup=0 cabin=1 delivered=16038 connects=1
+2026-09-16 14:03:35,272 [INFO] __main__: stats: frames=16163 dets=353698 tracked=9 counted=93 dedup=0 cabin=1 delivered=16163 connects=1
+2026-09-16 14:03:40,309 [INFO] __main__: stats: frames=16289 dets=357103 tracked=10 counted=95 dedup=0 cabin=1 delivered=16289 connects=1
+2026-09-16 14:03:45,322 [INFO] __main__: stats: frames=16414 dets=360984 tracked=15 counted=102 dedup=0 cabin=1 delivered=16414 connects=1
+2026-09-16 14:03:50,315 [INFO] __main__: stats: frames=16539 dets=364945 tracked=10 counted=103 dedup=0 cabin=1 delivered=16539 connects=1
+2026-09-16 14:03:55,325 [INFO] __main__: stats: frames=16664 dets=368216 tracked=12 counted=106 dedup=0 cabin=1 delivered=16664 connects=1
+2026-09-16 14:04:00,310 [INFO] __main__: stats: frames=16788 dets=371246 tracked=9 counted=106 dedup=0 cabin=1 delivered=16788 connects=1
+2026-09-16 14:04:05,317 [INFO] __main__: stats: frames=16913 dets=373957 tracked=10 counted=106 dedup=0 cabin=1 delivered=16913 connects=1
+2026-09-16 14:04:10,315 [INFO] __main__: stats: frames=17038 dets=377058 tracked=13 counted=109 dedup=0 cabin=1 delivered=17038 connects=1
+2026-09-16 14:04:15,310 [INFO] __main__: stats: frames=17163 dets=380623 tracked=14 counted=112 dedup=0 cabin=1 delivered=17163 connects=1
+2026-09-16 14:04:20,320 [INFO] __main__: stats: frames=17288 dets=383737 tracked=11 counted=114 dedup=0 cabin=1 delivered=17288 connects=1
+2026-09-16 14:04:25,314 [INFO] __main__: stats: frames=17413 dets=387195 tracked=10 counted=115 dedup=0 cabin=1 delivered=17413 connects=1
+2026-09-16 14:04:30,365 [INFO] __main__: stats: frames=17539 dets=390824 tracked=10 counted=117 dedup=0 cabin=1 delivered=17539 connects=1
+2026-09-16 14:04:35,373 [INFO] __main__: stats: frames=17664 dets=395034 tracked=7 counted=118 dedup=0 cabin=1 delivered=17664 connects=1
+2026-09-16 14:04:40,392 [INFO] __main__: stats: frames=17789 dets=399012 tracked=8 counted=118 dedup=0 cabin=1 delivered=17789 connects=1
+2026-09-16 14:04:45,396 [INFO] __main__: stats: frames=17914 dets=402509 tracked=8 counted=120 dedup=0 cabin=1 delivered=17914 connects=1
+2026-09-16 14:04:50,395 [INFO] __main__: stats: frames=18039 dets=406090 tracked=12 counted=122 dedup=0 cabin=1 delivered=18039 connects=1
+2026-09-16 14:04:55,401 [INFO] __main__: stats: frames=18164 dets=409939 tracked=12 counted=127 dedup=0 cabin=1 delivered=18164 connects=1
+2026-09-16 14:05:00,403 [INFO] __main__: stats: frames=18289 dets=414145 tracked=16 counted=135 dedup=0 cabin=1 delivered=18289 connects=1
+2026-09-16 14:05:05,414 [INFO] __main__: stats: frames=18414 dets=418693 tracked=13 counted=151 dedup=0 cabin=1 delivered=18414 connects=1
+2026-09-16 14:05:10,420 [INFO] __main__: stats: frames=18539 dets=421494 tracked=9 counted=156 dedup=0 cabin=1 delivered=18539 connects=1
+2026-09-16 14:05:15,453 [INFO] __main__: stats: frames=18665 dets=424488 tracked=8 counted=162 dedup=0 cabin=1 delivered=18665 connects=1
+2026-09-16 14:05:20,467 [INFO] __main__: stats: frames=18790 dets=426735 tracked=8 counted=166 dedup=0 cabin=1 delivered=18790 connects=1
+2026-09-16 14:05:25,478 [INFO] __main__: stats: frames=18915 dets=428607 tracked=7 counted=170 dedup=0 cabin=1 delivered=18915 connects=1
+2026-09-16 14:05:30,474 [INFO] __main__: stats: frames=19040 dets=430011 tracked=5 counted=171 dedup=0 cabin=1 delivered=19040 connects=1
+2026-09-16 14:05:35,478 [INFO] __main__: stats: frames=19165 dets=432002 tracked=10 counted=173 dedup=0 cabin=1 delivered=19165 connects=1
+2026-09-16 14:05:40,495 [INFO] __main__: stats: frames=19290 dets=434705 tracked=9 counted=176 dedup=0 cabin=1 delivered=19290 connects=1
+2026-09-16 14:05:45,492 [INFO] __main__: stats: frames=19415 dets=437364 tracked=13 counted=181 dedup=0 cabin=1 delivered=19415 connects=1
+2026-09-16 14:05:50,507 [INFO] __main__: stats: frames=19540 dets=440438 tracked=15 counted=187 dedup=0 cabin=2 delivered=19540 connects=1
+2026-09-16 14:05:55,525 [INFO] __main__: stats: frames=19665 dets=444346 tracked=11 counted=192 dedup=0 cabin=2 delivered=19665 connects=1
+2026-09-16 14:06:00,528 [INFO] __main__: stats: frames=19790 dets=447741 tracked=11 counted=194 dedup=0 cabin=2 delivered=19790 connects=1
+2026-09-16 14:06:05,531 [INFO] __main__: stats: frames=19915 dets=450778 tracked=13 counted=198 dedup=0 cabin=2 delivered=19915 connects=1
+2026-09-16 14:06:10,533 [INFO] __main__: stats: frames=20040 dets=453714 tracked=11 counted=201 dedup=0 cabin=2 delivered=20040 connects=1
+2026-09-16 14:06:15,542 [INFO] __main__: stats: frames=20165 dets=456738 tracked=12 counted=207 dedup=0 cabin=2 delivered=20165 connects=1
+2026-09-16 14:06:20,530 [INFO] __main__: stats: frames=20289 dets=460167 tracked=7 counted=207 dedup=0 cabin=2 delivered=20289 connects=1
+2026-09-16 14:06:25,556 [INFO] __main__: stats: frames=20415 dets=462818 tracked=8 counted=208 dedup=0 cabin=2 delivered=20415 connects=1
+2026-09-16 14:06:30,560 [INFO] __main__: stats: frames=20540 dets=465694 tracked=9 counted=209 dedup=0 cabin=2 delivered=20540 connects=1
+2026-09-16 14:06:35,573 [INFO] __main__: stats: frames=20665 dets=468598 tracked=10 counted=210 dedup=0 cabin=2 delivered=20665 connects=1
+2026-09-16 14:06:40,569 [INFO] __main__: stats: frames=20790 dets=472058 tracked=10 counted=211 dedup=0 cabin=2 delivered=20790 connects=1
+2026-09-16 14:06:45,587 [INFO] __main__: stats: frames=20915 dets=476498 tracked=14 counted=213 dedup=0 cabin=2 delivered=20915 connects=1
+2026-09-16 14:06:50,605 [INFO] __main__: stats: frames=21040 dets=481330 tracked=15 counted=222 dedup=0 cabin=2 delivered=21040 connects=1
+2026-09-16 14:06:55,603 [INFO] __main__: stats: frames=21165 dets=485865 tracked=12 counted=224 dedup=0 cabin=2 delivered=21165 connects=1
+2026-09-16 14:07:00,606 [INFO] __main__: stats: frames=21290 dets=490471 tracked=9 counted=224 dedup=0 cabin=2 delivered=21290 connects=1
+2026-09-16 14:07:05,616 [INFO] __main__: stats: frames=21415 dets=494696 tracked=15 counted=225 dedup=0 cabin=2 delivered=21415 connects=1
+2026-09-16 14:07:10,628 [INFO] __main__: stats: frames=21540 dets=499605 tracked=11 counted=227 dedup=0 cabin=3 delivered=21540 connects=1
+2026-09-16 14:07:15,637 [INFO] __main__: stats: frames=21665 dets=503874 tracked=7 counted=227 dedup=0 cabin=3 delivered=21665 connects=1
+2026-09-16 14:07:20,638 [INFO] __main__: stats: frames=21790 dets=508004 tracked=9 counted=227 dedup=0 cabin=3 delivered=21790 connects=1
+2026-09-16 14:07:25,659 [INFO] __main__: stats: frames=21915 dets=512065 tracked=9 counted=229 dedup=0 cabin=3 delivered=21915 connects=1
+2026-09-16 14:07:30,665 [INFO] __main__: stats: frames=22040 dets=516347 tracked=10 counted=230 dedup=0 cabin=3 delivered=22040 connects=1
+2026-09-16 14:07:35,685 [INFO] __main__: stats: frames=22165 dets=520993 tracked=10 counted=232 dedup=0 cabin=3 delivered=22165 connects=1
+2026-09-16 14:07:40,705 [INFO] __main__: stats: frames=22290 dets=525431 tracked=9 counted=232 dedup=0 cabin=3 delivered=22290 connects=1
+2026-09-16 14:07:45,710 [INFO] __main__: stats: frames=22415 dets=530050 tracked=9 counted=233 dedup=0 cabin=3 delivered=22415 connects=1
+2026-09-16 14:07:50,710 [INFO] __main__: stats: frames=22539 dets=534774 tracked=13 counted=236 dedup=0 cabin=3 delivered=22539 connects=1
+2026-09-16 14:07:55,724 [INFO] __main__: stats: frames=22664 dets=539779 tracked=14 counted=240 dedup=0 cabin=3 delivered=22664 connects=1
+2026-09-16 14:08:00,720 [INFO] __main__: stats: frames=22789 dets=543943 tracked=15 counted=247 dedup=0 cabin=3 delivered=22789 connects=1
+2026-09-16 14:08:05,724 [INFO] __main__: stats: frames=22914 dets=548309 tracked=15 counted=253 dedup=1 cabin=3 delivered=22914 connects=1
+2026-09-16 14:08:10,751 [INFO] __main__: stats: frames=23039 dets=552415 tracked=17 counted=268 dedup=1 cabin=3 delivered=23039 connects=1
+2026-09-16 14:08:15,792 [INFO] __main__: stats: frames=23165 dets=555607 tracked=13 counted=276 dedup=1 cabin=4 delivered=23165 connects=1
+2026-09-16 14:08:20,802 [INFO] __main__: stats: frames=23290 dets=557962 tracked=11 counted=280 dedup=1 cabin=4 delivered=23290 connects=1
+2026-09-16 14:08:25,801 [INFO] __main__: stats: frames=23415 dets=559947 tracked=10 counted=282 dedup=1 cabin=4 delivered=23415 connects=1
+2026-09-16 14:08:30,799 [INFO] __main__: stats: frames=23540 dets=561867 tracked=7 counted=286 dedup=1 cabin=4 delivered=23540 connects=1
+2026-09-16 14:08:35,847 [INFO] __main__: stats: frames=23666 dets=564035 tracked=7 counted=289 dedup=1 cabin=4 delivered=23666 connects=1
+2026-09-16 14:08:40,875 [INFO] __main__: stats: frames=23792 dets=565931 tracked=8 counted=292 dedup=1 cabin=4 delivered=23792 connects=1
+2026-09-16 14:08:45,906 [INFO] __main__: stats: frames=23917 dets=568629 tracked=11 counted=294 dedup=1 cabin=4 delivered=23917 connects=1
+2026-09-16 14:08:50,937 [INFO] __main__: stats: frames=24043 dets=570920 tracked=9 counted=298 dedup=1 cabin=4 delivered=24043 connects=1
+2026-09-16 14:08:55,975 [INFO] __main__: stats: frames=24169 dets=573861 tracked=12 counted=303 dedup=1 cabin=4 delivered=24169 connects=1
+2026-09-16 14:09:00,968 [INFO] __main__: stats: frames=24294 dets=576930 tracked=11 counted=304 dedup=1 cabin=4 delivered=24294 connects=1
+2026-09-16 14:09:05,992 [INFO] __main__: stats: frames=24419 dets=579443 tracked=10 counted=309 dedup=1 cabin=4 delivered=24419 connects=1
+2026-09-16 14:09:10,997 [INFO] __main__: stats: frames=24544 dets=581514 tracked=10 counted=311 dedup=1 cabin=4 delivered=24544 connects=1
+2026-09-16 14:09:15,995 [INFO] __main__: stats: frames=24669 dets=583957 tracked=10 counted=314 dedup=1 cabin=4 delivered=24669 connects=1
+2026-09-16 14:09:21,006 [INFO] __main__: stats: frames=24794 dets=587139 tracked=13 counted=317 dedup=1 cabin=4 delivered=24794 connects=1
+2026-09-16 14:09:26,051 [INFO] __main__: stats: frames=24920 dets=590654 tracked=9 counted=320 dedup=1 cabin=4 delivered=24920 connects=1
+2026-09-16 14:09:31,068 [INFO] __main__: stats: frames=25046 dets=594106 tracked=10 counted=323 dedup=2 cabin=4 delivered=25046 connects=1
+2026-09-16 14:09:36,089 [INFO] __main__: stats: frames=25171 dets=598321 tracked=9 counted=325 dedup=2 cabin=4 delivered=25171 connects=1
+2026-09-16 14:09:41,090 [INFO] __main__: stats: frames=25296 dets=602448 tracked=12 counted=329 dedup=2 cabin=4 delivered=25296 connects=1
+2026-09-16 14:09:46,099 [INFO] __main__: stats: frames=25421 dets=606148 tracked=10 counted=331 dedup=2 cabin=4 delivered=25421 connects=1
+2026-09-16 14:09:51,137 [INFO] __main__: stats: frames=25547 dets=609545 tracked=7 counted=333 dedup=2 cabin=4 delivered=25547 connects=1
+2026-09-16 14:09:56,144 [INFO] __main__: stats: frames=25672 dets=613163 tracked=7 counted=333 dedup=2 cabin=4 delivered=25672 connects=1
+2026-09-16 14:10:01,140 [INFO] __main__: stats: frames=25797 dets=616499 tracked=6 counted=333 dedup=2 cabin=4 delivered=25797 connects=1
+2026-09-16 14:10:06,142 [INFO] __main__: stats: frames=25922 dets=619772 tracked=4 counted=333 dedup=2 cabin=4 delivered=25922 connects=1
+2026-09-16 14:10:11,181 [INFO] __main__: stats: frames=26048 dets=623159 tracked=6 counted=334 dedup=2 cabin=4 delivered=26048 connects=1
+2026-09-16 14:10:16,202 [INFO] __main__: stats: frames=26173 dets=627176 tracked=6 counted=334 dedup=2 cabin=4 delivered=26173 connects=1
+2026-09-16 14:10:21,547 [INFO] __main__: stats: frames=26290 dets=630826 tracked=7 counted=336 dedup=2 cabin=4 delivered=26290 connects=1
+2026-09-16 14:10:26,560 [INFO] __main__: stats: frames=26410 dets=634600 tracked=7 counted=338 dedup=2 cabin=4 delivered=26410 connects=1
+2026-09-16 14:10:31,587 [INFO] __main__: stats: frames=26524 dets=638218 tracked=6 counted=339 dedup=2 cabin=4 delivered=26524 connects=1
+2026-09-16 14:10:36,592 [INFO] __main__: stats: frames=26642 dets=642094 tracked=7 counted=339 dedup=2 cabin=4 delivered=26642 connects=1
+2026-09-16 14:10:41,598 [INFO] __main__: stats: frames=26767 dets=646064 tracked=4 counted=339 dedup=2 cabin=4 delivered=26767 connects=1
+2026-09-16 14:10:46,593 [INFO] __main__: stats: frames=26891 dets=650273 tracked=8 counted=341 dedup=2 cabin=4 delivered=26891 connects=1
+2026-09-16 14:10:51,638 [INFO] __main__: stats: frames=27017 dets=654745 tracked=8 counted=343 dedup=2 cabin=4 delivered=27017 connects=1
+2026-09-16 14:10:56,644 [INFO] __main__: stats: frames=27142 dets=659092 tracked=5 counted=346 dedup=2 cabin=4 delivered=27142 connects=1
+2026-09-16 14:11:01,657 [INFO] __main__: stats: frames=27267 dets=663287 tracked=3 counted=347 dedup=2 cabin=4 delivered=27267 connects=1
+2026-09-16 14:11:06,686 [INFO] __main__: stats: frames=27392 dets=667436 tracked=3 counted=348 dedup=2 cabin=4 delivered=27392 connects=1
+2026-09-16 14:11:11,700 [INFO] __main__: stats: frames=27517 dets=671634 tracked=14 counted=359 dedup=2 cabin=4 delivered=27517 connects=1
+2026-09-16 14:11:16,696 [INFO] __main__: stats: frames=27642 dets=675400 tracked=14 counted=370 dedup=2 cabin=4 delivered=27642 connects=1
+2026-09-16 14:11:21,704 [INFO] __main__: stats: frames=27767 dets=678041 tracked=8 counted=379 dedup=2 cabin=4 delivered=27767 connects=1
+2026-09-16 14:11:26,712 [INFO] __main__: stats: frames=27891 dets=679743 tracked=7 counted=381 dedup=2 cabin=4 delivered=27891 connects=1
+2026-09-16 14:11:31,706 [INFO] __main__: stats: frames=28016 dets=682127 tracked=9 counted=387 dedup=2 cabin=5 delivered=28016 connects=1
+2026-09-16 14:11:36,717 [INFO] __main__: stats: frames=28140 dets=684082 tracked=7 counted=392 dedup=2 cabin=5 delivered=28140 connects=1
+2026-09-16 14:11:41,720 [INFO] __main__: stats: frames=28265 dets=685811 tracked=4 counted=394 dedup=2 cabin=5 delivered=28265 connects=1
+2026-09-16 14:11:46,762 [INFO] __main__: stats: frames=28391 dets=687013 tracked=2 counted=394 dedup=2 cabin=5 delivered=28391 connects=1
+2026-09-16 14:11:51,748 [INFO] __main__: stats: frames=28516 dets=688942 tracked=8 counted=397 dedup=2 cabin=5 delivered=28516 connects=1
+2026-09-16 14:11:56,756 [INFO] __main__: stats: frames=28641 dets=691767 tracked=8 counted=401 dedup=2 cabin=5 delivered=28641 connects=1
+2026-09-16 14:12:01,754 [INFO] __main__: stats: frames=28766 dets=693935 tracked=10 counted=406 dedup=2 cabin=5 delivered=28766 connects=1
+2026-09-16 14:12:06,765 [INFO] __main__: stats: frames=28891 dets=696697 tracked=9 counted=412 dedup=2 cabin=5 delivered=28891 connects=1
+2026-09-16 14:12:11,773 [INFO] __main__: stats: frames=29016 dets=699293 tracked=8 counted=415 dedup=2 cabin=5 delivered=29016 connects=1
+2026-09-16 14:12:16,774 [INFO] __main__: stats: frames=29141 dets=701471 tracked=5 counted=415 dedup=2 cabin=5 delivered=29141 connects=1
+2026-09-16 14:12:21,811 [INFO] __main__: stats: frames=29267 dets=703901 tracked=10 counted=417 dedup=2 cabin=5 delivered=29267 connects=1
+2026-09-16 14:12:26,852 [INFO] __main__: stats: frames=29393 dets=706849 tracked=10 counted=420 dedup=2 cabin=5 delivered=29393 connects=1
+2026-09-16 14:12:31,854 [INFO] __main__: stats: frames=29518 dets=709721 tracked=12 counted=424 dedup=2 cabin=5 delivered=29518 connects=1
+2026-09-16 14:12:36,865 [INFO] __main__: stats: frames=29643 dets=712665 tracked=7 counted=426 dedup=2 cabin=5 delivered=29643 connects=1
+2026-09-16 14:12:41,861 [INFO] __main__: stats: frames=29768 dets=715370 tracked=7 counted=427 dedup=2 cabin=5 delivered=29768 connects=1
+2026-09-16 14:12:46,864 [INFO] __main__: stats: frames=29893 dets=717921 tracked=11 counted=430 dedup=2 cabin=5 delivered=29893 connects=1
+2026-09-16 14:12:51,881 [INFO] __main__: stats: frames=30018 dets=720940 tracked=8 counted=433 dedup=2 cabin=5 delivered=30018 connects=1
+2026-09-16 14:12:56,905 [INFO] __main__: stats: frames=30143 dets=724530 tracked=11 counted=435 dedup=2 cabin=5 delivered=30143 connects=1
+2026-09-16 14:13:01,932 [INFO] __main__: stats: frames=30269 dets=728281 tracked=11 counted=437 dedup=2 cabin=6 delivered=30269 connects=1
+2026-09-16 14:13:06,936 [INFO] __main__: stats: frames=30394 dets=731753 tracked=14 counted=438 dedup=2 cabin=6 delivered=30394 connects=1
+2026-09-16 14:13:11,953 [INFO] __main__: stats: frames=30519 dets=735527 tracked=7 counted=438 dedup=2 cabin=6 delivered=30519 connects=1
+2026-09-16 14:13:16,963 [INFO] __main__: stats: frames=30644 dets=739591 tracked=10 counted=440 dedup=2 cabin=6 delivered=30644 connects=1
+2026-09-16 14:13:21,972 [INFO] __main__: stats: frames=30769 dets=743458 tracked=10 counted=441 dedup=2 cabin=6 delivered=30769 connects=1
+2026-09-16 14:13:26,973 [INFO] __main__: stats: frames=30894 dets=748057 tracked=9 counted=445 dedup=2 cabin=6 delivered=30894 connects=1
+2026-09-16 14:13:31,981 [INFO] __main__: stats: frames=31019 dets=751875 tracked=10 counted=446 dedup=2 cabin=6 delivered=31019 connects=1
+2026-09-16 14:13:36,974 [INFO] __main__: stats: frames=31143 dets=756486 tracked=8 counted=447 dedup=2 cabin=6 delivered=31143 connects=1
+2026-09-16 14:13:42,011 [INFO] __main__: stats: frames=31269 dets=761929 tracked=9 counted=450 dedup=2 cabin=6 delivered=31269 connects=1
+2026-09-16 14:13:47,016 [INFO] __main__: stats: frames=31394 dets=766494 tracked=14 counted=453 dedup=2 cabin=6 delivered=31394 connects=1
+2026-09-16 14:13:52,026 [INFO] __main__: stats: frames=31519 dets=771131 tracked=13 counted=461 dedup=2 cabin=6 delivered=31519 connects=1
+2026-09-16 14:13:57,016 [INFO] __main__: stats: frames=31643 dets=776669 tracked=10 counted=461 dedup=2 cabin=7 delivered=31643 connects=1
+2026-09-16 14:14:02,020 [INFO] __main__: stats: frames=31768 dets=781408 tracked=11 counted=463 dedup=2 cabin=7 delivered=31768 connects=1
+2026-09-16 14:14:07,040 [INFO] __main__: stats: frames=31893 dets=786133 tracked=8 counted=465 dedup=2 cabin=7 delivered=31893 connects=1
+2026-09-16 14:14:12,046 [INFO] __main__: stats: frames=32018 dets=790860 tracked=9 counted=466 dedup=2 cabin=7 delivered=32018 connects=1
+2026-09-16 14:14:17,068 [INFO] __main__: stats: frames=32143 dets=795799 tracked=17 counted=475 dedup=2 cabin=7 delivered=32143 connects=1
+2026-09-16 14:14:22,064 [INFO] __main__: stats: frames=32268 dets=800185 tracked=13 counted=488 dedup=2 cabin=8 delivered=32268 connects=1
+2026-09-16 14:14:27,084 [INFO] __main__: stats: frames=32393 dets=803803 tracked=11 counted=494 dedup=2 cabin=8 delivered=32393 connects=1
+2026-09-16 14:14:32,079 [INFO] __main__: stats: frames=32518 dets=806817 tracked=9 counted=503 dedup=2 cabin=8 delivered=32518 connects=1
+2026-09-16 14:14:37,111 [INFO] __main__: stats: frames=32644 dets=808731 tracked=5 counted=507 dedup=2 cabin=9 delivered=32644 connects=1
+2026-09-16 14:14:42,118 [INFO] __main__: stats: frames=32769 dets=810350 tracked=7 counted=509 dedup=2 cabin=9 delivered=32769 connects=1
+2026-09-16 14:14:47,117 [INFO] __main__: stats: frames=32894 dets=812138 tracked=8 counted=512 dedup=2 cabin=9 delivered=32894 connects=1
+2026-09-16 14:14:52,123 [INFO] __main__: stats: frames=33019 dets=814601 tracked=11 counted=517 dedup=2 cabin=9 delivered=33019 connects=1
+2026-09-16 14:14:57,128 [INFO] __main__: stats: frames=33144 dets=817336 tracked=9 counted=522 dedup=2 cabin=9 delivered=33144 connects=1
+2026-09-16 14:15:02,127 [INFO] __main__: stats: frames=33269 dets=819529 tracked=8 counted=526 dedup=2 cabin=9 delivered=33269 connects=1
+2026-09-16 14:15:07,380 [INFO] __main__: stats: frames=33390 dets=822289 tracked=13 counted=531 dedup=2 cabin=9 delivered=33390 connects=1
+2026-09-16 14:15:12,396 [INFO] __main__: stats: frames=33515 dets=825458 tracked=8 counted=534 dedup=2 cabin=9 delivered=33515 connects=1
+2026-09-16 14:15:17,424 [INFO] __main__: stats: frames=33636 dets=828764 tracked=12 counted=535 dedup=2 cabin=9 delivered=33636 connects=1
+2026-09-16 14:15:22,457 [INFO] __main__: stats: frames=33762 dets=832367 tracked=11 counted=540 dedup=2 cabin=9 delivered=33762 connects=1
+2026-09-16 14:15:27,460 [INFO] __main__: stats: frames=33887 dets=836373 tracked=9 counted=542 dedup=2 cabin=9 delivered=33887 connects=1
+2026-09-16 14:15:32,497 [INFO] __main__: stats: frames=34011 dets=839416 tracked=10 counted=546 dedup=2 cabin=9 delivered=34011 connects=1
+2026-09-16 14:15:37,501 [INFO] __main__: stats: frames=34136 dets=843247 tracked=13 counted=550 dedup=2 cabin=9 delivered=34136 connects=1
+2026-09-16 14:15:42,501 [INFO] __main__: stats: frames=34261 dets=847195 tracked=9 counted=552 dedup=2 cabin=9 delivered=34261 connects=1
+2026-09-16 14:15:47,518 [INFO] __main__: stats: frames=34386 dets=850914 tracked=14 counted=554 dedup=2 cabin=11 delivered=34386 connects=1
+2026-09-16 14:15:52,529 [INFO] __main__: stats: frames=34511 dets=854746 tracked=11 counted=560 dedup=2 cabin=11 delivered=34511 connects=1
+2026-09-16 14:15:57,565 [INFO] __main__: stats: frames=34637 dets=858846 tracked=8 counted=562 dedup=2 cabin=11 delivered=34637 connects=1
+2026-09-16 14:16:02,577 [INFO] __main__: stats: frames=34762 dets=862057 tracked=7 counted=563 dedup=2 cabin=11 delivered=34762 connects=1
+2026-09-16 14:16:07,593 [INFO] __main__: stats: frames=34887 dets=865233 tracked=12 counted=566 dedup=2 cabin=11 delivered=34887 connects=1
+2026-09-16 14:16:12,598 [INFO] __main__: stats: frames=35012 dets=868608 tracked=7 counted=566 dedup=2 cabin=11 delivered=35012 connects=1
+2026-09-16 14:16:17,597 [INFO] __main__: stats: frames=35137 dets=872357 tracked=7 counted=566 dedup=2 cabin=11 delivered=35137 connects=1
+2026-09-16 14:16:22,595 [INFO] __main__: stats: frames=35261 dets=875830 tracked=10 counted=567 dedup=2 cabin=11 delivered=35261 connects=1
+2026-09-16 14:16:27,635 [INFO] __main__: stats: frames=35387 dets=879389 tracked=10 counted=569 dedup=2 cabin=11 delivered=35387 connects=1
+2026-09-16 14:16:32,666 [INFO] __main__: stats: frames=35458 dets=881511 tracked=9 counted=573 dedup=2 cabin=11 delivered=35458 connects=1
+2026-09-16 14:16:37,668 [INFO] __main__: stats: frames=35583 dets=885362 tracked=9 counted=573 dedup=2 cabin=11 delivered=35583 connects=1
+2026-09-16 14:16:42,666 [INFO] __main__: stats: frames=35708 dets=889318 tracked=9 counted=576 dedup=2 cabin=11 delivered=35708 connects=1
+2026-09-16 14:16:47,662 [INFO] __main__: stats: frames=35833 dets=893209 tracked=9 counted=579 dedup=2 cabin=11 delivered=35833 connects=1
+2026-09-16 14:16:52,662 [INFO] __main__: stats: frames=35958 dets=896866 tracked=9 counted=579 dedup=2 cabin=11 delivered=35958 connects=1
+2026-09-16 14:16:57,677 [INFO] __main__: stats: frames=36083 dets=901042 tracked=9 counted=583 dedup=2 cabin=11 delivered=36083 connects=1
+2026-09-16 14:17:02,701 [INFO] __main__: stats: frames=36209 dets=905109 tracked=11 counted=586 dedup=2 cabin=12 delivered=36209 connects=1
+2026-09-16 14:17:07,734 [INFO] __main__: stats: frames=36334 dets=909980 tracked=11 counted=589 dedup=2 cabin=12 delivered=36334 connects=1
+2026-09-16 14:17:12,756 [INFO] __main__: stats: frames=36459 dets=914286 tracked=10 counted=594 dedup=2 cabin=12 delivered=36459 connects=1
+2026-09-16 14:17:17,768 [INFO] __main__: stats: frames=36577 dets=917596 tracked=10 counted=599 dedup=2 cabin=12 delivered=36577 connects=1
+2026-09-16 14:17:22,765 [INFO] __main__: stats: frames=36702 dets=921971 tracked=14 counted=604 dedup=2 cabin=12 delivered=36702 connects=1
+2026-09-16 14:17:27,768 [INFO] __main__: stats: frames=36827 dets=926070 tracked=14 counted=612 dedup=2 cabin=12 delivered=36827 connects=1
+2026-09-16 14:17:32,777 [INFO] __main__: stats: frames=36952 dets=929855 tracked=11 counted=626 dedup=2 cabin=12 delivered=36952 connects=1
+2026-09-16 14:17:37,778 [INFO] __main__: stats: frames=37077 dets=932331 tracked=12 counted=633 dedup=2 cabin=13 delivered=37077 connects=1
+2026-09-16 14:17:42,776 [INFO] __main__: stats: frames=37202 dets=934439 tracked=7 counted=637 dedup=2 cabin=13 delivered=37202 connects=1
+2026-09-16 14:17:47,792 [INFO] __main__: stats: frames=37327 dets=935857 tracked=6 counted=639 dedup=2 cabin=13 delivered=37327 connects=1
+2026-09-16 14:17:52,803 [INFO] __main__: stats: frames=37452 dets=937309 tracked=6 counted=642 dedup=2 cabin=13 delivered=37452 connects=1
+2026-09-16 14:17:57,796 [INFO] __main__: stats: frames=37577 dets=938690 tracked=3 counted=643 dedup=2 cabin=13 delivered=37577 connects=1
+2026-09-16 14:18:02,837 [INFO] __main__: stats: frames=37703 dets=939756 tracked=6 counted=646 dedup=2 cabin=13 delivered=37703 connects=1
+2026-09-16 14:18:07,839 [INFO] __main__: stats: frames=37828 dets=941901 tracked=8 counted=651 dedup=2 cabin=13 delivered=37828 connects=1
+2026-09-16 14:18:12,830 [INFO] __main__: stats: frames=37953 dets=943369 tracked=6 counted=654 dedup=2 cabin=13 delivered=37953 connects=1
+2026-09-16 14:18:17,875 [INFO] __main__: stats: frames=38079 dets=944927 tracked=4 counted=655 dedup=2 cabin=13 delivered=38079 connects=1
+2026-09-16 14:18:22,880 [INFO] __main__: stats: frames=38204 dets=946365 tracked=4 counted=657 dedup=2 cabin=13 delivered=38204 connects=1
+2026-09-16 14:18:27,874 [INFO] __main__: stats: frames=38329 dets=947649 tracked=4 counted=658 dedup=2 cabin=13 delivered=38329 connects=1
+2026-09-16 14:18:32,878 [INFO] __main__: stats: frames=38454 dets=948922 tracked=7 counted=662 dedup=2 cabin=13 delivered=38454 connects=1
+2026-09-16 14:18:37,881 [INFO] __main__: stats: frames=38579 dets=951076 tracked=10 counted=667 dedup=2 cabin=13 delivered=38579 connects=1
+2026-09-16 14:18:42,873 [INFO] __main__: stats: frames=38704 dets=954490 tracked=9 counted=670 dedup=2 cabin=13 delivered=38704 connects=1
+2026-09-16 14:18:47,892 [INFO] __main__: stats: frames=38829 dets=958597 tracked=10 counted=671 dedup=2 cabin=13 delivered=38829 connects=1
+2026-09-16 14:18:52,919 [INFO] __main__: stats: frames=38954 dets=962723 tracked=10 counted=674 dedup=2 cabin=13 delivered=38954 connects=1
+2026-09-16 14:18:57,907 [INFO] __main__: stats: frames=39079 dets=966895 tracked=9 counted=680 dedup=2 cabin=13 delivered=39079 connects=1
+2026-09-16 14:19:02,918 [INFO] __main__: stats: frames=39204 dets=970535 tracked=13 counted=685 dedup=2 cabin=13 delivered=39204 connects=1
+2026-09-16 14:19:07,912 [INFO] __main__: stats: frames=39329 dets=973623 tracked=7 counted=687 dedup=2 cabin=13 delivered=39329 connects=1
+2026-09-16 14:19:12,940 [INFO] __main__: stats: frames=39454 dets=977794 tracked=9 counted=691 dedup=2 cabin=13 delivered=39454 connects=1
+2026-09-16 14:19:17,942 [INFO] __main__: stats: frames=39579 dets=982049 tracked=13 counted=696 dedup=2 cabin=13 delivered=39579 connects=1
+2026-09-16 14:19:22,955 [INFO] __main__: stats: frames=39704 dets=986034 tracked=9 counted=699 dedup=2 cabin=13 delivered=39704 connects=1
+2026-09-16 14:19:27,959 [INFO] __main__: stats: frames=39829 dets=990558 tracked=5 counted=699 dedup=2 cabin=13 delivered=39829 connects=1
+2026-09-16 14:19:32,959 [INFO] __main__: stats: frames=39954 dets=994506 tracked=6 counted=700 dedup=2 cabin=13 delivered=39954 connects=1
+2026-09-16 14:19:37,967 [INFO] __main__: stats: frames=40079 dets=998577 tracked=9 counted=703 dedup=2 cabin=13 delivered=40079 connects=1
+2026-09-16 14:19:42,968 [INFO] __main__: stats: frames=40204 dets=1002536 tracked=9 counted=704 dedup=2 cabin=13 delivered=40204 connects=1
+2026-09-16 14:19:48,000 [INFO] __main__: stats: frames=40329 dets=1006876 tracked=7 counted=706 dedup=2 cabin=14 delivered=40329 connects=1
+2026-09-16 14:19:48,492 [ERROR] asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-16 14:19:53,011 [INFO] __main__: stats: frames=40454 dets=1011819 tracked=12 counted=709 dedup=2 cabin=14 delivered=40454 connects=1
+2026-09-16 14:19:58,020 [INFO] __main__: stats: frames=40578 dets=1015970 tracked=10 counted=709 dedup=2 cabin=14 delivered=40578 connects=1
+2026-09-16 14:20:03,032 [INFO] __main__: stats: frames=40689 dets=1019151 tracked=8 counted=711 dedup=2 cabin=14 delivered=40689 connects=1
+2026-09-16 14:20:08,053 [INFO] __main__: stats: frames=40814 dets=1022994 tracked=6 counted=711 dedup=2 cabin=14 delivered=40814 connects=1
+2026-09-16 14:20:13,047 [INFO] __main__: stats: frames=40939 dets=1026850 tracked=8 counted=712 dedup=2 cabin=14 delivered=40939 connects=1
+2026-09-16 14:20:18,056 [INFO] __main__: stats: frames=41064 dets=1030808 tracked=8 counted=712 dedup=2 cabin=14 delivered=41064 connects=1
+2026-09-16 14:20:23,062 [INFO] __main__: stats: frames=41189 dets=1034685 tracked=11 counted=715 dedup=2 cabin=14 delivered=41189 connects=1
+2026-09-16 14:20:28,081 [INFO] __main__: stats: frames=41314 dets=1038758 tracked=14 counted=724 dedup=3 cabin=14 delivered=41314 connects=1
+2026-09-16 14:20:33,099 [INFO] __main__: stats: frames=41439 dets=1042367 tracked=11 counted=740 dedup=3 cabin=14 delivered=41439 connects=1
+2026-09-16 14:20:38,132 [INFO] __main__: stats: frames=41565 dets=1044519 tracked=9 counted=747 dedup=3 cabin=14 delivered=41565 connects=1
+2026-09-16 14:20:43,163 [INFO] __main__: stats: frames=41691 dets=1046342 tracked=6 counted=752 dedup=3 cabin=15 delivered=41691 connects=1
+2026-09-16 14:20:48,170 [INFO] __main__: stats: frames=41816 dets=1048301 tracked=11 counted=757 dedup=3 cabin=15 delivered=41816 connects=1
+2026-09-16 14:20:53,177 [INFO] __main__: stats: frames=41941 dets=1050848 tracked=8 counted=764 dedup=3 cabin=15 delivered=41941 connects=1
+2026-09-16 14:20:58,186 [INFO] __main__: stats: frames=42066 dets=1052586 tracked=6 counted=770 dedup=3 cabin=15 delivered=42066 connects=1
+2026-09-16 14:21:03,554 [INFO] __main__: stats: frames=42190 dets=1053835 tracked=4 counted=771 dedup=3 cabin=15 delivered=42190 connects=1
+2026-09-16 14:21:08,565 [INFO] __main__: stats: frames=42315 dets=1055558 tracked=9 counted=772 dedup=3 cabin=15 delivered=42315 connects=1
+2026-09-16 14:21:13,576 [INFO] __main__: stats: frames=42439 dets=1058476 tracked=10 counted=779 dedup=3 cabin=15 delivered=42439 connects=1
+2026-09-16 14:21:18,602 [INFO] __main__: stats: frames=42565 dets=1062788 tracked=14 counted=785 dedup=3 cabin=15 delivered=42565 connects=1
+2026-09-16 14:21:23,636 [INFO] __main__: stats: frames=42690 dets=1066832 tracked=14 counted=793 dedup=3 cabin=15 delivered=42690 connects=1
+2026-09-16 14:21:28,653 [INFO] __main__: stats: frames=42815 dets=1071554 tracked=11 counted=794 dedup=3 cabin=15 delivered=42815 connects=1
+2026-09-16 14:21:33,657 [INFO] __main__: stats: frames=42940 dets=1075601 tracked=9 counted=797 dedup=3 cabin=15 delivered=42940 connects=1
+2026-09-16 14:21:38,675 [INFO] __main__: stats: frames=43065 dets=1079708 tracked=9 counted=797 dedup=3 cabin=15 delivered=43065 connects=1
+2026-09-16 14:21:43,691 [INFO] __main__: stats: frames=43176 dets=1082409 tracked=8 counted=801 dedup=3 cabin=15 delivered=43176 connects=1
+2026-09-16 14:21:48,704 [INFO] __main__: stats: frames=43301 dets=1085076 tracked=6 counted=803 dedup=3 cabin=15 delivered=43301 connects=1
+2026-09-16 14:21:53,707 [INFO] __main__: stats: frames=43426 dets=1087976 tracked=9 counted=804 dedup=3 cabin=15 delivered=43426 connects=1
+2026-09-16 14:21:58,711 [INFO] __main__: stats: frames=43551 dets=1091263 tracked=6 counted=807 dedup=3 cabin=15 delivered=43551 connects=1
+2026-09-16 14:22:03,709 [INFO] __main__: stats: frames=43676 dets=1094556 tracked=7 counted=807 dedup=3 cabin=15 delivered=43676 connects=1
+2026-09-16 14:22:08,707 [INFO] __main__: stats: frames=43801 dets=1097937 tracked=10 counted=811 dedup=3 cabin=15 delivered=43801 connects=1
+2026-09-16 14:22:13,725 [INFO] __main__: stats: frames=43926 dets=1101704 tracked=9 counted=812 dedup=3 cabin=15 delivered=43926 connects=1
+2026-09-16 14:22:18,717 [INFO] __main__: stats: frames=44051 dets=1104865 tracked=5 counted=812 dedup=3 cabin=15 delivered=44051 connects=1
+2026-09-16 14:22:23,726 [INFO] __main__: stats: frames=44176 dets=1108055 tracked=6 counted=812 dedup=3 cabin=15 delivered=44176 connects=1
+2026-09-16 14:22:28,727 [INFO] __main__: stats: frames=44301 dets=1111334 tracked=8 counted=813 dedup=3 cabin=15 delivered=44301 connects=1
+2026-09-16 14:22:33,733 [INFO] __main__: stats: frames=44426 dets=1114878 tracked=6 counted=813 dedup=3 cabin=15 delivered=44426 connects=1
+2026-09-16 14:22:38,734 [INFO] __main__: stats: frames=44551 dets=1117910 tracked=7 counted=813 dedup=3 cabin=15 delivered=44551 connects=1
+2026-09-16 14:22:43,772 [INFO] __main__: stats: frames=44677 dets=1121413 tracked=7 counted=814 dedup=3 cabin=15 delivered=44677 connects=1
+2026-09-16 14:22:48,773 [INFO] __main__: stats: frames=44802 dets=1124853 tracked=5 counted=814 dedup=3 cabin=15 delivered=44802 connects=1
+2026-09-16 14:22:53,767 [INFO] __main__: stats: frames=44927 dets=1128283 tracked=7 counted=815 dedup=3 cabin=15 delivered=44927 connects=1
+2026-09-16 14:22:58,789 [INFO] __main__: stats: frames=45052 dets=1132704 tracked=8 counted=816 dedup=3 cabin=15 delivered=45052 connects=1
+2026-09-16 14:23:03,796 [INFO] __main__: stats: frames=45177 dets=1136699 tracked=7 counted=816 dedup=3 cabin=15 delivered=45177 connects=1
+2026-09-16 14:23:08,809 [INFO] __main__: stats: frames=45302 dets=1140477 tracked=7 counted=820 dedup=3 cabin=15 delivered=45302 connects=1
+2026-09-16 14:23:13,805 [INFO] __main__: stats: frames=45427 dets=1144973 tracked=6 counted=821 dedup=3 cabin=15 delivered=45427 connects=1
+2026-09-16 14:23:18,821 [INFO] __main__: stats: frames=45552 dets=1149812 tracked=7 counted=824 dedup=3 cabin=15 delivered=45552 connects=1
+2026-09-16 14:23:23,849 [INFO] __main__: stats: frames=45677 dets=1154747 tracked=13 counted=828 dedup=3 cabin=15 delivered=45677 connects=1
+2026-09-16 14:23:28,858 [INFO] __main__: stats: frames=45802 dets=1159612 tracked=12 counted=837 dedup=3 cabin=15 delivered=45802 connects=1
+2026-09-16 14:23:33,861 [INFO] __main__: stats: frames=45927 dets=1163894 tracked=13 counted=849 dedup=3 cabin=15 delivered=45927 connects=1
+2026-09-16 14:23:38,860 [INFO] __main__: stats: frames=46051 dets=1168279 tracked=13 counted=865 dedup=3 cabin=16 delivered=46051 connects=1
+2026-09-16 14:23:43,875 [INFO] __main__: stats: frames=46176 dets=1172708 tracked=11 counted=875 dedup=4 cabin=17 delivered=46176 connects=1
+2026-09-16 14:23:48,895 [INFO] __main__: stats: frames=46302 dets=1175514 tracked=3 counted=878 dedup=4 cabin=17 delivered=46302 connects=1
+2026-09-16 14:23:53,901 [INFO] __main__: stats: frames=46427 dets=1177296 tracked=4 counted=880 dedup=4 cabin=17 delivered=46427 connects=1
+2026-09-16 14:23:58,905 [INFO] __main__: stats: frames=46552 dets=1179506 tracked=5 counted=883 dedup=4 cabin=17 delivered=46552 connects=1
+2026-09-16 14:24:03,957 [INFO] __main__: stats: frames=46678 dets=1182428 tracked=7 counted=886 dedup=4 cabin=17 delivered=46678 connects=1
+2026-09-16 14:24:08,961 [INFO] __main__: stats: frames=46803 dets=1185120 tracked=8 counted=887 dedup=4 cabin=17 delivered=46803 connects=1
+2026-09-16 14:24:13,957 [INFO] __main__: stats: frames=46928 dets=1187923 tracked=10 counted=893 dedup=4 cabin=17 delivered=46928 connects=1
+2026-09-16 14:24:18,994 [INFO] __main__: stats: frames=47054 dets=1190744 tracked=7 counted=895 dedup=4 cabin=17 delivered=47054 connects=1
+2026-09-16 14:24:23,989 [INFO] __main__: stats: frames=47179 dets=1193190 tracked=11 counted=896 dedup=4 cabin=17 delivered=47179 connects=1
+2026-09-16 14:24:29,012 [INFO] __main__: stats: frames=47304 dets=1196470 tracked=13 counted=905 dedup=4 cabin=17 delivered=47304 connects=1
+2026-09-16 14:24:34,011 [INFO] __main__: stats: frames=47429 dets=1200524 tracked=11 counted=908 dedup=4 cabin=17 delivered=47429 connects=1
+2026-09-16 14:24:39,013 [INFO] __main__: stats: frames=47554 dets=1204260 tracked=11 counted=911 dedup=4 cabin=17 delivered=47554 connects=1
+2026-09-16 14:24:44,005 [INFO] __main__: stats: frames=47679 dets=1207772 tracked=10 counted=912 dedup=4 cabin=17 delivered=47679 connects=1
+2026-09-16 14:24:49,026 [INFO] __main__: stats: frames=47804 dets=1211541 tracked=10 counted=913 dedup=4 cabin=17 delivered=47804 connects=1
+2026-09-16 14:24:54,038 [INFO] __main__: stats: frames=47929 dets=1215809 tracked=13 counted=915 dedup=4 cabin=17 delivered=47929 connects=1
+2026-09-16 14:24:59,038 [INFO] __main__: stats: frames=48054 dets=1219988 tracked=10 counted=917 dedup=4 cabin=17 delivered=48054 connects=1
+2026-09-16 14:25:04,036 [INFO] __main__: stats: frames=48179 dets=1224078 tracked=14 counted=919 dedup=4 cabin=18 delivered=48179 connects=1
+2026-09-16 14:25:09,058 [INFO] __main__: stats: frames=48304 dets=1228527 tracked=8 counted=926 dedup=4 cabin=18 delivered=48304 connects=1
+2026-09-16 14:25:14,071 [INFO] __main__: stats: frames=48429 dets=1233615 tracked=12 counted=931 dedup=4 cabin=18 delivered=48429 connects=1
+2026-09-16 14:25:19,078 [INFO] __main__: stats: frames=48554 dets=1238268 tracked=10 counted=936 dedup=4 cabin=18 delivered=48554 connects=1
+2026-09-16 14:25:24,138 [INFO] __main__: stats: frames=48680 dets=1242886 tracked=11 counted=940 dedup=4 cabin=18 delivered=48680 connects=1
+2026-09-16 14:25:29,170 [INFO] __main__: stats: frames=48796 dets=1247315 tracked=5 counted=941 dedup=4 cabin=18 delivered=48796 connects=1
+2026-09-16 14:25:34,170 [INFO] __main__: stats: frames=48921 dets=1251876 tracked=8 counted=942 dedup=4 cabin=18 delivered=48921 connects=1
+2026-09-16 14:25:39,180 [INFO] __main__: stats: frames=49043 dets=1256505 tracked=9 counted=943 dedup=4 cabin=18 delivered=49043 connects=1
+2026-09-16 14:25:39,302 [ERROR] asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-16 14:25:44,177 [INFO] __main__: stats: frames=49168 dets=1261201 tracked=9 counted=944 dedup=4 cabin=18 delivered=49168 connects=1
+2026-09-16 14:25:49,200 [INFO] __main__: stats: frames=49293 dets=1265588 tracked=9 counted=945 dedup=4 cabin=18 delivered=49293 connects=1
+2026-09-16 14:25:54,203 [INFO] __main__: stats: frames=49418 dets=1270121 tracked=10 counted=946 dedup=4 cabin=19 delivered=49418 connects=1
+2026-09-16 14:25:59,209 [INFO] __main__: stats: frames=49543 dets=1274363 tracked=12 counted=949 dedup=4 cabin=19 delivered=49543 connects=1
+2026-09-16 14:26:04,240 [INFO] __main__: stats: frames=49667 dets=1278990 tracked=9 counted=952 dedup=4 cabin=19 delivered=49667 connects=1
+2026-09-16 14:26:09,232 [INFO] __main__: stats: frames=49792 dets=1283578 tracked=12 counted=953 dedup=4 cabin=19 delivered=49792 connects=1
+2026-09-16 14:26:14,236 [INFO] __main__: stats: frames=49917 dets=1287853 tracked=9 counted=954 dedup=4 cabin=19 delivered=49917 connects=1
+2026-09-16 14:26:19,238 [INFO] __main__: stats: frames=50042 dets=1292236 tracked=10 counted=955 dedup=4 cabin=19 delivered=50042 connects=1
+2026-09-16 14:26:24,255 [INFO] __main__: stats: frames=50167 dets=1296535 tracked=10 counted=956 dedup=4 cabin=19 delivered=50167 connects=1
+2026-09-16 14:26:29,269 [INFO] __main__: stats: frames=50292 dets=1300784 tracked=11 counted=959 dedup=4 cabin=19 delivered=50292 connects=1
+2026-09-16 14:26:34,272 [INFO] __main__: stats: frames=50417 dets=1305045 tracked=10 counted=962 dedup=4 cabin=19 delivered=50417 connects=1
+2026-09-16 14:26:39,281 [INFO] __main__: stats: frames=50542 dets=1309780 tracked=13 counted=972 dedup=4 cabin=19 delivered=50542 connects=1
+2026-09-16 14:26:44,290 [INFO] __main__: stats: frames=50667 dets=1313255 tracked=12 counted=979 dedup=4 cabin=19 delivered=50667 connects=1
+2026-09-16 14:26:49,294 [INFO] __main__: stats: frames=50792 dets=1316264 tracked=13 counted=985 dedup=4 cabin=19 delivered=50792 connects=1
+2026-09-16 14:26:54,307 [INFO] __main__: stats: frames=50917 dets=1318828 tracked=9 counted=988 dedup=4 cabin=19 delivered=50917 connects=1
+2026-09-16 14:26:59,300 [INFO] __main__: stats: frames=51042 dets=1321432 tracked=10 counted=995 dedup=4 cabin=19 delivered=51042 connects=1
+2026-09-16 14:27:04,309 [INFO] __main__: stats: frames=51167 dets=1323868 tracked=8 counted=1000 dedup=4 cabin=20 delivered=51167 connects=1
+2026-09-16 14:27:09,314 [INFO] __main__: stats: frames=51292 dets=1326173 tracked=8 counted=1007 dedup=4 cabin=20 delivered=51292 connects=1
+2026-09-16 14:27:14,325 [INFO] __main__: stats: frames=51417 dets=1328952 tracked=13 counted=1012 dedup=4 cabin=20 delivered=51417 connects=1
+2026-09-16 14:27:19,316 [INFO] __main__: stats: frames=51542 dets=1332553 tracked=14 counted=1021 dedup=5 cabin=20 delivered=51542 connects=1
+2026-09-16 14:27:24,321 [INFO] __main__: stats: frames=51667 dets=1336081 tracked=8 counted=1025 dedup=5 cabin=20 delivered=51667 connects=1
+2026-09-16 14:27:29,334 [INFO] __main__: stats: frames=51792 dets=1339290 tracked=9 counted=1026 dedup=5 cabin=20 delivered=51792 connects=1
+2026-09-16 14:27:34,337 [INFO] __main__: stats: frames=51917 dets=1342374 tracked=9 counted=1027 dedup=5 cabin=20 delivered=51917 connects=1
+2026-09-16 14:27:39,332 [INFO] __main__: stats: frames=52042 dets=1346018 tracked=13 counted=1031 dedup=5 cabin=20 delivered=52042 connects=1
+2026-09-16 14:27:44,348 [INFO] __main__: stats: frames=52167 dets=1350160 tracked=11 counted=1033 dedup=5 cabin=20 delivered=52167 connects=1
+2026-09-16 14:27:49,357 [INFO] __main__: stats: frames=52292 dets=1353442 tracked=12 counted=1037 dedup=5 cabin=20 delivered=52292 connects=1
+2026-09-16 14:27:54,405 [INFO] __main__: stats: frames=52418 dets=1357403 tracked=10 counted=1038 dedup=5 cabin=20 delivered=52418 connects=1
+2026-09-16 14:27:59,443 [INFO] __main__: stats: frames=52544 dets=1361544 tracked=11 counted=1040 dedup=5 cabin=20 delivered=52544 connects=1
+2026-09-16 14:28:04,471 [INFO] __main__: stats: frames=52670 dets=1365873 tracked=11 counted=1041 dedup=5 cabin=20 delivered=52670 connects=1
+2026-09-16 14:28:09,478 [INFO] __main__: stats: frames=52795 dets=1369579 tracked=12 counted=1044 dedup=5 cabin=20 delivered=52795 connects=1
+2026-09-16 14:28:14,484 [INFO] __main__: stats: frames=52920 dets=1373274 tracked=8 counted=1046 dedup=5 cabin=20 delivered=52920 connects=1
+2026-09-16 14:28:19,502 [INFO] __main__: stats: frames=53045 dets=1377629 tracked=13 counted=1046 dedup=5 cabin=20 delivered=53045 connects=1
+2026-09-16 14:28:24,536 [INFO] __main__: stats: frames=53171 dets=1381814 tracked=11 counted=1050 dedup=5 cabin=20 delivered=53171 connects=1
+2026-09-16 14:28:29,547 [INFO] __main__: stats: frames=53296 dets=1385719 tracked=9 counted=1051 dedup=5 cabin=20 delivered=53296 connects=1
+2026-09-16 14:28:34,553 [INFO] __main__: stats: frames=53421 dets=1389571 tracked=11 counted=1053 dedup=5 cabin=20 delivered=53421 connects=1
+2026-09-16 14:28:39,558 [INFO] __main__: stats: frames=53546 dets=1393706 tracked=7 counted=1053 dedup=5 cabin=20 delivered=53546 connects=1
+2026-09-16 14:28:44,569 [INFO] __main__: stats: frames=53671 dets=1397708 tracked=9 counted=1053 dedup=5 cabin=20 delivered=53671 connects=1
+2026-09-16 14:28:49,567 [INFO] __main__: stats: frames=53796 dets=1401669 tracked=7 counted=1053 dedup=5 cabin=20 delivered=53796 connects=1
+2026-09-16 14:28:54,583 [INFO] __main__: stats: frames=53921 dets=1406071 tracked=8 counted=1055 dedup=5 cabin=20 delivered=53921 connects=1
+2026-09-16 14:28:59,588 [INFO] __main__: stats: frames=54046 dets=1410055 tracked=6 counted=1055 dedup=5 cabin=20 delivered=54046 connects=1
+2026-09-16 14:29:04,593 [INFO] __main__: stats: frames=54171 dets=1414506 tracked=8 counted=1056 dedup=5 cabin=20 delivered=54171 connects=1
+2026-09-16 14:29:09,594 [INFO] __main__: stats: frames=54296 dets=1419116 tracked=7 counted=1058 dedup=5 cabin=20 delivered=54296 connects=1
+2026-09-16 14:29:14,593 [INFO] __main__: stats: frames=54421 dets=1424000 tracked=10 counted=1060 dedup=5 cabin=21 delivered=54421 connects=1
+2026-09-16 14:29:19,612 [INFO] __main__: stats: frames=54546 dets=1428519 tracked=13 counted=1068 dedup=5 cabin=21 delivered=54546 connects=1
+2026-09-16 14:29:24,618 [INFO] __main__: stats: frames=54671 dets=1433345 tracked=11 counted=1077 dedup=5 cabin=21 delivered=54671 connects=1
+2026-09-16 14:29:29,642 [INFO] __main__: stats: frames=54797 dets=1437978 tracked=6 counted=1083 dedup=5 cabin=21 delivered=54797 connects=1
+2026-09-16 14:29:34,660 [INFO] __main__: stats: frames=54922 dets=1443023 tracked=9 counted=1085 dedup=5 cabin=21 delivered=54922 connects=1
+2026-09-16 14:29:39,659 [INFO] __main__: stats: frames=55047 dets=1447751 tracked=7 counted=1088 dedup=5 cabin=21 delivered=55047 connects=1
+2026-09-16 14:29:44,657 [INFO] __main__: stats: frames=55172 dets=1452639 tracked=15 counted=1099 dedup=5 cabin=22 delivered=55172 connects=1
+2026-09-16 14:29:49,697 [INFO] __main__: stats: frames=55298 dets=1457562 tracked=14 counted=1113 dedup=5 cabin=22 delivered=55298 connects=1
+2026-09-16 14:29:54,700 [INFO] __main__: stats: frames=55423 dets=1461368 tracked=10 counted=1120 dedup=5 cabin=22 delivered=55423 connects=1
+2026-09-16 14:29:59,703 [INFO] __main__: stats: frames=55548 dets=1464500 tracked=12 counted=1129 dedup=5 cabin=23 delivered=55548 connects=1
+2026-09-16 14:30:04,742 [INFO] __main__: stats: frames=55674 dets=1467500 tracked=8 counted=1136 dedup=5 cabin=24 delivered=55674 connects=1
+2026-09-16 14:30:09,742 [INFO] __main__: stats: frames=55799 dets=1469383 tracked=4 counted=1139 dedup=5 cabin=24 delivered=55799 connects=1
+2026-09-16 14:30:14,742 [INFO] __main__: stats: frames=55924 dets=1470644 tracked=3 counted=1140 dedup=5 cabin=24 delivered=55924 connects=1
+2026-09-16 14:30:19,736 [INFO] __main__: stats: frames=56049 dets=1472264 tracked=6 counted=1140 dedup=5 cabin=24 delivered=56049 connects=1
+2026-09-16 14:30:24,747 [INFO] __main__: stats: frames=56174 dets=1474699 tracked=8 counted=1144 dedup=5 cabin=24 delivered=56174 connects=1
+2026-09-16 14:30:29,745 [INFO] __main__: stats: frames=56299 dets=1476877 tracked=7 counted=1147 dedup=5 cabin=25 delivered=56299 connects=1
+2026-09-16 14:30:34,765 [INFO] __main__: stats: frames=56424 dets=1480189 tracked=9 counted=1153 dedup=5 cabin=25 delivered=56424 connects=1
+2026-09-16 14:30:39,796 [INFO] __main__: stats: frames=56550 dets=1483286 tracked=6 counted=1154 dedup=5 cabin=25 delivered=56550 connects=1
+2026-09-16 14:30:44,803 [INFO] __main__: stats: frames=56675 dets=1485357 tracked=6 counted=1156 dedup=5 cabin=25 delivered=56675 connects=1
+2026-09-16 14:30:49,803 [INFO] __main__: stats: frames=56800 dets=1487386 tracked=6 counted=1159 dedup=5 cabin=25 delivered=56800 connects=1
+2026-09-16 14:30:54,838 [INFO] __main__: stats: frames=56926 dets=1489968 tracked=8 counted=1162 dedup=5 cabin=25 delivered=56926 connects=1
+2026-09-16 14:30:59,834 [INFO] __main__: stats: frames=57051 dets=1492253 tracked=7 counted=1163 dedup=5 cabin=25 delivered=57051 connects=1
+2026-09-16 14:31:04,849 [INFO] __main__: stats: frames=57176 dets=1494188 tracked=9 counted=1166 dedup=5 cabin=25 delivered=57176 connects=1
+2026-09-16 14:31:09,846 [INFO] __main__: stats: frames=57301 dets=1497028 tracked=5 counted=1168 dedup=5 cabin=25 delivered=57301 connects=1
+2026-09-16 14:31:14,860 [INFO] __main__: stats: frames=57426 dets=1499259 tracked=6 counted=1168 dedup=5 cabin=26 delivered=57426 connects=1
+2026-09-16 14:31:19,892 [INFO] __main__: stats: frames=57552 dets=1501683 tracked=6 counted=1169 dedup=5 cabin=26 delivered=57552 connects=1
+2026-09-16 14:31:24,914 [INFO] __main__: stats: frames=57677 dets=1504445 tracked=7 counted=1172 dedup=5 cabin=26 delivered=57677 connects=1
+2026-09-16 14:31:29,921 [INFO] __main__: stats: frames=57799 dets=1507585 tracked=3 counted=1173 dedup=5 cabin=26 delivered=57799 connects=1
+2026-09-16 14:31:34,964 [INFO] __main__: stats: frames=57925 dets=1509973 tracked=6 counted=1173 dedup=5 cabin=26 delivered=57925 connects=1
+2026-09-16 14:31:39,960 [INFO] __main__: stats: frames=58050 dets=1512892 tracked=8 counted=1174 dedup=5 cabin=26 delivered=58050 connects=1
+2026-09-16 14:31:44,962 [INFO] __main__: stats: frames=58175 dets=1516210 tracked=4 counted=1175 dedup=5 cabin=26 delivered=58175 connects=1
+2026-09-16 14:31:49,969 [INFO] __main__: stats: frames=58300 dets=1519119 tracked=9 counted=1177 dedup=5 cabin=26 delivered=58300 connects=1
+2026-09-16 14:31:54,975 [INFO] __main__: stats: frames=58425 dets=1522283 tracked=7 counted=1178 dedup=5 cabin=26 delivered=58425 connects=1
+2026-09-16 14:32:00,000 [INFO] __main__: stats: frames=58551 dets=1524897 tracked=7 counted=1179 dedup=5 cabin=26 delivered=58551 connects=1
+2026-09-16 14:32:05,022 [INFO] __main__: stats: frames=58676 dets=1528471 tracked=9 counted=1182 dedup=5 cabin=26 delivered=58676 connects=1
+2026-09-16 14:32:10,039 [INFO] __main__: stats: frames=58801 dets=1531627 tracked=11 counted=1187 dedup=5 cabin=26 delivered=58801 connects=1
+2026-09-16 14:32:15,040 [INFO] __main__: stats: frames=58926 dets=1536339 tracked=12 counted=1190 dedup=5 cabin=26 delivered=58926 connects=1
+2026-09-16 14:32:20,059 [INFO] __main__: stats: frames=59051 dets=1540924 tracked=11 counted=1195 dedup=5 cabin=26 delivered=59051 connects=1
+2026-09-16 14:32:25,068 [INFO] __main__: stats: frames=59176 dets=1545442 tracked=11 counted=1197 dedup=5 cabin=26 delivered=59176 connects=1
+2026-09-16 14:32:30,067 [INFO] __main__: stats: frames=59301 dets=1549721 tracked=14 counted=1200 dedup=5 cabin=26 delivered=59301 connects=1
+2026-09-16 14:32:35,086 [INFO] __main__: stats: frames=59426 dets=1554396 tracked=15 counted=1207 dedup=5 cabin=26 delivered=59426 connects=1
+2026-09-16 14:32:40,102 [INFO] __main__: stats: frames=59551 dets=1559517 tracked=12 counted=1212 dedup=6 cabin=26 delivered=59551 connects=1
+2026-09-16 14:32:45,119 [INFO] __main__: stats: frames=59676 dets=1564389 tracked=13 counted=1218 dedup=6 cabin=26 delivered=59676 connects=1
+2026-09-16 14:32:50,132 [INFO] __main__: stats: frames=59801 dets=1568912 tracked=16 counted=1229 dedup=6 cabin=26 delivered=59801 connects=1
+2026-09-16 14:32:55,126 [INFO] __main__: stats: frames=59926 dets=1573283 tracked=12 counted=1242 dedup=6 cabin=26 delivered=59926 connects=1
+2026-09-16 14:33:00,130 [INFO] __main__: stats: frames=60050 dets=1576037 tracked=9 counted=1251 dedup=6 cabin=26 delivered=60050 connects=1
+2026-09-16 14:33:05,124 [INFO] __main__: stats: frames=60175 dets=1578428 tracked=13 counted=1258 dedup=6 cabin=26 delivered=60175 connects=1
+2026-09-16 14:33:10,125 [INFO] __main__: stats: frames=60300 dets=1580951 tracked=6 counted=1261 dedup=6 cabin=27 delivered=60300 connects=1
+2026-09-16 14:33:15,139 [INFO] __main__: stats: frames=60425 dets=1583007 tracked=4 counted=1267 dedup=6 cabin=27 delivered=60425 connects=1
+2026-09-16 14:33:20,170 [INFO] __main__: stats: frames=60551 dets=1584674 tracked=5 counted=1270 dedup=6 cabin=27 delivered=60551 connects=1
+2026-09-16 14:33:25,178 [INFO] __main__: stats: frames=60676 dets=1587076 tracked=12 counted=1275 dedup=6 cabin=27 delivered=60676 connects=1
+2026-09-16 14:33:30,183 [INFO] __main__: stats: frames=60801 dets=1589973 tracked=9 counted=1279 dedup=6 cabin=27 delivered=60801 connects=1
+2026-09-16 14:33:35,177 [INFO] __main__: stats: frames=60926 dets=1592477 tracked=7 counted=1281 dedup=6 cabin=27 delivered=60926 connects=1
+2026-09-16 14:33:40,176 [INFO] __main__: stats: frames=61051 dets=1595417 tracked=5 counted=1281 dedup=6 cabin=27 delivered=61051 connects=1
+2026-09-16 14:33:45,185 [INFO] __main__: stats: frames=61176 dets=1598480 tracked=12 counted=1286 dedup=6 cabin=27 delivered=61176 connects=1
+2026-09-16 14:33:50,228 [INFO] __main__: stats: frames=61302 dets=1601864 tracked=14 counted=1293 dedup=6 cabin=27 delivered=61302 connects=1
+2026-09-16 14:33:55,229 [INFO] __main__: stats: frames=61427 dets=1606036 tracked=10 counted=1299 dedup=6 cabin=28 delivered=61427 connects=1
+2026-09-16 14:34:00,242 [INFO] __main__: stats: frames=61552 dets=1610045 tracked=10 counted=1303 dedup=6 cabin=28 delivered=61552 connects=1
+2026-09-16 14:34:05,237 [INFO] __main__: stats: frames=61677 dets=1613111 tracked=9 counted=1303 dedup=6 cabin=29 delivered=61677 connects=1
+2026-09-16 14:34:10,287 [INFO] __main__: stats: frames=61802 dets=1616047 tracked=13 counted=1308 dedup=6 cabin=29 delivered=61802 connects=1
+2026-09-16 14:34:15,280 [INFO] __main__: stats: frames=61927 dets=1619393 tracked=12 counted=1311 dedup=6 cabin=29 delivered=61927 connects=1
+2026-09-16 14:34:20,289 [INFO] __main__: stats: frames=62052 dets=1623397 tracked=14 counted=1318 dedup=6 cabin=29 delivered=62052 connects=1
+2026-09-16 14:34:25,289 [INFO] __main__: stats: frames=62177 dets=1626805 tracked=9 counted=1321 dedup=6 cabin=29 delivered=62177 connects=1
+2026-09-16 14:34:30,292 [INFO] __main__: stats: frames=62302 dets=1629910 tracked=9 counted=1323 dedup=6 cabin=29 delivered=62302 connects=1
+2026-09-16 14:34:35,301 [INFO] __main__: stats: frames=62427 dets=1632823 tracked=9 counted=1325 dedup=6 cabin=29 delivered=62427 connects=1
+2026-09-16 14:34:40,310 [INFO] __main__: stats: frames=62552 dets=1636401 tracked=10 counted=1326 dedup=6 cabin=29 delivered=62552 connects=1
+2026-09-16 14:34:45,349 [INFO] __main__: stats: frames=62678 dets=1639760 tracked=8 counted=1328 dedup=6 cabin=29 delivered=62678 connects=1
+2026-09-16 14:34:50,347 [INFO] __main__: stats: frames=62803 dets=1643614 tracked=9 counted=1328 dedup=6 cabin=29 delivered=62803 connects=1
+2026-09-16 14:34:55,370 [INFO] __main__: stats: frames=62928 dets=1647642 tracked=8 counted=1332 dedup=6 cabin=29 delivered=62928 connects=1
+2026-09-16 14:35:00,364 [INFO] __main__: stats: frames=63053 dets=1651515 tracked=9 counted=1332 dedup=6 cabin=29 delivered=63053 connects=1
+2026-09-16 14:35:05,368 [INFO] __main__: stats: frames=63178 dets=1654974 tracked=8 counted=1333 dedup=6 cabin=29 delivered=63178 connects=1
+2026-09-16 14:35:10,371 [INFO] __main__: stats: frames=63303 dets=1658689 tracked=8 counted=1334 dedup=6 cabin=29 delivered=63303 connects=1
+2026-09-16 14:35:15,372 [INFO] __main__: stats: frames=63428 dets=1662324 tracked=10 counted=1337 dedup=6 cabin=29 delivered=63428 connects=1
+2026-09-16 14:35:20,398 [INFO] __main__: stats: frames=63553 dets=1666004 tracked=8 counted=1339 dedup=6 cabin=29 delivered=63553 connects=1
+2026-09-16 14:35:25,398 [INFO] __main__: stats: frames=63678 dets=1669853 tracked=10 counted=1342 dedup=6 cabin=29 delivered=63678 connects=1
+2026-09-16 14:35:30,405 [INFO] __main__: stats: frames=63803 dets=1674028 tracked=9 counted=1343 dedup=6 cabin=29 delivered=63803 connects=1
+2026-09-16 14:35:35,416 [INFO] __main__: stats: frames=63928 dets=1677359 tracked=9 counted=1343 dedup=6 cabin=29 delivered=63928 connects=1
+2026-09-16 14:35:40,409 [INFO] __main__: stats: frames=64053 dets=1681774 tracked=13 counted=1347 dedup=6 cabin=29 delivered=64053 connects=1
+2026-09-16 14:35:45,412 [INFO] __main__: stats: frames=64178 dets=1686435 tracked=12 counted=1352 dedup=6 cabin=29 delivered=64178 connects=1
+2026-09-16 14:35:50,407 [INFO] __main__: stats: frames=64302 dets=1690675 tracked=12 counted=1357 dedup=6 cabin=29 delivered=64302 connects=1
+2026-09-16 14:35:55,408 [INFO] __main__: stats: frames=64427 dets=1695105 tracked=17 counted=1365 dedup=6 cabin=29 delivered=64427 connects=1
+2026-09-16 14:36:00,407 [INFO] __main__: stats: frames=64551 dets=1699414 tracked=16 counted=1379 dedup=6 cabin=29 delivered=64551 connects=1
+2026-09-16 14:36:05,446 [INFO] __main__: stats: frames=64677 dets=1702382 tracked=11 counted=1385 dedup=6 cabin=29 delivered=64677 connects=1
+2026-09-16 14:36:10,452 [INFO] __main__: stats: frames=64801 dets=1704364 tracked=7 counted=1386 dedup=7 cabin=29 delivered=64801 connects=1
+2026-09-16 14:36:15,487 [INFO] __main__: stats: frames=64927 dets=1706435 tracked=8 counted=1392 dedup=7 cabin=29 delivered=64927 connects=1
+2026-09-16 14:36:20,487 [INFO] __main__: stats: frames=65051 dets=1708816 tracked=7 counted=1397 dedup=7 cabin=29 delivered=65051 connects=1
+2026-09-16 14:36:25,489 [INFO] __main__: stats: frames=65176 dets=1711310 tracked=7 counted=1399 dedup=7 cabin=29 delivered=65176 connects=1
+2026-09-16 14:36:30,500 [INFO] __main__: stats: frames=65301 dets=1713194 tracked=8 counted=1401 dedup=7 cabin=29 delivered=65301 connects=1
+2026-09-16 14:36:35,548 [INFO] __main__: stats: frames=65427 dets=1716200 tracked=10 counted=1408 dedup=7 cabin=29 delivered=65427 connects=1
+2026-09-16 14:36:40,556 [INFO] __main__: stats: frames=65552 dets=1719161 tracked=10 counted=1410 dedup=7 cabin=29 delivered=65552 connects=1
+2026-09-16 14:36:45,548 [INFO] __main__: stats: frames=65677 dets=1722053 tracked=13 counted=1416 dedup=7 cabin=29 delivered=65677 connects=1
+2026-09-16 14:36:50,571 [INFO] __main__: stats: frames=65802 dets=1725241 tracked=9 counted=1419 dedup=7 cabin=29 delivered=65802 connects=1
+2026-09-16 14:36:55,594 [INFO] __main__: stats: frames=65928 dets=1727658 tracked=7 counted=1423 dedup=7 cabin=29 delivered=65928 connects=1
+2026-09-16 14:37:00,594 [INFO] __main__: stats: frames=66052 dets=1730269 tracked=6 counted=1425 dedup=7 cabin=29 delivered=66052 connects=1
+2026-09-16 14:37:05,625 [INFO] __main__: stats: frames=66178 dets=1732908 tracked=8 counted=1425 dedup=7 cabin=29 delivered=66178 connects=1
+2026-09-16 14:37:10,635 [INFO] __main__: stats: frames=66303 dets=1735772 tracked=8 counted=1427 dedup=7 cabin=29 delivered=66303 connects=1
+2026-09-16 14:37:15,637 [INFO] __main__: stats: frames=66428 dets=1738357 tracked=10 counted=1430 dedup=7 cabin=29 delivered=66428 connects=1
+2026-09-16 14:37:20,634 [INFO] __main__: stats: frames=66553 dets=1740893 tracked=9 counted=1431 dedup=7 cabin=29 delivered=66553 connects=1
+2026-09-16 14:37:25,676 [INFO] __main__: stats: frames=66679 dets=1744025 tracked=8 counted=1433 dedup=7 cabin=29 delivered=66679 connects=1
+2026-09-16 14:37:30,680 [INFO] __main__: stats: frames=66804 dets=1746852 tracked=8 counted=1433 dedup=7 cabin=29 delivered=66804 connects=1
+2026-09-16 14:37:35,670 [INFO] __main__: stats: frames=66929 dets=1750598 tracked=10 counted=1435 dedup=7 cabin=29 delivered=66929 connects=1
+2026-09-16 14:37:40,684 [INFO] __main__: stats: frames=67054 dets=1754481 tracked=11 counted=1437 dedup=7 cabin=29 delivered=67054 connects=1
+2026-09-16 14:37:45,696 [INFO] __main__: stats: frames=67179 dets=1757909 tracked=10 counted=1439 dedup=7 cabin=29 delivered=67179 connects=1
+2026-09-16 14:37:50,706 [INFO] __main__: stats: frames=67304 dets=1761792 tracked=11 counted=1439 dedup=7 cabin=29 delivered=67304 connects=1
+2026-09-16 14:37:55,712 [INFO] __main__: stats: frames=67429 dets=1765582 tracked=9 counted=1441 dedup=7 cabin=29 delivered=67429 connects=1
+2026-09-16 14:38:00,717 [INFO] __main__: stats: frames=67554 dets=1769357 tracked=10 counted=1442 dedup=7 cabin=29 delivered=67554 connects=1
+2026-09-16 14:38:05,720 [INFO] __main__: stats: frames=67679 dets=1773302 tracked=12 counted=1445 dedup=7 cabin=29 delivered=67679 connects=1
+2026-09-16 14:38:10,728 [INFO] __main__: stats: frames=67804 dets=1777718 tracked=11 counted=1448 dedup=7 cabin=29 delivered=67804 connects=1
+2026-09-16 14:38:15,755 [INFO] __main__: stats: frames=67929 dets=1782114 tracked=14 counted=1453 dedup=7 cabin=29 delivered=67929 connects=1
+2026-09-16 14:38:20,763 [INFO] __main__: stats: frames=68054 dets=1786781 tracked=11 counted=1455 dedup=7 cabin=29 delivered=68054 connects=1
+2026-09-16 14:38:20,881 [ERROR] asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-16 14:38:25,758 [INFO] __main__: stats: frames=68179 dets=1791633 tracked=7 counted=1455 dedup=7 cabin=29 delivered=68179 connects=1
+2026-09-16 14:38:30,749 [INFO] __main__: stats: frames=68303 dets=1796458 tracked=10 counted=1457 dedup=7 cabin=29 delivered=68303 connects=1
+2026-09-16 14:38:35,750 [INFO] __main__: stats: frames=68428 dets=1801316 tracked=15 counted=1461 dedup=7 cabin=29 delivered=68428 connects=1
+2026-09-16 14:38:40,774 [INFO] __main__: stats: frames=68553 dets=1806349 tracked=11 counted=1464 dedup=7 cabin=29 delivered=68553 connects=1
+2026-09-16 14:38:45,792 [INFO] __main__: stats: frames=68678 dets=1811458 tracked=11 counted=1467 dedup=7 cabin=29 delivered=68678 connects=1
+2026-09-16 14:38:50,788 [INFO] __main__: stats: frames=68803 dets=1816376 tracked=9 counted=1471 dedup=7 cabin=29 delivered=68803 connects=1
+2026-09-16 14:38:55,798 [INFO] __main__: stats: frames=68928 dets=1821631 tracked=18 counted=1479 dedup=7 cabin=30 delivered=68928 connects=1
+2026-09-16 14:39:00,825 [INFO] __main__: stats: frames=69053 dets=1826818 tracked=16 counted=1498 dedup=7 cabin=30 delivered=69053 connects=1
+2026-09-16 14:39:05,812 [INFO] __main__: stats: frames=69178 dets=1830712 tracked=11 counted=1503 dedup=7 cabin=30 delivered=69178 connects=1
+2026-09-16 14:39:10,842 [INFO] __main__: stats: frames=69303 dets=1833168 tracked=8 counted=1507 dedup=7 cabin=30 delivered=69303 connects=1
+2026-09-16 14:39:15,880 [INFO] __main__: stats: frames=69429 dets=1835930 tracked=12 counted=1513 dedup=7 cabin=30 delivered=69429 connects=1
+2026-09-16 14:39:20,874 [INFO] __main__: stats: frames=69554 dets=1838326 tracked=8 counted=1520 dedup=7 cabin=30 delivered=69554 connects=1
+2026-09-16 14:39:25,891 [INFO] __main__: stats: frames=69679 dets=1840132 tracked=8 counted=1521 dedup=7 cabin=30 delivered=69679 connects=1
+2026-09-16 14:39:30,929 [INFO] __main__: stats: frames=69805 dets=1842111 tracked=7 counted=1526 dedup=7 cabin=30 delivered=69805 connects=1
+2026-09-16 14:39:35,922 [INFO] __main__: stats: frames=69930 dets=1844013 tracked=9 counted=1530 dedup=7 cabin=30 delivered=69930 connects=1
+2026-09-16 14:39:40,938 [INFO] __main__: stats: frames=70055 dets=1845797 tracked=4 counted=1530 dedup=7 cabin=30 delivered=70055 connects=1
+2026-09-16 14:39:45,976 [INFO] __main__: stats: frames=70181 dets=1847153 tracked=5 counted=1531 dedup=7 cabin=30 delivered=70181 connects=1
+2026-09-16 14:39:50,972 [INFO] __main__: stats: frames=70306 dets=1849235 tracked=8 counted=1534 dedup=7 cabin=30 delivered=70306 connects=1
+2026-09-16 14:39:55,992 [INFO] __main__: stats: frames=70431 dets=1851930 tracked=10 counted=1541 dedup=7 cabin=30 delivered=70431 connects=1
+2026-09-16 14:40:00,985 [INFO] __main__: stats: frames=70556 dets=1855044 tracked=13 counted=1544 dedup=7 cabin=30 delivered=70556 connects=1
+2026-09-16 14:40:06,008 [INFO] __main__: stats: frames=70681 dets=1858109 tracked=13 counted=1551 dedup=7 cabin=30 delivered=70681 connects=1
+2026-09-16 14:40:11,023 [INFO] __main__: stats: frames=70806 dets=1861465 tracked=5 counted=1552 dedup=7 cabin=30 delivered=70806 connects=1
+2026-09-16 14:40:16,033 [INFO] __main__: stats: frames=70931 dets=1864513 tracked=10 counted=1554 dedup=7 cabin=30 delivered=70931 connects=1
+2026-09-16 14:40:21,069 [INFO] __main__: stats: frames=71057 dets=1868194 tracked=14 counted=1560 dedup=7 cabin=30 delivered=71057 connects=1
+2026-09-16 14:40:26,064 [INFO] __main__: stats: frames=71182 dets=1872111 tracked=10 counted=1563 dedup=7 cabin=30 delivered=71182 connects=1
+2026-09-16 14:40:31,078 [INFO] __main__: stats: frames=71307 dets=1876472 tracked=10 counted=1568 dedup=7 cabin=30 delivered=71307 connects=1
+2026-09-16 14:40:36,087 [INFO] __main__: stats: frames=71432 dets=1880900 tracked=8 counted=1568 dedup=7 cabin=30 delivered=71432 connects=1
+2026-09-16 14:40:41,091 [INFO] __main__: stats: frames=71557 dets=1885222 tracked=11 counted=1569 dedup=7 cabin=30 delivered=71557 connects=1
+2026-09-16 14:40:46,083 [INFO] __main__: stats: frames=71682 dets=1889309 tracked=10 counted=1570 dedup=7 cabin=30 delivered=71682 connects=1
+2026-09-16 14:40:51,094 [INFO] __main__: stats: frames=71807 dets=1893365 tracked=13 counted=1570 dedup=7 cabin=30 delivered=71807 connects=1
+2026-09-16 14:40:56,106 [INFO] __main__: stats: frames=71932 dets=1897169 tracked=13 counted=1573 dedup=7 cabin=30 delivered=71932 connects=1
+2026-09-16 14:41:01,105 [INFO] __main__: stats: frames=72057 dets=1900814 tracked=10 counted=1573 dedup=7 cabin=30 delivered=72057 connects=1
+2026-09-16 14:41:06,103 [INFO] __main__: stats: frames=72182 dets=1904108 tracked=10 counted=1574 dedup=7 cabin=30 delivered=72182 connects=1
+2026-09-16 14:41:11,107 [INFO] __main__: stats: frames=72307 dets=1907574 tracked=12 counted=1577 dedup=7 cabin=30 delivered=72307 connects=1
+2026-09-16 14:41:16,113 [INFO] __main__: stats: frames=72432 dets=1911430 tracked=9 counted=1578 dedup=7 cabin=30 delivered=72432 connects=1
+2026-09-16 14:41:21,148 [INFO] __main__: stats: frames=72557 dets=1915445 tracked=11 counted=1579 dedup=7 cabin=30 delivered=72557 connects=1
+2026-09-16 14:41:26,151 [INFO] __main__: stats: frames=72682 dets=1919469 tracked=10 counted=1580 dedup=7 cabin=30 delivered=72682 connects=1
+2026-09-16 14:41:31,141 [INFO] __main__: stats: frames=72807 dets=1923526 tracked=10 counted=1582 dedup=7 cabin=30 delivered=72807 connects=1
+2026-09-16 14:41:36,155 [INFO] __main__: stats: frames=72932 dets=1928089 tracked=14 counted=1583 dedup=7 cabin=30 delivered=72932 connects=1
+2026-09-16 14:41:41,154 [INFO] __main__: stats: frames=73057 dets=1932455 tracked=14 counted=1587 dedup=7 cabin=30 delivered=73057 connects=1
+2026-09-16 14:41:46,168 [INFO] __main__: stats: frames=73182 dets=1936608 tracked=10 counted=1588 dedup=7 cabin=30 delivered=73182 connects=1
+2026-09-16 14:41:51,190 [INFO] __main__: stats: frames=73307 dets=1940519 tracked=11 counted=1590 dedup=7 cabin=30 delivered=73307 connects=1
+2026-09-16 14:41:56,203 [INFO] __main__: stats: frames=73430 dets=1944895 tracked=9 counted=1591 dedup=7 cabin=30 delivered=73430 connects=1
+2026-09-16 14:42:01,207 [INFO] __main__: stats: frames=73555 dets=1949385 tracked=14 counted=1594 dedup=7 cabin=30 delivered=73555 connects=1
+2026-09-16 14:42:06,230 [INFO] __main__: stats: frames=73680 dets=1953862 tracked=18 counted=1609 dedup=7 cabin=30 delivered=73680 connects=1
+2026-09-16 14:42:11,217 [INFO] __main__: stats: frames=73804 dets=1956969 tracked=12 counted=1616 dedup=7 cabin=30 delivered=73804 connects=1
+2026-09-16 14:42:16,236 [INFO] __main__: stats: frames=73929 dets=1959182 tracked=9 counted=1622 dedup=7 cabin=30 delivered=73929 connects=1
+2026-09-16 14:42:21,237 [INFO] __main__: stats: frames=74054 dets=1961028 tracked=5 counted=1625 dedup=7 cabin=30 delivered=74054 connects=1
+2026-09-16 14:42:26,251 [INFO] __main__: stats: frames=74179 dets=1962922 tracked=9 counted=1627 dedup=7 cabin=30 delivered=74179 connects=1
+2026-09-16 14:42:31,250 [INFO] __main__: stats: frames=74304 dets=1964646 tracked=7 counted=1630 dedup=7 cabin=31 delivered=74304 connects=1
+2026-09-16 14:42:36,288 [INFO] __main__: stats: frames=74430 dets=1966798 tracked=7 counted=1631 dedup=7 cabin=31 delivered=74430 connects=1
+2026-09-16 14:42:41,283 [INFO] __main__: stats: frames=74555 dets=1969364 tracked=11 counted=1637 dedup=7 cabin=31 delivered=74555 connects=1
+2026-09-16 14:42:46,289 [INFO] __main__: stats: frames=74680 dets=1971946 tracked=10 counted=1638 dedup=7 cabin=31 delivered=74680 connects=1
+2026-09-16 14:42:51,291 [INFO] __main__: stats: frames=74805 dets=1974713 tracked=15 counted=1645 dedup=7 cabin=31 delivered=74805 connects=1
+2026-09-16 14:42:56,305 [INFO] __main__: stats: frames=74930 dets=1977564 tracked=11 counted=1649 dedup=7 cabin=31 delivered=74930 connects=1
+2026-09-16 14:43:01,320 [INFO] __main__: stats: frames=75055 dets=1980638 tracked=13 counted=1654 dedup=7 cabin=31 delivered=75055 connects=1
+2026-09-16 14:43:06,322 [INFO] __main__: stats: frames=75180 dets=1984073 tracked=12 counted=1659 dedup=7 cabin=31 delivered=75180 connects=1
+2026-09-16 14:43:11,338 [INFO] __main__: stats: frames=75304 dets=1987276 tracked=13 counted=1663 dedup=7 cabin=31 delivered=75304 connects=1
+2026-09-16 14:43:16,333 [INFO] __main__: stats: frames=75429 dets=1990509 tracked=9 counted=1665 dedup=7 cabin=31 delivered=75429 connects=1
+2026-09-16 14:43:21,355 [INFO] __main__: stats: frames=75554 dets=1993092 tracked=9 counted=1667 dedup=7 cabin=31 delivered=75554 connects=1
+2026-09-16 14:43:26,357 [INFO] __main__: stats: frames=75679 dets=1995918 tracked=11 counted=1671 dedup=7 cabin=31 delivered=75679 connects=1
+2026-09-16 14:43:31,362 [INFO] __main__: stats: frames=75804 dets=1999179 tracked=10 counted=1676 dedup=7 cabin=31 delivered=75804 connects=1
+2026-09-16 14:43:36,399 [INFO] __main__: stats: frames=75930 dets=2002931 tracked=10 counted=1680 dedup=7 cabin=31 delivered=75930 connects=1
+2026-09-16 14:43:41,401 [INFO] __main__: stats: frames=76055 dets=2006578 tracked=10 counted=1683 dedup=7 cabin=31 delivered=76055 connects=1
+2026-09-16 14:43:46,408 [INFO] __main__: stats: frames=76180 dets=2010139 tracked=11 counted=1686 dedup=7 cabin=31 delivered=76180 connects=1
+2026-09-16 14:43:51,410 [INFO] __main__: stats: frames=76305 dets=2013339 tracked=8 counted=1689 dedup=7 cabin=31 delivered=76305 connects=1
+2026-09-16 14:43:56,442 [INFO] __main__: stats: frames=76431 dets=2017029 tracked=8 counted=1690 dedup=7 cabin=31 delivered=76431 connects=1
+2026-09-16 14:44:01,448 [INFO] __main__: stats: frames=76556 dets=2021019 tracked=11 counted=1692 dedup=7 cabin=31 delivered=76556 connects=1
+2026-09-16 14:44:06,443 [INFO] __main__: stats: frames=76681 dets=2024580 tracked=10 counted=1695 dedup=7 cabin=31 delivered=76681 connects=1
+2026-09-16 14:44:11,448 [INFO] __main__: stats: frames=76806 dets=2028617 tracked=9 counted=1696 dedup=7 cabin=31 delivered=76806 connects=1
+2026-09-16 14:44:16,451 [INFO] __main__: stats: frames=76931 dets=2032136 tracked=7 counted=1696 dedup=7 cabin=31 delivered=76931 connects=1
+2026-09-16 14:44:21,464 [INFO] __main__: stats: frames=77056 dets=2035591 tracked=7 counted=1699 dedup=7 cabin=31 delivered=77056 connects=1
+2026-09-16 14:44:26,451 [INFO] __main__: stats: frames=77181 dets=2039026 tracked=6 counted=1700 dedup=7 cabin=31 delivered=77181 connects=1
+2026-09-16 14:44:31,489 [INFO] __main__: stats: frames=77306 dets=2042359 tracked=8 counted=1702 dedup=7 cabin=31 delivered=77306 connects=1
+2026-09-16 14:44:36,482 [INFO] __main__: stats: frames=77431 dets=2046874 tracked=6 counted=1702 dedup=7 cabin=31 delivered=77431 connects=1
+2026-09-16 14:44:41,502 [INFO] __main__: stats: frames=77556 dets=2050419 tracked=6 counted=1703 dedup=7 cabin=31 delivered=77556 connects=1
+2026-09-16 14:44:46,523 [INFO] __main__: stats: frames=77682 dets=2053527 tracked=8 counted=1704 dedup=7 cabin=31 delivered=77682 connects=1
+2026-09-16 14:44:51,525 [INFO] __main__: stats: frames=77807 dets=2057204 tracked=7 counted=1705 dedup=7 cabin=31 delivered=77807 connects=1
+2026-09-16 14:44:56,538 [INFO] __main__: stats: frames=77932 dets=2060282 tracked=5 counted=1705 dedup=7 cabin=31 delivered=77932 connects=1
+2026-09-16 14:45:01,581 [INFO] __main__: stats: frames=78058 dets=2063155 tracked=7 counted=1705 dedup=7 cabin=31 delivered=78058 connects=1
+2026-09-16 14:45:06,607 [INFO] __main__: stats: frames=78184 dets=2066399 tracked=10 counted=1707 dedup=7 cabin=31 delivered=78184 connects=1
+2026-09-16 14:45:11,628 [INFO] __main__: stats: frames=78309 dets=2071156 tracked=19 counted=1726 dedup=7 cabin=31 delivered=78309 connects=1
+2026-09-16 14:45:16,645 [INFO] __main__: stats: frames=78434 dets=2074133 tracked=7 counted=1732 dedup=7 cabin=31 delivered=78434 connects=1
+2026-09-16 14:45:21,679 [INFO] __main__: stats: frames=78560 dets=2076452 tracked=7 counted=1736 dedup=7 cabin=31 delivered=78560 connects=1
+2026-09-16 14:45:26,673 [INFO] __main__: stats: frames=78685 dets=2078331 tracked=6 counted=1740 dedup=7 cabin=31 delivered=78685 connects=1
+2026-09-16 14:45:31,678 [INFO] __main__: stats: frames=78810 dets=2080062 tracked=3 counted=1742 dedup=7 cabin=31 delivered=78810 connects=1
+2026-09-16 14:45:36,677 [INFO] __main__: stats: frames=78935 dets=2081261 tracked=4 counted=1743 dedup=7 cabin=31 delivered=78935 connects=1
+2026-09-16 14:45:41,686 [INFO] __main__: stats: frames=79060 dets=2083325 tracked=8 counted=1747 dedup=7 cabin=31 delivered=79060 connects=1
+2026-09-16 14:45:46,712 [INFO] __main__: stats: frames=79186 dets=2085869 tracked=11 counted=1750 dedup=7 cabin=31 delivered=79186 connects=1
+2026-09-16 14:45:51,717 [INFO] __main__: stats: frames=79311 dets=2088851 tracked=13 counted=1756 dedup=7 cabin=31 delivered=79311 connects=1
+2026-09-16 14:45:56,720 [INFO] __main__: stats: frames=79436 dets=2092971 tracked=14 counted=1761 dedup=7 cabin=31 delivered=79436 connects=1
+2026-09-16 14:46:01,723 [INFO] __main__: stats: frames=79561 dets=2097792 tracked=13 counted=1769 dedup=7 cabin=31 delivered=79561 connects=1
+2026-09-16 14:46:06,738 [INFO] __main__: stats: frames=79686 dets=2102336 tracked=11 counted=1771 dedup=7 cabin=31 delivered=79686 connects=1
+2026-09-16 14:46:11,734 [INFO] __main__: stats: frames=79811 dets=2106136 tracked=11 counted=1777 dedup=7 cabin=31 delivered=79811 connects=1
+2026-09-16 14:46:16,732 [INFO] __main__: stats: frames=79936 dets=2110032 tracked=8 counted=1778 dedup=7 cabin=31 delivered=79936 connects=1
+2026-09-16 14:46:21,737 [INFO] __main__: stats: frames=80061 dets=2113666 tracked=10 counted=1780 dedup=7 cabin=31 delivered=80061 connects=1
+2026-09-16 14:46:26,754 [INFO] __main__: stats: frames=80186 dets=2117576 tracked=12 counted=1782 dedup=7 cabin=31 delivered=80186 connects=1
+2026-09-16 14:46:31,766 [INFO] __main__: stats: frames=80311 dets=2121867 tracked=6 counted=1785 dedup=7 cabin=31 delivered=80311 connects=1
+2026-09-16 14:46:36,772 [INFO] __main__: stats: frames=80436 dets=2125830 tracked=6 counted=1785 dedup=7 cabin=31 delivered=80436 connects=1
+2026-09-16 14:46:41,799 [INFO] __main__: stats: frames=80562 dets=2129722 tracked=7 counted=1786 dedup=7 cabin=31 delivered=80562 connects=1
+2026-09-16 14:46:46,810 [INFO] __main__: stats: frames=80687 dets=2134089 tracked=8 counted=1787 dedup=7 cabin=31 delivered=80687 connects=1
+2026-09-16 14:46:51,834 [INFO] __main__: stats: frames=80812 dets=2138116 tracked=12 counted=1788 dedup=7 cabin=31 delivered=80812 connects=1
+2026-09-16 14:46:56,831 [INFO] __main__: stats: frames=80937 dets=2141857 tracked=11 counted=1794 dedup=7 cabin=31 delivered=80937 connects=1
+2026-09-16 14:47:01,846 [INFO] __main__: stats: frames=81062 dets=2145632 tracked=10 counted=1794 dedup=7 cabin=31 delivered=81062 connects=1
+2026-09-16 14:47:06,841 [INFO] __main__: stats: frames=81187 dets=2149411 tracked=8 counted=1795 dedup=7 cabin=32 delivered=81187 connects=1
+2026-09-16 14:47:11,873 [INFO] __main__: stats: frames=81312 dets=2153757 tracked=9 counted=1795 dedup=7 cabin=32 delivered=81312 connects=1
+2026-09-16 14:47:16,908 [INFO] __main__: stats: frames=81438 dets=2157953 tracked=12 counted=1798 dedup=8 cabin=32 delivered=81438 connects=1
+2026-09-16 14:47:21,929 [INFO] __main__: stats: frames=81563 dets=2162061 tracked=11 counted=1801 dedup=8 cabin=32 delivered=81563 connects=1
+2026-09-16 14:47:26,928 [INFO] __main__: stats: frames=81688 dets=2165843 tracked=10 counted=1801 dedup=8 cabin=32 delivered=81688 connects=1
+2026-09-16 14:47:31,933 [INFO] __main__: stats: frames=81813 dets=2170004 tracked=9 counted=1803 dedup=8 cabin=32 delivered=81813 connects=1
+2026-09-16 14:47:36,925 [INFO] __main__: stats: frames=81938 dets=2174319 tracked=14 counted=1807 dedup=8 cabin=32 delivered=81938 connects=1
+2026-09-16 14:47:41,935 [INFO] __main__: stats: frames=82063 dets=2178654 tracked=12 counted=1811 dedup=8 cabin=32 delivered=82063 connects=1
+2026-09-16 14:47:46,959 [INFO] __main__: stats: frames=82188 dets=2183984 tracked=13 counted=1815 dedup=8 cabin=32 delivered=82188 connects=1
+2026-09-16 14:47:51,956 [INFO] __main__: stats: frames=82312 dets=2188962 tracked=10 counted=1820 dedup=8 cabin=32 delivered=82312 connects=1
+2026-09-16 14:47:56,962 [INFO] __main__: stats: frames=82437 dets=2194176 tracked=9 counted=1821 dedup=8 cabin=32 delivered=82437 connects=1
+2026-09-16 14:48:01,966 [INFO] __main__: stats: frames=82562 dets=2199009 tracked=11 counted=1825 dedup=8 cabin=32 delivered=82562 connects=1
+2026-09-16 14:48:06,975 [INFO] __main__: stats: frames=82687 dets=2203612 tracked=12 counted=1832 dedup=8 cabin=32 delivered=82687 connects=1
+2026-09-16 14:48:11,978 [INFO] __main__: stats: frames=82812 dets=2208429 tracked=14 counted=1837 dedup=8 cabin=32 delivered=82812 connects=1
+2026-09-16 14:48:16,993 [INFO] __main__: stats: frames=82937 dets=2213505 tracked=18 counted=1853 dedup=8 cabin=32 delivered=82937 connects=1
+2026-09-16 14:48:21,997 [INFO] __main__: stats: frames=83062 dets=2217514 tracked=9 counted=1869 dedup=8 cabin=32 delivered=83062 connects=1
+2026-09-16 14:48:27,003 [INFO] __main__: stats: frames=83187 dets=2220072 tracked=8 counted=1872 dedup=8 cabin=32 delivered=83187 connects=1
+2026-09-16 14:48:32,020 [INFO] __main__: stats: frames=83312 dets=2222331 tracked=9 counted=1878 dedup=8 cabin=32 delivered=83312 connects=1
+2026-09-16 14:48:37,019 [INFO] __main__: stats: frames=83437 dets=2224517 tracked=5 counted=1878 dedup=8 cabin=32 delivered=83437 connects=1
+2026-09-16 14:48:42,020 [INFO] __main__: stats: frames=83562 dets=2226948 tracked=9 counted=1882 dedup=8 cabin=32 delivered=83562 connects=1
+2026-09-16 14:48:47,058 [INFO] __main__: stats: frames=83686 dets=2228789 tracked=6 counted=1888 dedup=8 cabin=32 delivered=83686 connects=1
+2026-09-16 14:48:52,046 [INFO] __main__: stats: frames=83811 dets=2230626 tracked=8 counted=1890 dedup=8 cabin=32 delivered=83811 connects=1
+2026-09-16 14:48:57,057 [INFO] __main__: stats: frames=83936 dets=2232885 tracked=6 counted=1895 dedup=8 cabin=32 delivered=83936 connects=1
+2026-09-16 14:49:02,061 [INFO] __main__: stats: frames=84061 dets=2235153 tracked=10 counted=1900 dedup=8 cabin=32 delivered=84061 connects=1
+2026-09-16 14:49:07,064 [INFO] __main__: stats: frames=84186 dets=2237893 tracked=13 counted=1903 dedup=8 cabin=32 delivered=84186 connects=1
+2026-09-16 14:49:12,109 [INFO] __main__: stats: frames=84312 dets=2240829 tracked=13 counted=1907 dedup=8 cabin=32 delivered=84312 connects=1
+2026-09-16 14:49:17,092 [INFO] __main__: stats: frames=84437 dets=2243065 tracked=6 counted=1908 dedup=8 cabin=32 delivered=84437 connects=1
+2026-09-16 14:49:22,119 [INFO] __main__: stats: frames=84562 dets=2245170 tracked=7 counted=1911 dedup=8 cabin=32 delivered=84562 connects=1
+2026-09-16 14:49:27,129 [INFO] __main__: stats: frames=84687 dets=2247395 tracked=4 counted=1912 dedup=8 cabin=32 delivered=84687 connects=1
+2026-09-16 14:49:32,137 [INFO] __main__: stats: frames=84812 dets=2249257 tracked=7 counted=1914 dedup=8 cabin=32 delivered=84812 connects=1
+2026-09-16 14:49:37,147 [INFO] __main__: stats: frames=84937 dets=2251400 tracked=9 counted=1915 dedup=8 cabin=33 delivered=84937 connects=1
+2026-09-16 14:49:42,173 [INFO] __main__: stats: frames=85061 dets=2253431 tracked=8 counted=1917 dedup=8 cabin=33 delivered=85061 connects=1
+2026-09-16 14:49:47,170 [INFO] __main__: stats: frames=85186 dets=2255493 tracked=6 counted=1919 dedup=8 cabin=33 delivered=85186 connects=1
+2026-09-16 14:49:52,205 [INFO] __main__: stats: frames=85312 dets=2257799 tracked=7 counted=1920 dedup=8 cabin=33 delivered=85312 connects=1
+2026-09-16 14:49:57,215 [INFO] __main__: stats: frames=85437 dets=2260398 tracked=10 counted=1927 dedup=8 cabin=33 delivered=85437 connects=1
+2026-09-16 14:50:02,230 [INFO] __main__: stats: frames=85559 dets=2263239 tracked=10 counted=1932 dedup=8 cabin=33 delivered=85559 connects=1
+2026-09-16 14:50:07,226 [INFO] __main__: stats: frames=85684 dets=2266177 tracked=6 counted=1933 dedup=8 cabin=33 delivered=85684 connects=1
+2026-09-16 14:50:12,222 [INFO] __main__: stats: frames=85809 dets=2269092 tracked=7 counted=1934 dedup=8 cabin=33 delivered=85809 connects=1
+2026-09-16 14:50:17,229 [INFO] __main__: stats: frames=85934 dets=2271625 tracked=8 counted=1934 dedup=8 cabin=33 delivered=85934 connects=1
+2026-09-16 14:50:22,230 [INFO] __main__: stats: frames=86059 dets=2274810 tracked=6 counted=1934 dedup=8 cabin=33 delivered=86059 connects=1
+2026-09-16 14:50:27,216 [INFO] __main__: stats: frames=86183 dets=2277836 tracked=6 counted=1934 dedup=8 cabin=33 delivered=86183 connects=1
+2026-09-16 14:50:32,252 [INFO] __main__: stats: frames=86309 dets=2280736 tracked=7 counted=1934 dedup=8 cabin=33 delivered=86309 connects=1
+2026-09-16 14:50:37,249 [INFO] __main__: stats: frames=86434 dets=2283498 tracked=6 counted=1935 dedup=8 cabin=33 delivered=86434 connects=1
+2026-09-16 14:50:42,256 [INFO] __main__: stats: frames=86559 dets=2286499 tracked=9 counted=1936 dedup=8 cabin=33 delivered=86559 connects=1
+2026-09-16 14:50:47,259 [INFO] __main__: stats: frames=86684 dets=2290214 tracked=11 counted=1937 dedup=8 cabin=33 delivered=86684 connects=1
+2026-09-16 14:50:52,273 [INFO] __main__: stats: frames=86808 dets=2293623 tracked=7 counted=1939 dedup=8 cabin=33 delivered=86808 connects=1
+2026-09-16 14:50:57,266 [INFO] __main__: stats: frames=86933 dets=2296929 tracked=8 counted=1939 dedup=8 cabin=33 delivered=86933 connects=1
+2026-09-16 14:51:02,273 [INFO] __main__: stats: frames=87058 dets=2300126 tracked=7 counted=1941 dedup=8 cabin=33 delivered=87058 connects=1
+2026-09-16 14:51:07,279 [INFO] __main__: stats: frames=87183 dets=2303061 tracked=7 counted=1942 dedup=8 cabin=33 delivered=87183 connects=1
+2026-09-16 14:51:12,324 [INFO] __main__: stats: frames=87309 dets=2306090 tracked=9 counted=1944 dedup=8 cabin=33 delivered=87309 connects=1
+2026-09-16 14:51:17,311 [INFO] __main__: stats: frames=87434 dets=2309372 tracked=12 counted=1947 dedup=8 cabin=33 delivered=87434 connects=1
+2026-09-16 14:51:22,324 [INFO] __main__: stats: frames=87559 dets=2312963 tracked=13 counted=1960 dedup=8 cabin=33 delivered=87559 connects=1
+2026-09-16 14:51:27,317 [INFO] __main__: stats: frames=87684 dets=2315928 tracked=8 counted=1965 dedup=8 cabin=33 delivered=87684 connects=1
+2026-09-16 14:51:32,351 [INFO] __main__: stats: frames=87809 dets=2317785 tracked=5 counted=1968 dedup=8 cabin=33 delivered=87809 connects=1
+2026-09-16 14:51:37,389 [INFO] __main__: stats: frames=87935 dets=2319357 tracked=4 counted=1968 dedup=8 cabin=33 delivered=87935 connects=1
+2026-09-16 14:51:42,421 [INFO] __main__: stats: frames=88061 dets=2320922 tracked=7 counted=1970 dedup=8 cabin=33 delivered=88061 connects=1
+2026-09-16 14:51:47,421 [INFO] __main__: stats: frames=88186 dets=2322908 tracked=6 counted=1971 dedup=8 cabin=33 delivered=88186 connects=1
+2026-09-16 14:51:52,431 [INFO] __main__: stats: frames=88311 dets=2324708 tracked=7 counted=1974 dedup=8 cabin=33 delivered=88311 connects=1
+2026-09-16 14:51:57,422 [INFO] __main__: stats: frames=88436 dets=2327301 tracked=9 counted=1978 dedup=8 cabin=33 delivered=88436 connects=1
+2026-09-16 14:52:02,468 [INFO] __main__: stats: frames=88561 dets=2330090 tracked=13 counted=1982 dedup=8 cabin=33 delivered=88561 connects=1
+2026-09-16 14:52:07,467 [INFO] __main__: stats: frames=88686 dets=2333135 tracked=12 counted=1987 dedup=8 cabin=33 delivered=88686 connects=1
+2026-09-16 14:52:12,468 [INFO] __main__: stats: frames=88811 dets=2336125 tracked=10 counted=1990 dedup=8 cabin=33 delivered=88811 connects=1
+2026-09-16 14:52:17,489 [INFO] __main__: stats: frames=88936 dets=2339371 tracked=7 counted=1994 dedup=8 cabin=33 delivered=88936 connects=1
+2026-09-16 14:52:22,491 [INFO] __main__: stats: frames=89061 dets=2341810 tracked=5 counted=1995 dedup=8 cabin=33 delivered=89061 connects=1
+2026-09-16 14:52:27,503 [INFO] __main__: stats: frames=89186 dets=2344296 tracked=11 counted=2000 dedup=8 cabin=33 delivered=89186 connects=1
+2026-09-16 14:52:32,518 [INFO] __main__: stats: frames=89311 dets=2347236 tracked=12 counted=2002 dedup=8 cabin=33 delivered=89311 connects=1
+2026-09-16 14:52:37,521 [INFO] __main__: stats: frames=89436 dets=2350324 tracked=12 counted=2005 dedup=8 cabin=33 delivered=89436 connects=1
+2026-09-16 14:52:42,523 [INFO] __main__: stats: frames=89561 dets=2353571 tracked=9 counted=2009 dedup=8 cabin=33 delivered=89561 connects=1
+2026-09-16 14:52:47,533 [INFO] __main__: stats: frames=89686 dets=2356814 tracked=11 counted=2013 dedup=8 cabin=33 delivered=89686 connects=1
+2026-09-16 14:52:52,546 [INFO] __main__: stats: frames=89811 dets=2359717 tracked=10 counted=2017 dedup=8 cabin=33 delivered=89811 connects=1
+2026-09-16 14:52:57,546 [INFO] __main__: stats: frames=89936 dets=2362673 tracked=9 counted=2019 dedup=8 cabin=33 delivered=89936 connects=1
+2026-09-16 14:53:02,558 [INFO] __main__: stats: frames=90061 dets=2366217 tracked=15 counted=2025 dedup=8 cabin=33 delivered=90061 connects=1
+2026-09-16 14:53:07,551 [INFO] __main__: stats: frames=90186 dets=2369882 tracked=10 counted=2029 dedup=8 cabin=33 delivered=90186 connects=1
+2026-09-16 14:53:12,552 [INFO] __main__: stats: frames=90311 dets=2373636 tracked=11 counted=2031 dedup=8 cabin=34 delivered=90311 connects=1
+2026-09-16 14:53:17,555 [INFO] __main__: stats: frames=90436 dets=2376512 tracked=9 counted=2034 dedup=8 cabin=34 delivered=90436 connects=1
+2026-09-16 14:53:22,576 [INFO] __main__: stats: frames=90561 dets=2379285 tracked=8 counted=2035 dedup=8 cabin=34 delivered=90561 connects=1
+2026-09-16 14:53:27,607 [INFO] __main__: stats: frames=90687 dets=2382139 tracked=7 counted=2036 dedup=8 cabin=34 delivered=90687 connects=1
+2026-09-16 14:53:32,614 [INFO] __main__: stats: frames=90812 dets=2384902 tracked=7 counted=2036 dedup=8 cabin=34 delivered=90812 connects=1
+2026-09-16 14:53:37,622 [INFO] __main__: stats: frames=90937 dets=2387228 tracked=8 counted=2036 dedup=8 cabin=34 delivered=90937 connects=1
+2026-09-16 14:53:42,619 [INFO] __main__: stats: frames=91062 dets=2389642 tracked=5 counted=2036 dedup=8 cabin=34 delivered=91062 connects=1
+2026-09-16 14:53:47,612 [INFO] __main__: stats: frames=91187 dets=2392125 tracked=4 counted=2036 dedup=8 cabin=34 delivered=91187 connects=1
+2026-09-16 14:53:52,632 [INFO] __main__: stats: frames=91312 dets=2394700 tracked=8 counted=2038 dedup=8 cabin=34 delivered=91312 connects=1
+2026-09-16 14:53:57,646 [INFO] __main__: stats: frames=91437 dets=2397526 tracked=11 counted=2040 dedup=8 cabin=34 delivered=91437 connects=1
+2026-09-16 14:54:02,638 [INFO] __main__: stats: frames=91562 dets=2400550 tracked=10 counted=2043 dedup=8 cabin=34 delivered=91562 connects=1
+2026-09-16 14:54:07,677 [INFO] __main__: stats: frames=91688 dets=2403839 tracked=10 counted=2046 dedup=8 cabin=34 delivered=91688 connects=1
+2026-09-16 14:54:12,682 [INFO] __main__: stats: frames=91813 dets=2407021 tracked=10 counted=2049 dedup=8 cabin=34 delivered=91813 connects=1
+2026-09-16 14:54:17,683 [INFO] __main__: stats: frames=91938 dets=2410631 tracked=11 counted=2049 dedup=8 cabin=34 delivered=91938 connects=1
+2026-09-16 14:54:22,711 [INFO] __main__: stats: frames=92063 dets=2414433 tracked=17 counted=2055 dedup=8 cabin=34 delivered=92063 connects=1
+2026-09-16 14:54:27,707 [INFO] __main__: stats: frames=92188 dets=2418441 tracked=16 counted=2067 dedup=8 cabin=34 delivered=92188 connects=1
+2026-09-16 14:54:32,709 [INFO] __main__: stats: frames=92313 dets=2421825 tracked=15 counted=2078 dedup=8 cabin=35 delivered=92313 connects=1
+2026-09-16 14:54:33,181 [ERROR] asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-16 14:54:37,723 [INFO] __main__: stats: frames=92438 dets=2424619 tracked=7 counted=2083 dedup=8 cabin=35 delivered=92438 connects=1
+2026-09-16 14:54:42,722 [INFO] __main__: stats: frames=92563 dets=2426888 tracked=10 counted=2087 dedup=8 cabin=35 delivered=92563 connects=1
+2026-09-16 14:54:47,767 [INFO] __main__: stats: frames=92689 dets=2429811 tracked=15 counted=2095 dedup=8 cabin=35 delivered=92689 connects=1
+2026-09-16 14:54:52,768 [INFO] __main__: stats: frames=92809 dets=2433042 tracked=10 counted=2103 dedup=8 cabin=35 delivered=92809 connects=1
+2026-09-16 14:54:57,766 [INFO] __main__: stats: frames=92934 dets=2435268 tracked=6 counted=2107 dedup=8 cabin=36 delivered=92934 connects=1
+2026-09-16 14:55:02,766 [INFO] __main__: stats: frames=93059 dets=2437009 tracked=13 counted=2111 dedup=8 cabin=36 delivered=93059 connects=1
+2026-09-16 14:55:07,765 [INFO] __main__: stats: frames=93184 dets=2440202 tracked=10 counted=2114 dedup=8 cabin=36 delivered=93184 connects=1
+2026-09-16 14:55:12,804 [INFO] __main__: stats: frames=93310 dets=2443798 tracked=16 counted=2121 dedup=9 cabin=36 delivered=93310 connects=1
+2026-09-16 14:55:17,820 [INFO] __main__: stats: frames=93435 dets=2448056 tracked=15 counted=2128 dedup=9 cabin=36 delivered=93435 connects=1
+2026-09-16 14:55:22,831 [INFO] __main__: stats: frames=93560 dets=2451675 tracked=9 counted=2131 dedup=9 cabin=36 delivered=93560 connects=1
+2026-09-16 14:55:27,875 [INFO] __main__: stats: frames=93686 dets=2454972 tracked=11 counted=2133 dedup=9 cabin=36 delivered=93686 connects=1
+2026-09-16 14:55:32,892 [INFO] __main__: stats: frames=93811 dets=2458439 tracked=12 counted=2136 dedup=9 cabin=36 delivered=93811 connects=1
+2026-09-16 14:55:37,908 [INFO] __main__: stats: frames=93936 dets=2461581 tracked=11 counted=2138 dedup=9 cabin=36 delivered=93936 connects=1
+2026-09-16 14:55:42,924 [INFO] __main__: stats: frames=94061 dets=2465063 tracked=13 counted=2144 dedup=9 cabin=36 delivered=94061 connects=1
+2026-09-16 14:55:47,929 [INFO] __main__: stats: frames=94186 dets=2468889 tracked=12 counted=2148 dedup=9 cabin=36 delivered=94186 connects=1
+2026-09-16 14:55:52,954 [INFO] __main__: stats: frames=94311 dets=2472701 tracked=11 counted=2151 dedup=9 cabin=37 delivered=94311 connects=1
+2026-09-16 14:55:57,959 [INFO] __main__: stats: frames=94436 dets=2476538 tracked=13 counted=2155 dedup=9 cabin=37 delivered=94436 connects=1
+2026-09-16 14:56:02,996 [INFO] __main__: stats: frames=94561 dets=2480072 tracked=11 counted=2160 dedup=9 cabin=38 delivered=94561 connects=1
+2026-09-16 14:56:07,992 [INFO] __main__: stats: frames=94686 dets=2483219 tracked=11 counted=2161 dedup=9 cabin=38 delivered=94686 connects=1
+2026-09-16 14:56:13,008 [INFO] __main__: stats: frames=94811 dets=2486698 tracked=11 counted=2165 dedup=9 cabin=38 delivered=94811 connects=1
+2026-09-16 14:56:17,999 [INFO] __main__: stats: frames=94935 dets=2490160 tracked=8 counted=2166 dedup=9 cabin=38 delivered=94935 connects=1
+2026-09-16 14:56:23,004 [INFO] __main__: stats: frames=95060 dets=2493585 tracked=7 counted=2167 dedup=9 cabin=38 delivered=95060 connects=1
+2026-09-16 14:56:28,023 [INFO] __main__: stats: frames=95185 dets=2496926 tracked=11 counted=2167 dedup=9 cabin=38 delivered=95185 connects=1
+2026-09-16 14:56:33,016 [INFO] __main__: stats: frames=95310 dets=2500511 tracked=9 counted=2169 dedup=9 cabin=38 delivered=95310 connects=1
+2026-09-16 14:56:38,047 [INFO] __main__: stats: frames=95435 dets=2504235 tracked=8 counted=2171 dedup=9 cabin=38 delivered=95435 connects=1
+2026-09-16 14:56:43,092 [INFO] __main__: stats: frames=95561 dets=2508142 tracked=11 counted=2176 dedup=9 cabin=38 delivered=95561 connects=1
+2026-09-16 14:56:48,106 [INFO] __main__: stats: frames=95686 dets=2512846 tracked=8 counted=2176 dedup=9 cabin=38 delivered=95686 connects=1
+2026-09-16 14:56:53,110 [INFO] __main__: stats: frames=95807 dets=2517219 tracked=8 counted=2176 dedup=9 cabin=39 delivered=95807 connects=1
+2026-09-16 14:56:58,115 [INFO] __main__: stats: frames=95932 dets=2521241 tracked=10 counted=2179 dedup=9 cabin=39 delivered=95932 connects=1
+2026-09-16 14:57:03,148 [INFO] __main__: stats: frames=96057 dets=2525300 tracked=11 counted=2182 dedup=9 cabin=39 delivered=96057 connects=1
+2026-09-16 14:57:08,170 [INFO] __main__: stats: frames=96182 dets=2530189 tracked=14 counted=2185 dedup=9 cabin=39 delivered=96182 connects=1
+2026-09-16 14:57:13,206 [INFO] __main__: stats: frames=96307 dets=2535172 tracked=12 counted=2188 dedup=9 cabin=40 delivered=96307 connects=1
+2026-09-16 14:57:18,230 [INFO] __main__: stats: frames=96432 dets=2539581 tracked=7 counted=2190 dedup=9 cabin=40 delivered=96432 connects=1
+2026-09-16 14:57:23,243 [INFO] __main__: stats: frames=96557 dets=2544648 tracked=10 counted=2190 dedup=9 cabin=40 delivered=96557 connects=1
+2026-09-16 14:57:28,263 [INFO] __main__: stats: frames=96681 dets=2549676 tracked=16 counted=2198 dedup=9 cabin=40 delivered=96681 connects=1
+2026-09-16 14:57:33,285 [INFO] __main__: stats: frames=96805 dets=2553438 tracked=12 counted=2210 dedup=9 cabin=40 delivered=96805 connects=1
+2026-09-16 14:57:37,189 [INFO] __main__: Final: total=2215 {'motor': 1775, 'mobil': 288, 'truk/bus': 152}
+2026-09-16 14:57:37,190 [INFO] __main__: Processed 96895 of 96895 delivered frames in 3893s (24.9 fps), dedup-suppressed=9, connects=1
+2026-09-17 08:50:46,095 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-17 08:50:46,095 [INFO] __main__: API server on http://localhost:8000
+2026-09-17 08:50:52,935 [INFO] __main__: stats: frames=1 dets=11 tracked=4 counted=0 dedup=0 cabin=0 delivered=1 connects=1
+2026-09-17 08:50:57,960 [INFO] __main__: stats: frames=123 dets=1374 tracked=8 counted=1 dedup=0 cabin=0 delivered=123 connects=1
+2026-09-17 08:51:02,951 [INFO] __main__: stats: frames=246 dets=2460 tracked=2 counted=1 dedup=0 cabin=1 delivered=246 connects=1
+2026-09-17 08:51:07,959 [INFO] __main__: stats: frames=371 dets=3295 tracked=3 counted=2 dedup=0 cabin=1 delivered=371 connects=1
+2026-09-17 08:51:12,961 [INFO] __main__: stats: frames=496 dets=4331 tracked=9 counted=5 dedup=0 cabin=1 delivered=496 connects=1
+2026-09-17 08:51:17,959 [INFO] __main__: stats: frames=621 dets=6702 tracked=8 counted=8 dedup=0 cabin=1 delivered=621 connects=1
+2026-09-17 08:51:22,968 [INFO] __main__: stats: frames=746 dets=8198 tracked=5 counted=9 dedup=0 cabin=1 delivered=746 connects=1
+2026-09-17 08:51:27,975 [INFO] __main__: stats: frames=871 dets=10057 tracked=7 counted=9 dedup=0 cabin=1 delivered=871 connects=1
+2026-09-17 08:51:28,454 [ERROR] asyncio: Exception in callback _ProactorBasePipeTransport._call_connection_lost(None)
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost(None)>
+Traceback (most recent call last):
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\events.py", line 84, in _run
+    self._context.run(self._callback, *self._args)
+  File "C:\Users\liu\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-09-17 08:51:32,970 [INFO] __main__: stats: frames=996 dets=12446 tracked=10 counted=12 dedup=0 cabin=1 delivered=996 connects=1
+2026-09-17 08:51:37,977 [INFO] __main__: stats: frames=1121 dets=14749 tracked=8 counted=13 dedup=0 cabin=1 delivered=1121 connects=1
+2026-09-17 08:51:40,147 [INFO] __main__: Counts reset
+2026-09-17 08:51:43,005 [INFO] __main__: stats: frames=1247 dets=17288 tracked=9 counted=1 dedup=0 cabin=0 delivered=1247 connects=1
+2026-09-17 08:51:48,040 [INFO] __main__: stats: frames=1371 dets=19427 tracked=11 counted=1 dedup=0 cabin=0 delivered=1371 connects=1
+2026-09-17 08:51:53,056 [INFO] __main__: stats: frames=1487 dets=21550 tracked=9 counted=2 dedup=0 cabin=0 delivered=1487 connects=1
+2026-09-17 08:51:58,080 [INFO] __main__: stats: frames=1592 dets=23843 tracked=10 counted=3 dedup=0 cabin=0 delivered=1592 connects=1
+2026-09-17 08:52:03,116 [INFO] __main__: stats: frames=1693 dets=25508 tracked=8 counted=3 dedup=0 cabin=0 delivered=1693 connects=1
+2026-09-17 08:52:08,139 [INFO] __main__: stats: frames=1798 dets=26780 tracked=6 counted=3 dedup=0 cabin=0 delivered=1798 connects=1
+2026-09-17 08:52:13,156 [INFO] __main__: stats: frames=1904 dets=28027 tracked=5 counted=3 dedup=0 cabin=0 delivered=1904 connects=1
+2026-09-17 08:52:18,177 [INFO] __main__: stats: frames=2014 dets=29157 tracked=4 counted=3 dedup=0 cabin=0 delivered=2014 connects=1
+2026-09-17 08:52:23,171 [INFO] __main__: stats: frames=2128 dets=30324 tracked=5 counted=3 dedup=0 cabin=0 delivered=2128 connects=1
+2026-09-17 08:52:28,176 [INFO] __main__: stats: frames=2251 dets=31598 tracked=4 counted=3 dedup=0 cabin=0 delivered=2251 connects=1
+2026-09-17 08:52:33,170 [INFO] __main__: stats: frames=2376 dets=33267 tracked=5 counted=3 dedup=0 cabin=0 delivered=2376 connects=1
+2026-09-17 08:52:38,171 [INFO] __main__: stats: frames=2501 dets=35312 tracked=8 counted=3 dedup=0 cabin=0 delivered=2501 connects=1
+2026-09-17 08:52:39,151 [INFO] __main__: Final: total=3 {'motor': 3}
+2026-09-17 08:52:39,151 [INFO] __main__: Processed 2519 of 2519 delivered frames in 113s (22.3 fps), dedup-suppressed=0, connects=1
+2026-09-17 09:21:21,397 [INFO] __main__: API server on http://localhost:8000 (5 nodes)
+2026-09-17 09:21:21,473 [INFO] __main__: node node_01: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_jl_masjid/video1_stream.m3u8
+2026-09-17 09:21:21,473 [INFO] __main__: node node_05: streaming https://cctv.dev.banyumaskab.go.id/cctv_underpass/video1_stream.m3u8
+2026-09-17 09:21:21,473 [INFO] __main__: node node_02: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+2026-09-17 09:21:21,473 [INFO] __main__: node node_04: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_alun_alun/video1_stream.m3u8
+2026-09-17 09:21:21,473 [INFO] __main__: node node_03: streaming rtsp://admin:Marktel12345@10.26.110.142:554/Streaming/Channels/101
+2026-09-17 09:22:45,939 [INFO] __main__: node node_02 done: frames=662 counted=45 (7.8 fps)
+2026-09-17 09:22:45,947 [INFO] __main__: node node_01 done: frames=663 counted=27 (7.8 fps)
+2026-09-17 09:22:45,973 [INFO] __main__: node node_04 done: frames=644 counted=8 (7.6 fps)
+2026-09-17 09:22:46,003 [INFO] __main__: node node_03 done: frames=623 counted=2 (7.4 fps)
+2026-09-17 09:22:46,013 [INFO] __main__: node node_05 done: frames=640 counted=10 (7.6 fps)
