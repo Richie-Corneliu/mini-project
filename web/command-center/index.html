@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart ATCS Banyumas: Command Center</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='10' fill='%230F172A'/%3E%3Cpath d='M8 14h24a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-8a4 4 0 0 1 4-4z' fill='%2338BDF8'/%3E%3Ccircle cx='36' cy='22' r='5' fill='%23FACC15'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin="">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 48 48" role="img" aria-label="Logo CCTV Smart ATCS">
+        <path class="logo-mount" d="M14 40h20v4H14z"/>
+        <path class="logo-mount" d="M22 26h4v14h-4z"/>
+        <path class="logo-body" d="M8 12h24a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-8a4 4 0 0 1 4-4z"/>
+        <circle class="logo-lens-halo" cx="36" cy="20" r="7"/>
+        <circle class="logo-lens" cx="36" cy="20" r="4.5"/>
+        <circle class="logo-lens-core" cx="36" cy="20" r="2"/>
+        <circle class="logo-rec" cx="11" cy="18" r="2"/>
+      </svg>
+      <div class="brand-text">
+        <h1>SMART ATCS BANYUMAS</h1>
+        <span class="live-badge"><span class="live-dot"></span>COMMAND CENTER - LIVE</span>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="clock-widget">
+        <time id="clock-time" datetime="">--:--:--</time>
+        <span id="clock-date">Memuat tanggal</span>
+      </div>
+      <div class="sys-status" id="sys-status">
+        <span class="sys-dot"></span>ONLINE
+      </div>
+    </div>
+  </header>
+
+  <main class="stage">
+
+    <!-- ================= VIEW 1: WebGIS Overview ================= -->
+
+    <section class="view is-visible" id="view-map" aria-label="Peta sebaran simpang">
+
+      <div id="map"></div>
+
+      <div class="map-legend" aria-label="Keterangan status lalu lintas">
+        <span class="legend-item st-LANCAR"><i></i>Lancar</span>
+        <span class="legend-item st-PADAT"><i></i>Padat</span>
+        <span class="legend-item st-MACET"><i></i>Macet</span>
+      </div>
+
+      <section class="dashboard-menu" aria-label="Ringkasan status lalu lintas">
+        <header class="menu-head">
+          <div>
+            <p class="eyebrow">Dashboard Menu</p>
+            <h2>Ringkasan Simpang</h2>
+          </div>
+          <span class="menu-count" id="menu-count">3 titik</span>
+        </header>
+
+        <div class="menu-total">
+          <div class="total-item">
+            <strong id="total-kendaraan">0</strong>
+            <span>Total Kendaraan</span>
+          </div>
+          <div class="total-item">
+            <strong id="total-simpang">0</strong>
+            <span>Simpang Terpantau</span>
+          </div>
+        </div>
+
+        <div class="status-split" aria-label="Sebaran status simpang">
+          <span class="split-seg st-LANCAR" id="split-LANCAR" data-status="LANCAR"></span>
+          <span class="split-seg st-PADAT" id="split-PADAT" data-status="PADAT"></span>
+          <span class="split-seg st-MACET" id="split-MACET" data-status="MACET"></span>
+        </div>
+
+        <ul class="menu-list" id="menu-list"></ul>
+
+        <p class="menu-hint">Pilih simpang untuk membuka mode analitik.</p>
+      </section>
+
+    </section>
+
+    <!-- ================= VIEW 2: Counting &amp; Analytics ============ -->
+
+    <section class="view" id="view-count" aria-label="Analitik dan hitung kendaraan">
+
+      <video class="stage-video" id="stage-video" playsinline loop muted autoplay
+             poster="assets/poster.jpg" aria-hidden="true">
+        <source src="assets/placeholder.mp4" type="video/mp4">
+      </video>
+      <div class="stage-scrim" aria-hidden="true"></div>
+
+      <button type="button" class="back-btn" id="back-btn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        Kembali ke Peta
+      </button>
+
+      <div class="cam-hud" aria-label="Identitas kamera">
+        <span class="cam-chip"><span class="live-dot"></span>LIVE STREAM</span>
+        <span class="cam-chip st-PADAT" id="cam-chip">CAM 01</span>
+      </div>
+
+      <section class="drawer" id="drawer" aria-label="Panel analitik">
+        <button type="button" class="drawer-handle" id="drawer-handle"
+                aria-expanded="false" aria-controls="drawer-body">
+          <span class="handle-bar" aria-hidden="true"></span>
+          <span class="visually-hidden">Buka panel analitik</span>
+        </button>
+
+        <div class="drawer-summary">
+          <h2 class="drawer-place" id="drawer-place">Simpang Kebon Dalem</h2>
+          <p class="drawer-metrics" id="drawer-metrics">
+            <span class="dm"><b id="sum-total">0</b> Total</span>
+            <span class="dm-sep" aria-hidden="true"></span>
+            <span class="dm">Motor <b id="sum-motor">0</b></span>
+            <span class="dm-sep" aria-hidden="true"></span>
+            <span class="dm">Mobil <b id="sum-mobil">0</b></span>
+            <span class="dm-sep" aria-hidden="true"></span>
+            <span class="dm">Truk <b id="sum-truk">0</b></span>
+          </p>
+          <button type="button" class="drawer-toggle" id="drawer-toggle"
+                  aria-expanded="false" aria-controls="drawer-body">
+            <span id="toggle-label">Rincian</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+          </button>
+        </div>
+
+        <div class="drawer-body" id="drawer-body">
+          <div class="drawer-grid">
+
+            <section class="drawer-col" aria-label="Hitungan kendaraan saat ini">
+              <p class="eyebrow">Hitungan Saat Ini</p>
+              <div class="count-cards">
+                <article class="count-card">
+                  <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="5" cy="16" r="4"/><circle cx="19" cy="16" r="4"/>
+                    <path d="M5 16l3-7h5l2 7M9 9h7l3 3"/>
+                  </svg>
+                  <strong id="count-motor">0</strong>
+                  <span>Motor</span>
+                </article>
+                <article class="count-card">
+                  <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M3 15l2-6h14l2 6v4h-3M3 15v4h3M3 15h18"/>
+                    <circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
+                  </svg>
+                  <strong id="count-mobil">0</strong>
+                  <span>Mobil</span>
+                </article>
+                <article class="count-card">
+                  <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 16V7h11v9M13 10h5l4 4v2h-9"/>
+                    <circle cx="6" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
+                  </svg>
+                  <strong id="count-truk">0</strong>
+                  <span>Truk/Bus</span>
+                </article>
+              </div>
+              <dl class="mini-stats">
+                <div><dt>Rata-rata / jam</dt><dd id="avg-hour">0</dd></div>
+                <div><dt>Puncak tercatat</dt><dd id="peak-hour">0</dd></div>
+              </dl>
+            </section>
+
+            <section class="drawer-col" aria-label="Statistik per jam">
+              <p class="eyebrow">Statistik Per Jam</p>
+              <p class="col-sub">08:00 - 08:59</p>
+              <div class="chart" id="chart" role="img"
+                   aria-label="Diagram batang jumlah kendaraan per jam"></div>
+              <p class="chart-axis" aria-hidden="true">
+                <span>08</span><span>09</span><span>10</span><span>11</span><span>12</span><span>13</span>
+              </p>
+            </section>
+
+            <section class="drawer-col" aria-label="Status okupansi simpang">
+              <p class="eyebrow">Status Okupansi</p>
+              <p class="col-sub" id="occ-sub">Kepadatan simpang</p>
+
+              <div class="gauge" id="gauge">
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="gauge-track" cx="60" cy="60" r="50"/>
+                  <circle class="gauge-fill" id="gauge-fill" cx="60" cy="60" r="50"/>
+                </svg>
+                <div class="gauge-read">
+                  <strong id="occ-value">0%</strong>
+                  <span>Okupansi</span>
+                </div>
+              </div>
+
+              <div class="gauge-status st-LANCAR" id="gauge-status">
+                <span class="gauge-dot"></span>
+                <span id="occ-label">LANCAR</span>
+              </div>
+              <p class="gauge-note" id="occ-note">Menunggu data deteksi.</p>
+            </section>
+
+          </div>
+        </div>
+      </section>
+
+    </section>
+
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

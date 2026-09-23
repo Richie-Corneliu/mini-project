@@ -3582,3 +3582,21 @@ ConnectionResetError: [WinError 10054] An existing connection was forcibly close
 2026-09-17 09:22:45,973 [INFO] __main__: node node_04 done: frames=644 counted=8 (7.6 fps)
 2026-09-17 09:22:46,003 [INFO] __main__: node node_03 done: frames=623 counted=2 (7.4 fps)
 2026-09-17 09:22:46,013 [INFO] __main__: node node_05 done: frames=640 counted=10 (7.6 fps)
+2026-09-23 09:07:46,578 [INFO] __main__: Pipeline started. conf=0.20 imgsz=640
+2026-09-23 09:07:51,650 [INFO] __main__: stats: frames=89 dets=2141 tracked=7 counted=1 dedup=0 cabin=0 delivered=89 connects=1
+2026-09-23 09:07:56,650 [INFO] __main__: stats: frames=213 dets=5121 tracked=7 counted=1 dedup=0 cabin=0 delivered=213 connects=1
+2026-09-23 09:08:01,665 [INFO] __main__: stats: frames=338 dets=8545 tracked=11 counted=1 dedup=0 cabin=0 delivered=338 connects=1
+2026-09-23 09:08:06,668 [INFO] __main__: stats: frames=462 dets=12402 tracked=13 counted=4 dedup=0 cabin=0 delivered=462 connects=1
+2026-09-23 09:08:10,547 [INFO] __main__: Final: total=4 {'motor': 3, 'mobil': 1}
+2026-09-23 09:08:10,548 [INFO] __main__: Processed 551 of 551 delivered frames in 24s (23.0 fps), dedup-suppressed=0, connects=1
+2026-09-23 09:09:07,326 [INFO] __main__: API server on http://localhost:8000 (5 nodes)
+2026-09-23 09:09:07,399 [INFO] __main__: node node_01: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_jl_masjid/video1_stream.m3u8
+2026-09-23 09:09:07,399 [INFO] __main__: node node_02: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+2026-09-23 09:09:07,399 [INFO] __main__: node node_05: streaming https://cctv.dev.banyumaskab.go.id/cctv_underpass/video1_stream.m3u8
+2026-09-23 09:09:07,399 [INFO] __main__: node node_04: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_alun_alun/video1_stream.m3u8
+2026-09-23 09:09:07,399 [INFO] __main__: node node_03: streaming rtsp://admin:Marktel12345@10.26.110.142:554/Streaming/Channels/101
+2026-09-23 09:13:02,360 [INFO] __main__: node node_01 done: frames=2499 counted=79 (10.6 fps)
+2026-09-23 09:13:02,375 [INFO] __main__: node node_05 done: frames=2402 counted=25 (10.2 fps)
+2026-09-23 09:13:02,392 [INFO] __main__: node node_02 done: frames=2499 counted=109 (10.6 fps)
+2026-09-23 09:13:02,411 [INFO] __main__: node node_04 done: frames=2499 counted=63 (10.6 fps)
+2026-09-23 09:13:03,650 [INFO] __main__: node node_03 done: frames=152 counted=0 (0.6 fps)
