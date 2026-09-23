@@ -32,6 +32,24 @@ class VideoStreamer:
         self.frames_delivered = 0
         self.connects = 0
         self.reconnects = 0
+        # Source frame rate from CAP_PROP_FPS; 0.0 until the stream is open.
+        # Consumers pace playback against effective_fps() because FFmpeg's HLS
+        # demuxer buffers whole segments and hands them over in one burst
+        # (~0ms gaps, then a multi-second stall), so an unpaced consumer would
+        # race through each burst -> fast-forward.
+        self.native_fps = 0.0
+
+    def effective_fps(self, default=25.0):
+        """Source frame rate, or `default` when FFmpeg reports 0/NaN.
+
+        HLS is unreliable here: CAP_PROP_FPS often comes back 0, NaN, or a
+        raw timebase such as 90000. `_run` already clamps those to 25.0, so
+        this only guards the window before the first successful open.
+        """
+        fps = self.native_fps
+        if not fps or fps != fps or fps <= 0 or fps > 120:
+            return default
+        return fps
 
     def start(self):
         if self._thread is not None:
@@ -99,12 +117,22 @@ class VideoStreamer:
                 backoff = min(backoff * 2, self._backoff_max)
                 continue
             cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            # Read the source rate once per connect. HLS reports 0/NaN or a raw
+            # timebase (e.g. 90000) often enough that a sane range is the only
+            # safe option; 25.0 is the standard Indonesian CCTV rate.
+            native_fps = cap.get(cv2.CAP_PROP_FPS)
+            if not native_fps or native_fps != native_fps or native_fps <= 0 \
+                    or native_fps > 120:
+                native_fps = 25.0
+            with self._lock:
+                self.native_fps = float(native_fps)
             self.connects += 1
             attempts = 0
             if self.connects > 1:
                 self.reconnects += 1
                 logger.info("reconnected to %s", self.url)
             backoff = self._backoff_min
+            logger.info("%s opened at %.1f fps", self.url, native_fps)
             try:
                 self._pump(cap)
             finally:

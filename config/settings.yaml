@@ -5,18 +5,19 @@ stream:
   backoff_sec: 2.0
   queue_size: 3
   gap_thresh_sec: 0.5
-  target_fps: 25
+  target_fps: 15
+  throttle_fps: 0.7
 zones:
 - name: underpass
   polygon:
-  - - 221
-    - 169
-  - - 206
-    - 269
-  - - 435
-    - 265
-  - - 453
-    - 184
+  - - 22
+    - 140
+  - - 47
+    - 391
+  - - 678
+    - 330
+  - - 605
+    - 161
 lines:
   items:
   - p1:

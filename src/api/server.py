@@ -56,6 +56,12 @@ nodes_state = {
 # Global frame storage per node untuk Video Streaming MJPEG
 latest_frames = {}
 
+# Node yang sedang ditonton operator (di-set lewat POST /api/v1/set-focus).
+# Dibaca worker AI di main.py: node ini jalan di target_fps penuh, sisanya
+# di-throttle agar GPU hanya bekerja untuk stream yang benar-benar dilihat.
+ACTIVE_FOCUS_NODE = None
+_focus_lock = threading.Lock()
+
 
 def _status_for(occupancy: int) -> str:
     if occupancy >= 65:
@@ -87,6 +93,16 @@ def set_latest_frame(node_id: str, frame):
     if ret:
         with _lock:
             latest_frames[node_id] = jpeg.tobytes()
+
+
+def get_active_focus():
+    """Node id yang sedang ditonton operator, atau None saat kembali ke peta.
+
+    Dibaca worker AI (main.py) tiap iterasi untuk memilih laju inferensi:
+    node fokus di target_fps penuh, sisanya di-throttle ke throttle_fps.
+    """
+    with _focus_lock:
+        return ACTIVE_FOCUS_NODE
 
 
 def _public_state(node_id, reg, st, now):
@@ -127,6 +143,20 @@ def get_traffic_data():
             "motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
             "status": "LANCAR", "fps": 0.0, "last_seen": 0.0}), now))
     return {"nodes": snap}
+
+
+@app.post("/api/v1/set-focus/{node_id}")
+def set_focus(node_id: str):
+    """Tandai satu node sebagai fokus live; worker-nya naik ke target_fps.
+
+    Frontend memanggil ini saat membuka Counting View. `none` mereset fokus
+    (kembali ke peta) sehingga semua node kembali di-throttle.
+    """
+    global ACTIVE_FOCUS_NODE
+    with _focus_lock:
+        ACTIVE_FOCUS_NODE = None if node_id == "none" else node_id
+        current = ACTIVE_FOCUS_NODE
+    return {"focus": current}
 
 
 def generate_video_stream(node_id: str):
