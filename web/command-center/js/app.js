@@ -1,10 +1,11 @@
 ﻿/* Smart ATCS Banyumas - Command Center
-   Visual baseline: everything on this page is driven by MOCK_NODES plus the
-   placeholder clip in assets/. No backend calls, by design.
+   MOCK_NODES renders instantly so the console never boots empty; the FastAPI
+   backend then overlays live counts on a 1.5s poll. If the API is unreachable
+   the mock simply stays on screen.
 
    Two views share one page:
      view-map    WebGIS overview, Leaflet map plus the floating dashboard menu
-     view-count  full-bleed stream with the analytics drawer along the bottom
+     view-count  full-bleed MJPEG stream with the analytics drawer along the bottom
 */
 
 "use strict";
@@ -12,6 +13,11 @@
 const MAP_CENTER = [-7.4245, 109.2302];
 const MAP_ZOOM = 14;
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+/* Backend: FastAPI serves processed MJPEG + tracker JSON. The frontend never
+   touches RTSP/HLS directly, only these HTTP endpoints. */
+const API_BASE = "http://localhost:8000/api/v1";
+const POLL_MS = 1500;
 
 const STATUS_ORDER = ["LANCAR", "PADAT", "MACET"];
 const STATUS_CLASS = { LANCAR: "st-LANCAR", PADAT: "st-PADAT", MACET: "st-MACET" };
@@ -73,7 +79,7 @@ const byId = (id) => document.getElementById(id);
 const el = {
   viewMap: byId("view-map"),
   viewCount: byId("view-count"),
-  video: byId("stage-video"),
+  feed: byId("stage-video"),
   backBtn: byId("back-btn"),
   camChip: byId("cam-chip"),
 
@@ -146,26 +152,42 @@ function markerIcon(node) {
   });
 }
 
-function drawMarkers() {
+/* Marker creation and refresh share one path so a poll can recolor a pin in
+   place. The icon is rebuilt only when the status actually changed, which
+   keeps the pulse animation from restarting on every poll cycle. */
+function upsertMarkers() {
   nodes.forEach((node) => {
-    const marker = L.marker([node.lat, node.lng], {
-      icon: markerIcon(node),
-      riseOnHover: true,
-      keyboard: true,
-      title: node.nama,
-      alt: node.nama,
-    });
+    if (node.lat == null || node.lng == null) return;
 
-    /* Leaflet injects divIcon html as markup, so the name goes in as text. */
-    marker.on("add", () => {
-      const icon = marker.getElement();
-      const label = icon && icon.querySelector(".pin-label");
-      if (label) label.textContent = node.nama;
-    });
-    marker.on("click", () => openCounting(node.id));
+    const existing = markers.get(node.id);
+    if (!existing) {
+      const marker = L.marker([node.lat, node.lng], {
+        icon: markerIcon(node),
+        riseOnHover: true,
+        keyboard: true,
+        title: node.nama,
+        alt: node.nama,
+      });
 
-    marker.addTo(map);
-    markers.set(node.id, marker);
+      /* Leaflet injects divIcon html as markup, so the name goes in as text. */
+      marker.on("add", () => {
+        const icon = marker.getElement();
+        const label = icon && icon.querySelector(".pin-label");
+        if (label) label.textContent = node.nama;
+      });
+      marker.on("click", () => openCounting(node.id));
+
+      marker.addTo(map);
+      marker._status = node.status;
+      markers.set(node.id, marker);
+      return;
+    }
+
+    existing.setLatLng([node.lat, node.lng]);
+    if (existing._status !== node.status) {
+      existing.setIcon(markerIcon(node));
+      existing._status = node.status;
+    }
   });
 }
 
@@ -213,19 +235,33 @@ function showView(which) {
   /* Leaflet measures wrong while its pane is hidden, so re-measure on return. */
   if (!toCounting && map) map.invalidateSize();
 
-  /* The loop is muted, which is what lets autoplay run, but pausing it in the
-     background keeps the clip from burning CPU on the map view. */
-  if (el.video) {
-    if (toCounting) {
-      const started = el.video.play();
-      if (started && typeof started.catch === "function") started.catch(() => {});
-    } else {
-      el.video.pause();
-      el.video.currentTime = 0;
-    }
-  }
+  /* The MJPEG connection lives in the img src, so dropping it on the way out
+     is what stops the stream and frees the browser's bandwidth. */
+  if (toCounting) attachStream(selectedId);
+  else clearStream();
 
   if (toCounting) settle(true);
+}
+
+/* ---- Backend bridge (focus + MJPEG) ----------------------------- */
+
+/* Ask the worker to prioritise this node's inference. Fire-and-forget: the
+   endpoint is optional, so a missing backend must not break the UI. */
+function setFocus(nodeId) {
+  fetch(API_BASE + "/set-focus/" + nodeId, { method: "POST" }).catch(() => {});
+}
+
+/* MJPEG arrives as multipart/x-mixed-replace, which only an <img> renders.
+   Assigning src opens the stream; removing it closes the connection. */
+function attachStream(nodeId) {
+  if (!nodeId) return;
+  el.feed.src = API_BASE + "/video-feed/" + nodeId;
+  setFocus(nodeId);
+}
+
+function clearStream() {
+  el.feed.removeAttribute("src");
+  setFocus("none");
 }
 
 function openCounting(id) {
@@ -248,6 +284,7 @@ el.backBtn.addEventListener("click", () => showView("map"));
 function renderAnalytics(node) {
   const grand = total(node);
   const cls = statusOf(node);
+  const hourly = node.hourly || [];
 
   el.drawerPlace.textContent = node.nama;
   el.camChip.textContent = "CAM " + String([...nodes.keys()].indexOf(node.id) + 1).padStart(2, "0");
@@ -262,19 +299,38 @@ function renderAnalytics(node) {
   el.countMobil.textContent = node.mobil;
   el.countTruk.textContent = node.truk;
 
-  el.avgHour.textContent = Math.round(node.hourly.reduce((a, b) => a + b, 0) / node.hourly.length);
-  el.peakHour.textContent = Math.max(...node.hourly);
+  el.avgHour.textContent = hourly.length
+    ? Math.round(hourly.reduce((a, b) => a + b, 0) / hourly.length)
+    : 0;
+  el.peakHour.textContent = hourly.length ? Math.max(...hourly) : 0;
 
   renderChart(node);
   renderGauge(node);
 }
 
-function renderChart(node) {
-  const peak = Math.max(...node.hourly);
+/* The poll only refreshes what the backend actually tracks, so the hourly
+   chart is left alone instead of being rebuilt every 1.5 seconds. */
+function renderLiveMetrics(node) {
+  el.sumTotal.textContent = total(node);
+  el.sumMotor.textContent = node.motor;
+  el.sumMobil.textContent = node.mobil;
+  el.sumTruk.textContent = node.truk;
 
-  el.chart.innerHTML = node.hourly.map((value) => (
+  el.countMotor.textContent = node.motor;
+  el.countMobil.textContent = node.mobil;
+  el.countTruk.textContent = node.truk;
+
+  el.camChip.className = "cam-chip " + statusOf(node);
+  renderGauge(node);
+}
+
+function renderChart(node) {
+  const hourly = node.hourly || [];
+  const peak = hourly.length ? Math.max(...hourly) : 0;
+
+  el.chart.innerHTML = hourly.map((value) => (
     '<div class="chart-bar' + (value === peak ? " is-peak" : "") + '">' +
-      '<i style="height:' + Math.round((value / peak) * 100) + '%"></i>' +
+      '<i style="height:' + (peak > 0 ? Math.round((value / peak) * 100) : 0) + '%"></i>' +
     "</div>"
   )).join("");
 
@@ -407,6 +463,44 @@ window.addEventListener("resize", () => {
   drawer.classList.remove("is-dragging");
 });
 
+/* ---- Live polling ----------------------------------------------- */
+
+/* Merge tracker snapshots over the mock baseline. The API carries counts and
+   status but no hourly breakdown, so the chart series is inherited from the
+   mock entry rather than nulled out. */
+function applyNodes(apiNodes) {
+  Object.entries(apiNodes).forEach(([id, incoming]) => {
+    const prev = nodes.get(id);
+    nodes.set(id, {
+      id: id,
+      nama: incoming.nama || (prev && prev.nama) || id,
+      lat: incoming.lat != null ? incoming.lat : (prev && prev.lat),
+      lng: incoming.lng != null ? incoming.lng : (prev && prev.lng),
+      motor: incoming.motor || 0,
+      mobil: incoming.mobil || 0,
+      truk: incoming.truk || 0,
+      occupancy: incoming.occupancy || 0,
+      status: incoming.status || "LANCAR",
+      hourly: prev ? prev.hourly : null,
+    });
+  });
+
+  renderMenu();
+  if (selectedId && nodes.has(selectedId)) renderLiveMetrics(nodes.get(selectedId));
+}
+
+async function poll() {
+  try {
+    const res = await fetch(API_BASE + "/traffic-data", { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const payload = await res.json();
+    applyNodes(payload.nodes || {});
+  } catch (err) {
+    /* Backend unreachable: the mock baseline is already on screen, so the
+       console just keeps showing it instead of blanking out. */
+  }
+}
+
 /* ---- Clock (format Indonesia) ----------------------------------- */
 
 function tickClock() {
@@ -426,9 +520,12 @@ function tickClock() {
 
 MOCK_NODES.forEach((node) => nodes.set(node.id, node));
 initMap();
-drawMarkers();
+upsertMarkers();
 renderMenu();
 tickClock();
 setInterval(tickClock, 1000);
 renderAnalytics(nodes.get(MOCK_NODES[0].id));
 settle(false);
+
+poll();
+setInterval(poll, POLL_MS);
