@@ -19,8 +19,8 @@ import signal
 import sys
 import threading
 import time
-from collections import defaultdict
 from pathlib import Path
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -28,7 +28,8 @@ import supervision as sv
 import uvicorn
 import yaml
 
-from src.api.server import app, get_active_focus, set_latest_frame, update_node_data
+from src.api.server import (app, clear_commands, get_active_focus, pop_command,
+                             set_latest_frame, update_node_data)
 from src.core.detector import Detector, centroids
 from src.core.zone_counter import ZoneCounter
 from src.stream.video_streamer import VideoStreamer
@@ -189,7 +190,8 @@ class StageProfiler:
 
 def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt,
                stop_event, prof, reset_flag, t_start, audit=None, debug=False,
-               publish_api=False, force_focus=False):
+               publish_api=False, force_focus=False, record_state=None,
+               record_lock=None, recording_supported=False):
     """Throttled inference loop. Samples the newest raw frame, runs the model,
     and stores the overlay for the display thread. Paced to frame_dt when this
     node is focused, idle_dt otherwise (Lazy Inference).
@@ -199,6 +201,9 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
     away to, so it must always run at target_fps."""
     last_seq = 0
     next_ai = time.perf_counter()
+    start_time = time.time()
+    peak_occupancy = 0
+    hourly_counts = {}
     while not stop_event.is_set():
         now = time.perf_counter()
         if next_ai > now:
@@ -219,9 +224,24 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
         next_ai = max(next_ai + dt, time.perf_counter())
         frame, arrival, wall = raw
 
-        if reset_flag["v"]:
+        command = pop_command(node_id)
+        if command == "record":
+            if not recording_supported:
+                log.warning("Recording in multi-node mode is not yet supported to save CPU.")
+            elif record_state is not None and record_lock is not None:
+                with record_lock:
+                    record_state["enabled"] = not record_state["enabled"]
+                    enabled = record_state["enabled"]
+                log.info("record %s", "ON" if enabled else "OFF")
+
+        if reset_flag["v"] or command == "reset":
             counter.reset()
             reset_flag["v"] = False
+            clear_commands(node_id)
+            start_time = time.time()
+            peak_occupancy = 0
+            hourly_counts.clear()
+            log.info("Node %s counts reset", node_id)
 
         try:
             # ---- [RT-DETR + ByteTrack INFERENCE] ----
@@ -240,6 +260,12 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
         except Exception as e:
             log.warning("node %s detector: %s", node_id, e)
             continue
+
+        current_occupancy = len(dets)
+        peak_occupancy = max(peak_occupancy, current_occupancy)
+        if events:
+            hour = datetime.now().strftime("%H")
+            hourly_counts[hour] = hourly_counts.get(hour, 0) + len(events)
 
         if audit:
             for ev in events:
@@ -262,16 +288,16 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
         })
 
         if publish_api:
-            by_class = defaultdict(int)
-            if len(dets) and dets.class_id is not None:
-                for cid in dets.class_id:
-                    by_class[int(cid)] += 1
+            totals = counter.total_by_class
             update_node_data(node_id, {
-                "motor": by_class.get(3, 0),
-                "mobil": by_class.get(2, 0),
-                "truk": by_class.get(5, 0) + by_class.get(7, 0),
-                "occupancy": len(dets),
+                "motor": totals.get("motor", 0),
+                "mobil": totals.get("mobil", 0),
+                "truk": totals.get("truk/bus", 0),
+                "occupancy": current_occupancy,
                 "fps": counter.n_frames / max(time.monotonic() - t_start, 1e-6),
+                "start_time": start_time,
+                "peak_occupancy": peak_occupancy,
+                "hourly_counts": dict(hourly_counts),
             })
 
         prof.tick_ai(len(dets), infer=t_infer, track=t_track, acquire=t_acquire)
@@ -391,6 +417,8 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     writer = None
     audit_path = None
     audit_fps = round(1.0 / frame_dt)
+    record_state = {"enabled": bool(record)}
+    record_lock = threading.Lock()
 
     if show:
         cv2.namedWindow("ATCS", cv2.WINDOW_NORMAL)
@@ -398,18 +426,24 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
 
     def sink(out):
         # Runs on the main thread: imshow/highgui stays on one thread.
-        nonlocal writer, audit_path, record
+        nonlocal writer, audit_path
         if serve_api:
             set_latest_frame(node_id, out)
-        if record:
-            if writer is None:
-                writer, audit_path = open_audit_writer(out, audit_fps)
-                if writer:
-                    log.info("audit video: %s", audit_path)
-                else:
-                    record = False
+        with record_lock:
+            recording = record_state["enabled"]
+        if recording and writer is None:
+            writer, audit_path = open_audit_writer(out, audit_fps)
             if writer:
-                writer.write(np.ascontiguousarray(out))
+                log.info("audit video: %s", audit_path)
+            else:
+                with record_lock:
+                    record_state["enabled"] = False
+        elif not recording and writer is not None:
+            writer.release()
+            log.info("audit video saved: %s", audit_path)
+            writer, audit_path = None, None
+        if writer:
+            writer.write(np.ascontiguousarray(out))
         if not show:
             return
         cv2.imshow("ATCS", out)
@@ -417,12 +451,10 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         if k == ord("q"):
             stop.set()
         elif k == ord("c"):
-            record = not record
-            if writer and not record:
-                writer.release()
-                log.info("audit video saved: %s", audit_path)
-                writer, audit_path = None, None
-            log.info("record %s", "ON" if record else "OFF")
+            with record_lock:
+                record_state["enabled"] = not record_state["enabled"]
+                enabled = record_state["enabled"]
+            log.info("record %s", "ON" if enabled else "OFF")
         elif k in (ord("r"), ord("R")):
             # Defer to the AI thread; it owns the counter.
             reset_flag["v"] = True
@@ -436,7 +468,8 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     ai = threading.Thread(
         target=_ai_worker,
         args=(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt,
-              stop, prof, reset_flag, t0, audit, debug, serve_api, True),
+              stop, prof, reset_flag, t0, audit, debug, serve_api, True,
+              record_state, record_lock, True),
         daemon=True, name="ai")
     ai.start()
 

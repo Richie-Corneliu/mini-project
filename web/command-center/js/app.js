@@ -31,7 +31,7 @@ const NOTES = {
 const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 50;
 
 /* ---- Mock data -------------------------------------------------- *
-   Three simpang held in Purwokerto. hourly[] holds 08:00 through 13:59. */
+   Three simpang held in Purwokerto. hourly[] is fallback data for offline boot. */
 
 const MOCK_NODES = [
   {
@@ -101,6 +101,9 @@ const el = {
   drawerToggle: byId("drawer-toggle"),
   toggleLabel: byId("toggle-label"),
   drawerPlace: byId("drawer-place"),
+  resetCounterBtn: byId("reset-counter-btn"),
+  toggleRecordBtn: byId("toggle-record-btn"),
+  controlStatus: byId("control-status"),
   sumTotal: byId("sum-total"),
   sumMotor: byId("sum-motor"),
   sumMobil: byId("sum-mobil"),
@@ -113,6 +116,7 @@ const el = {
   peakHour: byId("peak-hour"),
 
   chart: byId("chart"),
+  chartAxis: byId("chart-axis"),
   gauge: byId("gauge"),
   gaugeFill: byId("gauge-fill"),
   occValue: byId("occ-value"),
@@ -251,6 +255,31 @@ function setFocus(nodeId) {
   fetch(API_BASE + "/set-focus/" + nodeId, { method: "POST" }).catch(() => {});
 }
 
+async function sendControl(action) {
+  if (!selectedId) return;
+
+  el.resetCounterBtn.disabled = true;
+  el.toggleRecordBtn.disabled = true;
+  el.controlStatus.textContent = "Mengirim perintah...";
+  try {
+    const res = await fetch(API_BASE + "/control/" + selectedId + "/" + action, {
+      method: "POST",
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    el.controlStatus.textContent = action === "reset"
+      ? "Perintah reset diterima."
+      : "Perintah rekam diterima.";
+  } catch (err) {
+    el.controlStatus.textContent = "Perintah gagal dikirim.";
+  } finally {
+    el.resetCounterBtn.disabled = false;
+    el.toggleRecordBtn.disabled = false;
+  }
+}
+
+el.resetCounterBtn.addEventListener("click", () => sendControl("reset"));
+el.toggleRecordBtn.addEventListener("click", () => sendControl("record"));
+
 /* MJPEG arrives as multipart/x-mixed-replace, which only an <img> renders.
    Assigning src opens the stream; removing it closes the connection. */
 function attachStream(nodeId) {
@@ -284,8 +313,8 @@ el.backBtn.addEventListener("click", () => showView("map"));
 function renderAnalytics(node) {
   const grand = total(node);
   const cls = statusOf(node);
-  const hourly = node.hourly || [];
 
+  el.controlStatus.textContent = "";
   el.drawerPlace.textContent = node.nama;
   el.camChip.textContent = "CAM " + String([...nodes.keys()].indexOf(node.id) + 1).padStart(2, "0");
   el.camChip.className = "cam-chip " + cls;
@@ -299,19 +328,13 @@ function renderAnalytics(node) {
   el.countMobil.textContent = node.mobil;
   el.countTruk.textContent = node.truk;
 
-  el.avgHour.textContent = hourly.length
-    ? Math.round(hourly.reduce((a, b) => a + b, 0) / hourly.length)
-    : 0;
-  el.peakHour.textContent = hourly.length ? Math.max(...hourly) : 0;
-
-  renderChart(node);
-  renderGauge(node);
+  renderLiveMetrics(node);
 }
 
-/* The poll only refreshes what the backend actually tracks, so the hourly
-   chart is left alone instead of being rebuilt every 1.5 seconds. */
 function renderLiveMetrics(node) {
-  el.sumTotal.textContent = total(node);
+  const grand = total(node);
+
+  el.sumTotal.textContent = grand;
   el.sumMotor.textContent = node.motor;
   el.sumMobil.textContent = node.mobil;
   el.sumTruk.textContent = node.truk;
@@ -320,23 +343,54 @@ function renderLiveMetrics(node) {
   el.countMobil.textContent = node.mobil;
   el.countTruk.textContent = node.truk;
 
+  el.avgHour.textContent = averagePerHour(node);
+  el.peakHour.textContent = node.startTime ? node.peakOccupancy : 0;
+
   el.camChip.className = "cam-chip " + statusOf(node);
+  renderChart(node);
   renderGauge(node);
 }
 
-function renderChart(node) {
-  const hourly = node.hourly || [];
-  const peak = hourly.length ? Math.max(...hourly) : 0;
+function averagePerHour(node) {
+  if (!node.startTime) return 0;
+  const elapsedHours = Math.max((Date.now() / 1000 - node.startTime) / 3600, 1);
+  return Math.round(total(node) / elapsedHours);
+}
 
-  el.chart.innerHTML = hourly.map((value) => (
-    '<div class="chart-bar' + (value === peak ? " is-peak" : "") + '">' +
-      '<i style="height:' + (peak > 0 ? Math.round((value / peak) * 100) : 0) + '%"></i>' +
+function chartData(node) {
+  if (node.startTime) {
+    const hours = Object.keys(node.hourlyCounts || {}).sort().slice(-6);
+    return hours.map((hour) => ({
+      hour: hour,
+      value: Number(node.hourlyCounts[hour] || 0),
+    }));
+  }
+
+  return (node.hourly || []).map((value, index) => ({
+    hour: String(8 + index).padStart(2, "0"),
+    value: Number(value || 0),
+  }));
+}
+
+function renderChart(node) {
+  const points = chartData(node);
+  const peak = points.length ? Math.max(...points.map((point) => point.value)) : 0;
+
+  el.chart.innerHTML = points.length ? points.map((point) => (
+    '<div class="chart-bar' + (point.value === peak && peak > 0 ? " is-peak" : "") +
+      '" title="' + point.hour + ':00: ' + point.value + ' kendaraan">' +
+      '<i style="height:' +
+        (peak > 0 ? Math.round((point.value / peak) * 100) : 0) + '%"></i>' +
     "</div>"
+  )).join("") : '<span class="chart-empty">Belum ada data per jam.</span>';
+
+  el.chartAxis.innerHTML = points.map((point) => (
+    "<span>" + point.hour + "</span>"
   )).join("");
 
   el.chart.setAttribute(
     "aria-label",
-    "Diagram batang jumlah kendaraan per jam, 08:00 sampai 13:59. " +
+    "Diagram batang jumlah kendaraan per jam. " +
     "Puncak " + peak + " kendaraan."
   );
 }
@@ -465,9 +519,7 @@ window.addEventListener("resize", () => {
 
 /* ---- Live polling ----------------------------------------------- */
 
-/* Merge tracker snapshots over the mock baseline. The API carries counts and
-   status but no hourly breakdown, so the chart series is inherited from the
-   mock entry rather than nulled out. */
+/* Merge tracker snapshots over mock identity and fallback chart data. */
 function applyNodes(apiNodes) {
   Object.entries(apiNodes).forEach(([id, incoming]) => {
     const prev = nodes.get(id);
@@ -481,8 +533,14 @@ function applyNodes(apiNodes) {
       truk: incoming.truk || 0,
       occupancy: incoming.occupancy || 0,
       status: incoming.status || "LANCAR",
-      hourly: prev ? prev.hourly : null,
-    });
+       hourly: prev ? prev.hourly : null,
+       startTime: incoming.start_time != null
+         ? Number(incoming.start_time) : (prev && prev.startTime) || 0,
+       peakOccupancy: incoming.peak_occupancy != null
+         ? Number(incoming.peak_occupancy) : (prev && prev.peakOccupancy) || 0,
+       hourlyCounts: incoming.hourly_counts != null
+         ? incoming.hourly_counts : (prev && prev.hourlyCounts) || {},
+     });
   });
 
   renderMenu();

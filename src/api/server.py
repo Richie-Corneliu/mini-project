@@ -31,6 +31,10 @@ app.add_middleware(
 STALE_SEC = 10.0
 
 _lock = threading.Lock()
+_command_lock = threading.Lock()
+
+# Pending operator commands per node. Workers consume commands atomically.
+COMMAND_QUEUE = {}
 
 
 def load_node_registry(path=None):
@@ -49,7 +53,8 @@ REGISTRY = {n["id"]: n for n in load_node_registry()}
 # Global State per node (ditulis worker AI, dibaca endpoint JSON)
 nodes_state = {
     nid: {"motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
-          "status": "LANCAR", "fps": 0.0, "last_seen": 0.0}
+          "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
+          "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {}}
     for nid in REGISTRY
 }
 
@@ -77,14 +82,40 @@ def update_node_data(node_id: str, data: dict):
         st = nodes_state.setdefault(node_id, {"motor": 0, "mobil": 0,
                                                "truk": 0, "occupancy": 0,
                                                "status": "LANCAR", "fps": 0.0,
-                                               "last_seen": 0.0})
+                                               "last_seen": 0.0,
+                                               "start_time": 0.0,
+                                               "peak_occupancy": 0,
+                                               "hourly_counts": {}})
         st["motor"] = int(data.get("motor", 0))
         st["mobil"] = int(data.get("mobil", 0))
         st["truk"] = int(data.get("truk", 0))
         st["occupancy"] = int(data.get("occupancy", 0))
         st["fps"] = round(float(data.get("fps", 0.0)), 1)
+        st["start_time"] = float(data.get("start_time", st["start_time"]))
+        st["peak_occupancy"] = int(data.get("peak_occupancy", st["peak_occupancy"]))
+        st["hourly_counts"] = {
+            str(hour): int(count)
+            for hour, count in data.get("hourly_counts", st["hourly_counts"]).items()
+        }
         st["status"] = _status_for(st["occupancy"])
         st["last_seen"] = time.monotonic()
+
+
+def pop_command(node_id: str):
+    """Return and remove the next pending command for a node."""
+    with _command_lock:
+        commands = COMMAND_QUEUE.get(node_id)
+        if not commands:
+            return None
+        command = commands.pop(0)
+        if not commands:
+            COMMAND_QUEUE.pop(node_id, None)
+        return command
+
+
+def clear_commands(node_id: str) -> None:
+    with _command_lock:
+        COMMAND_QUEUE.pop(node_id, None)
 
 
 def set_latest_frame(node_id: str, frame):
@@ -117,6 +148,9 @@ def _public_state(node_id, reg, st, now):
         "truk": st["truk"],
         "occupancy": st["occupancy"],
         "fps": st["fps"],
+        "start_time": st["start_time"],
+        "peak_occupancy": st["peak_occupancy"],
+        "hourly_counts": dict(st["hourly_counts"]),
         "online": online,
     }
 
@@ -141,7 +175,8 @@ def get_traffic_data():
     for nid, reg in REGISTRY.items():
         snap.setdefault(nid, _public_state(nid, reg, nodes_state.get(nid, {
             "motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
-            "status": "LANCAR", "fps": 0.0, "last_seen": 0.0}), now))
+            "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
+            "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {}}), now))
     return {"nodes": snap}
 
 
@@ -157,6 +192,18 @@ def set_focus(node_id: str):
         ACTIVE_FOCUS_NODE = None if node_id == "none" else node_id
         current = ACTIVE_FOCUS_NODE
     return {"focus": current}
+
+
+@app.post("/api/v1/control/{node_id}/{action}")
+def control_node(node_id: str, action: str):
+    if node_id not in REGISTRY and node_id not in nodes_state:
+        raise HTTPException(status_code=404, detail=f"unknown node {node_id}")
+    if action not in {"reset", "record"}:
+        raise HTTPException(status_code=400,
+                            detail="unsupported action; use reset or record")
+    with _command_lock:
+        COMMAND_QUEUE.setdefault(node_id, []).append(action)
+    return {"node_id": node_id, "action": action, "queued": True}
 
 
 def generate_video_stream(node_id: str):

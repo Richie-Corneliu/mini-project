@@ -97,8 +97,11 @@
 
     <section class="view" id="view-count" aria-label="Analitik dan hitung kendaraan">
 
-      <img class="stage-video" id="stage-video" alt="Siaran langsung CCTV simpang"
-           decoding="async">
+      <div class="video-stage" id="video-stage">
+        <img class="stage-video" id="stage-video" alt="Siaran langsung CCTV simpang"
+             decoding="async">
+        <canvas id="zone-canvas" aria-label="Area gambar zona penghitungan"></canvas>
+      </div>
       <div class="stage-scrim" aria-hidden="true"></div>
 
       <button type="button" class="back-btn" id="back-btn">
@@ -127,7 +130,7 @@
             <span class="dm-sep" aria-hidden="true"></span>
             <span class="dm">Mobil <b id="sum-mobil">0</b></span>
             <span class="dm-sep" aria-hidden="true"></span>
-            <span class="dm">Truk <b id="sum-truk">0</b></span>
+           <span class="dm">Truk <b id="sum-truk">0</b></span>
           </p>
           <button type="button" class="drawer-toggle" id="drawer-toggle"
                   aria-expanded="false" aria-controls="drawer-body">
@@ -137,6 +140,17 @@
         </div>
 
         <div class="drawer-body" id="drawer-body">
+          <div class="control-panel" aria-label="Kontrol kamera">
+            <button type="button" class="control-btn" id="reset-counter-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5M4 4v4.5h4.5"/></svg>
+              Reset Counter
+            </button>
+            <button type="button" class="control-btn record-btn" id="toggle-record-btn">
+              <span class="record-dot" aria-hidden="true"></span>
+              Toggle Record
+            </button>
+            <p class="control-status" id="control-status" aria-live="polite"></p>
+          </div>
           <div class="drawer-grid">
 
             <section class="drawer-col" aria-label="Hitungan kendaraan saat ini">
@@ -178,9 +192,7 @@
               <p class="col-sub">08:00 - 08:59</p>
               <div class="chart" id="chart" role="img"
                    aria-label="Diagram batang jumlah kendaraan per jam"></div>
-              <p class="chart-axis" aria-hidden="true">
-                <span>08</span><span>09</span><span>10</span><span>11</span><span>12</span><span>13</span>
-              </p>
+              <p class="chart-axis" id="chart-axis" aria-hidden="true"></p>
             </section>
 
             <section class="drawer-col" aria-label="Status okupansi simpang">
