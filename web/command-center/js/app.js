@@ -36,9 +36,9 @@ const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 50;
 const MOCK_NODES = [
   {
     id: "node_01",
-    nama: "Simpang Kebon Dalem",
-    lat: -7.4245,
-    lng: 109.2302,
+    nama: "Simpang Sawangan",
+    lat: -7.424374345027274,
+    lng: 109.2267977305384,
     motor: 100,
     mobil: 40,
     truk: 10,
@@ -48,9 +48,9 @@ const MOCK_NODES = [
   },
   {
     id: "node_02",
-    nama: "Simpang Tanjung",
-    lat: -7.4302,
-    lng: 109.2401,
+    nama: "Museum BRI",
+    lat: -7.424048458534053,
+    lng: 109.22583187510753,
     motor: 62,
     mobil: 22,
     truk: 4,
@@ -60,9 +60,9 @@ const MOCK_NODES = [
   },
   {
     id: "node_03",
-    nama: "Simpang Pasar Wage",
-    lat: -7.4188,
-    lng: 109.2389,
+    nama: "Simpang Kebon Dalem Timur",
+    lat: -7.423139,
+    lng: 109.244000,
     motor: 156,
     mobil: 71,
     truk: 18,

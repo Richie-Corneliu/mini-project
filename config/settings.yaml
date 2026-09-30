@@ -1,5 +1,5 @@
 stream:
-  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+  source: https://www.banyumaskab.go.id/cctv-stream/cctv_simpang_museum_bri/video1_stream.m3u8
   reconnect: true
   max_retries: 5
   backoff_sec: 2.0

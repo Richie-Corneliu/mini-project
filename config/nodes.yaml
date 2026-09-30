@@ -16,7 +16,7 @@ nodes:
     source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
 
   - id: node_03
-    nama: Simpang Jl Masjid
+    nama: Simpang Kebon Dalem Timur
     lat: -7.4228
     lng: 109.2345
-    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_jl_masjid/video1_stream.m3u8
+    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
