@@ -103,6 +103,8 @@ const el = {
   drawerPlace: byId("drawer-place"),
   resetCounterBtn: byId("reset-counter-btn"),
   toggleRecordBtn: byId("toggle-record-btn"),
+  drawZoneBtn: byId("draw-zone-btn"),
+  saveZoneBtn: byId("save-zone-btn"),
   controlStatus: byId("control-status"),
   sumTotal: byId("sum-total"),
   sumMotor: byId("sum-motor"),
@@ -279,6 +281,157 @@ async function sendControl(action) {
 
 el.resetCounterBtn.addEventListener("click", () => sendControl("reset"));
 el.toggleRecordBtn.addEventListener("click", () => sendControl("record"));
+
+/* ---- Zone drawing (VIEW 2) --------------------------------------- *
+ *
+ * The MJPEG <img> fills the stage with object-fit: contain, so the stream is
+ * letterboxed inside the canvas. Clicks are only meaningful inside the video
+ * box, and must be remapped to 0.0-1.0 ratios of the RAW frame before being
+ * sent; the backend multiplies by the actual frame dimensions. */
+
+const ZONE_COLORS = { line: "#38BDF8", fill: "rgba(56, 189, 248, 0.18)" };
+
+const zoneDraw = {
+  active: false,
+  points: [],          // [x, y] in raw-frame ratios (0.0-1.0)
+  raf: null,
+};
+
+function zoneCanvas() {
+  return document.getElementById("zone-canvas");
+}
+
+/* Actual displayed video box inside the letterboxing stage. */
+function videoBox() {
+  const feed = el.feed;
+  const stage = feed.parentElement;
+  const stageW = stage.clientWidth;
+  const stageH = stage.clientHeight;
+  const nw = feed.naturalWidth || feed.videoWidth;
+  const nh = feed.naturalHeight || feed.videoHeight;
+  if (!nw || !nh) return null;
+  const scale = Math.min(stageW / nw, stageH / nh);
+  const boxW = nw * scale;
+  const boxH = nh * scale;
+  return { x: (stageW - boxW) / 2, y: (stageH - boxH) / 2, w: boxW, h: boxH };
+}
+
+function fitZoneCanvas() {
+  const canvas = zoneCanvas();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = canvas.clientWidth * dpr;
+  canvas.height = canvas.clientHeight * dpr;
+}
+
+function drawZonePreview() {
+  const canvas = zoneCanvas();
+  if (!canvas) return;
+  zoneDraw.raf = null;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (!zoneDraw.active || zoneDraw.points.length === 0) return;
+
+  const box = videoBox();
+  if (!box) return;
+  const dpr = window.devicePixelRatio || 1;
+  const toPx = (p) => [
+    (box.x + p[0] * box.w) * dpr,
+    (box.y + p[1] * box.h) * dpr,
+  ];
+
+  const pts = zoneDraw.points.map(toPx);
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.lineTo(pts[0][0], pts[0][1]);   // auto-close preview
+  ctx.closePath();
+  ctx.fillStyle = ZONE_COLORS.fill;
+  ctx.fill();
+  ctx.strokeStyle = ZONE_COLORS.line;
+  ctx.lineWidth = 2 * dpr;
+  ctx.stroke();
+
+  for (const [px, py] of pts) {
+    ctx.beginPath();
+    ctx.arc(px, py, 4 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = ZONE_COLORS.line;
+    ctx.fill();
+  }
+}
+
+function scheduleZonePreview() {
+  if (zoneDraw.raf == null) zoneDraw.raf = requestAnimationFrame(drawZonePreview);
+}
+
+function startZoneDraw() {
+  zoneDraw.active = true;
+  zoneDraw.points = [];
+  fitZoneCanvas();
+  scheduleZonePreview();
+  zoneCanvas().style.cursor = "crosshair";
+  el.saveZoneBtn.hidden = false;
+  el.saveZoneBtn.disabled = true;
+  document.getElementById("draw-zone-label").textContent = "Batal Gambar";
+  el.controlStatus.textContent = "Klik kanvas untuk menandai titik zona.";
+}
+
+function cancelZoneDraw() {
+  zoneDraw.active = false;
+  zoneDraw.points = [];
+  if (zoneDraw.raf != null) { cancelAnimationFrame(zoneDraw.raf); zoneDraw.raf = null; }
+  const canvas = zoneCanvas();
+  if (canvas) {
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    canvas.style.cursor = "";
+  }
+  el.saveZoneBtn.hidden = true;
+  el.saveZoneBtn.disabled = true;
+  document.getElementById("draw-zone-label").textContent = "Gambar Zona";
+  el.controlStatus.textContent = "";
+}
+
+async function saveZone() {
+  if (!selectedId || zoneDraw.points.length < 3) return;
+  el.saveZoneBtn.disabled = true;
+  el.controlStatus.textContent = "Menyimpan zona...";
+  try {
+    const res = await fetch(API_BASE + "/control/" + selectedId + "/update_zone", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ points: zoneDraw.points.map((p) => [p[0], p[1]]) }),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    el.controlStatus.textContent = "Zona baru diterima backend.";
+    cancelZoneDraw();
+  } catch (err) {
+    el.saveZoneBtn.disabled = false;
+    el.controlStatus.textContent = "Zona gagal dikirim.";
+  }
+}
+
+el.drawZoneBtn.addEventListener("click", () => {
+  zoneDraw.active ? cancelZoneDraw() : startZoneDraw();
+});
+el.saveZoneBtn.addEventListener("click", saveZone);
+
+zoneCanvas().addEventListener("click", (event) => {
+  if (!zoneDraw.active) return;
+  const box = videoBox();
+  if (!box) return;
+  const rect = zoneCanvas().getBoundingClientRect();
+  const cx = event.clientX - rect.left;
+  const cy = event.clientY - rect.top;
+  /* Ignore clicks on the letterbox black bars outside the video box. */
+  if (cx < box.x || cx > box.x + box.w || cy < box.y || cy > box.y + box.h) return;
+  zoneDraw.points.push([(cx - box.x) / box.w, (cy - box.y) / box.h]);
+  el.saveZoneBtn.disabled = zoneDraw.points.length < 3;
+  scheduleZonePreview();
+});
+
+/* Re-fit on resize so the preview keeps mapping onto the letterboxed video. */
+window.addEventListener("resize", () => {
+  if (zoneDraw.active) { fitZoneCanvas(); scheduleZonePreview(); }
+});
 
 /* MJPEG arrives as multipart/x-mixed-replace, which only an <img> renders.
    Assigning src opens the stream; removing it closes the connection. */

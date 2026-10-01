@@ -3,20 +3,29 @@
 # main.py --multi (one worker thread per node).
 # NOTE: lat/lng are best-effort Purwokerto landmarks — verify against the map.
 nodes:
-  - id: node_01
-    nama: Simpang Sawangan
-    lat: -7.4372
-    lng: 109.2321
-    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
-
-  - id: node_02
-    nama: Simpang Museum BRI
-    lat: -7.4210
-    lng: 109.2350
-    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
-
-  - id: node_03
-    nama: Simpang Kebon Dalem Timur
-    lat: -7.4228
-    lng: 109.2345
-    source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
+- id: node_01
+  nama: Simpang Sawangan
+  lat: -7.4372
+  lng: 109.2321
+  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+  zones:
+  - name: zone
+    polygon:
+    - - 54
+      - 134
+    - - 76
+      - 182
+    - - 145
+      - 139
+    - - 106
+      - 137
+- id: node_02
+  nama: Simpang Museum BRI
+  lat: -7.421
+  lng: 109.235
+  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+- id: node_03
+  nama: Simpang Kebon Dalem Timur
+  lat: -7.4228
+  lng: 109.2345
+  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8

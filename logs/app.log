@@ -32001,3 +32001,699 @@ ConnectionResetError: [WinError 10054] An existing connection was forcibly close
 2026-09-29 13:07:17,965 [INFO] __main__: node node_01 done: counted=781
 2026-09-29 13:07:18,165 [INFO] __main__: node node_02 done: counted=6098
 2026-09-29 13:07:20,179 [INFO] __main__: node node_03 done: counted=755
+2026-09-30 13:13:57,404 [INFO] __main__: API server on http://localhost:8000 (3 nodes)
+2026-09-30 13:13:57,483 [INFO] __main__: node node_01: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+2026-09-30 13:13:57,491 [INFO] __main__: node node_02: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+2026-09-30 13:13:57,500 [INFO] __main__: node node_03: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
+2026-09-30 13:14:08,567 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 13:14:10,809 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 13:14:25,849 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 13:14:44,041 [INFO] __main__: node node_01 done: counted=0
+2026-09-30 13:14:46,054 [INFO] __main__: node node_02 done: counted=0
+2026-09-30 13:14:48,060 [INFO] __main__: node node_03 done: counted=0
+2026-09-30 14:09:28,201 [INFO] __main__: API server on http://localhost:8000 (3 nodes)
+2026-09-30 14:09:28,284 [INFO] __main__: node node_01: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+2026-09-30 14:09:28,284 [INFO] __main__: node node_02: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+2026-09-30 14:09:28,284 [INFO] __main__: node node_03: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
+2026-09-30 14:09:30,600 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 opened at 12.0 fps
+2026-09-30 14:09:32,851 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 opened at 25.0 fps
+2026-09-30 14:09:33,566 [INFO] __main__: [prof node:node_01] ai 0.2 fps objs/frame=47.0 | infer=2403.5ms track=1.2ms acquire=0.0ms
+2026-09-30 14:09:33,566 [INFO] __main__: [prof node:node_01] disp 6.8 fps | acquire=0.1ms render=0.0ms publish=4.4ms
+2026-09-30 14:09:33,566 [INFO] __main__: [prof node:node_01]   high>15: 1 frames, objs/frame=47.0, infer=2403.5ms
+2026-09-30 14:09:34,041 [INFO] __main__: [prof node:node_02] ai 0.2 fps objs/frame=24.0 | infer=24.7ms track=0.3ms acquire=0.0ms
+2026-09-30 14:09:34,041 [INFO] __main__: [prof node:node_02] disp 5.4 fps | acquire=0.1ms render=0.0ms publish=1.8ms
+2026-09-30 14:09:34,041 [INFO] __main__: [prof node:node_02]   high>15: 1 frames, objs/frame=24.0, infer=24.7ms
+2026-09-30 14:09:39,747 [INFO] __main__: [prof node:node_01] ai 0.6 fps objs/frame=50.2 | infer=20.8ms track=2.3ms acquire=0.0ms
+2026-09-30 14:09:39,747 [INFO] __main__: [prof node:node_01] disp 4.4 fps | acquire=0.1ms render=2.6ms publish=1.6ms
+2026-09-30 14:09:39,748 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=50.2, infer=20.8ms
+2026-09-30 14:09:39,762 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=20.8 | infer=23.2ms track=0.7ms acquire=0.0ms
+2026-09-30 14:09:39,762 [INFO] __main__: [prof node:node_02] disp 17.1 fps | acquire=0.2ms render=1.2ms publish=1.9ms
+2026-09-30 14:09:39,763 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=20.8, infer=23.2ms
+2026-09-30 14:09:41,921 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 opened at 25.0 fps
+2026-09-30 14:09:42,671 [INFO] __main__: [prof node:node_03] ai 0.1 fps objs/frame=35.0 | infer=17.1ms track=0.5ms acquire=0.0ms
+2026-09-30 14:09:42,671 [INFO] __main__: [prof node:node_03] disp 1.4 fps | acquire=0.2ms render=0.0ms publish=2.1ms
+2026-09-30 14:09:42,671 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=35.0, infer=17.1ms
+2026-09-30 14:09:45,476 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=43.0 | infer=20.4ms track=3.2ms acquire=0.0ms
+2026-09-30 14:09:45,476 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.2ms render=2.0ms publish=1.9ms
+2026-09-30 14:09:45,476 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=43.0, infer=20.4ms
+2026-09-30 14:09:45,500 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=17.5 | infer=31.0ms track=1.0ms acquire=0.0ms
+2026-09-30 14:09:45,501 [INFO] __main__: [prof node:node_02] disp 19.2 fps | acquire=0.1ms render=1.1ms publish=1.8ms
+2026-09-30 14:09:45,501 [INFO] __main__: [prof node:node_02]   high>15: 3 frames, objs/frame=19.7, infer=32.9ms
+2026-09-30 14:09:48,400 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=38.5 | infer=22.2ms track=3.0ms acquire=0.0ms
+2026-09-30 14:09:48,400 [INFO] __main__: [prof node:node_03] disp 20.1 fps | acquire=0.1ms render=1.9ms publish=2.4ms
+2026-09-30 14:09:48,400 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=38.5, infer=22.2ms
+2026-09-30 14:09:50,511 [INFO] __main__: [prof node:node_01] ai 5.4 fps objs/frame=50.3 | infer=32.2ms track=5.9ms acquire=0.0ms
+2026-09-30 14:09:50,511 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=2.5ms publish=3.0ms
+2026-09-30 14:09:50,511 [INFO] __main__: [prof node:node_01]   high>15: 27 frames, objs/frame=50.3, infer=32.2ms
+2026-09-30 14:09:51,219 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=24.0 | infer=36.2ms track=1.9ms acquire=0.0ms
+2026-09-30 14:09:51,219 [INFO] __main__: [prof node:node_02] disp 20.5 fps | acquire=0.1ms render=1.7ms publish=2.7ms
+2026-09-30 14:09:51,219 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=24.0, infer=36.2ms
+2026-09-30 14:09:54,138 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=41.2 | infer=39.5ms track=4.5ms acquire=0.0ms
+2026-09-30 14:09:54,140 [INFO] __main__: [prof node:node_03] disp 19.9 fps | acquire=0.1ms render=2.9ms publish=2.9ms
+2026-09-30 14:09:54,140 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=41.2, infer=39.5ms
+2026-09-30 14:09:55,607 [INFO] __main__: [prof node:node_01] ai 12.0 fps objs/frame=55.6 | infer=31.2ms track=5.4ms acquire=0.0ms
+2026-09-30 14:09:55,608 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.0ms render=2.9ms publish=2.8ms
+2026-09-30 14:09:55,608 [INFO] __main__: [prof node:node_01]   high>15: 61 frames, objs/frame=55.6, infer=31.2ms
+2026-09-30 14:09:56,898 [INFO] __main__: [prof node:node_02] ai 0.5 fps objs/frame=24.3 | infer=21.1ms track=2.2ms acquire=0.0ms
+2026-09-30 14:09:56,898 [INFO] __main__: [prof node:node_02] disp 14.6 fps | acquire=0.1ms render=2.5ms publish=3.3ms
+2026-09-30 14:09:56,900 [INFO] __main__: [prof node:node_02]   high>15: 3 frames, objs/frame=24.3, infer=21.1ms
+2026-09-30 14:10:00,673 [INFO] __main__: [prof node:node_01] ai 11.2 fps objs/frame=48.0 | infer=27.7ms track=3.7ms acquire=0.0ms
+2026-09-30 14:10:00,673 [INFO] __main__: [prof node:node_01] disp 11.4 fps | acquire=0.0ms render=2.9ms publish=2.7ms
+2026-09-30 14:10:00,673 [INFO] __main__: [prof node:node_01]   high>15: 57 frames, objs/frame=48.0, infer=27.7ms
+2026-09-30 14:10:01,281 [INFO] __main__: [prof node:node_03] ai 0.4 fps objs/frame=37.0 | infer=24.8ms track=4.8ms acquire=0.0ms
+2026-09-30 14:10:01,281 [INFO] __main__: [prof node:node_03] disp 5.9 fps | acquire=0.1ms render=2.6ms publish=3.4ms
+2026-09-30 14:10:01,281 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=37.0, infer=24.8ms
+2026-09-30 14:10:02,612 [INFO] __main__: [prof node:node_02] ai 0.5 fps objs/frame=26.0 | infer=19.2ms track=1.4ms acquire=0.0ms
+2026-09-30 14:10:02,613 [INFO] __main__: [prof node:node_02] disp 13.0 fps | acquire=0.1ms render=2.1ms publish=2.7ms
+2026-09-30 14:10:02,613 [INFO] __main__: [prof node:node_02]   high>15: 3 frames, objs/frame=26.0, infer=19.2ms
+2026-09-30 14:10:05,764 [INFO] __main__: [prof node:node_01] ai 11.2 fps objs/frame=50.8 | infer=30.3ms track=3.1ms acquire=0.0ms
+2026-09-30 14:10:05,764 [INFO] __main__: [prof node:node_01] disp 11.8 fps | acquire=0.0ms render=2.4ms publish=3.4ms
+2026-09-30 14:10:05,764 [INFO] __main__: [prof node:node_01]   high>15: 57 frames, objs/frame=50.8, infer=30.3ms
+2026-09-30 14:10:07,019 [INFO] __main__: [prof node:node_03] ai 0.5 fps objs/frame=26.3 | infer=23.4ms track=3.4ms acquire=0.0ms
+2026-09-30 14:10:07,019 [INFO] __main__: [prof node:node_03] disp 8.4 fps | acquire=0.1ms render=2.3ms publish=2.6ms
+2026-09-30 14:10:07,019 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=26.3, infer=23.4ms
+2026-09-30 14:10:08,368 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=27.2 | infer=28.9ms track=2.3ms acquire=0.0ms
+2026-09-30 14:10:08,369 [INFO] __main__: [prof node:node_02] disp 21.7 fps | acquire=0.1ms render=1.8ms publish=2.6ms
+2026-09-30 14:10:08,369 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=27.2, infer=28.9ms
+2026-09-30 14:10:10,840 [INFO] __main__: [prof node:node_01] ai 11.8 fps objs/frame=56.9 | infer=31.2ms track=2.7ms acquire=0.0ms
+2026-09-30 14:10:10,843 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.0ms render=3.4ms publish=3.0ms
+2026-09-30 14:10:10,844 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=56.9, infer=31.2ms
+2026-09-30 14:10:12,727 [INFO] __main__: [prof node:node_03] ai 0.5 fps objs/frame=40.0 | infer=24.9ms track=4.2ms acquire=0.0ms
+2026-09-30 14:10:12,727 [INFO] __main__: [prof node:node_03] disp 17.5 fps | acquire=0.1ms render=2.5ms publish=2.7ms
+2026-09-30 14:10:12,727 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=40.0, infer=24.9ms
+2026-09-30 14:10:14,045 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=27.5 | infer=34.7ms track=2.2ms acquire=0.0ms
+2026-09-30 14:10:14,045 [INFO] __main__: [prof node:node_02] disp 18.1 fps | acquire=0.1ms render=1.8ms publish=2.6ms
+2026-09-30 14:10:14,045 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=27.5, infer=34.7ms
+2026-09-30 14:10:15,132 [INFO] __main__: Node node_01 zone updated + saved: 4 pts on frame 704x576
+2026-09-30 14:10:15,906 [INFO] __main__: [prof node:node_01] ai 3.4 fps objs/frame=51.9 | infer=32.8ms track=3.0ms acquire=0.0ms
+2026-09-30 14:10:15,906 [INFO] __main__: [prof node:node_01] disp 3.6 fps | acquire=0.0ms render=2.7ms publish=2.8ms
+2026-09-30 14:10:15,906 [INFO] __main__: [prof node:node_01]   high>15: 17 frames, objs/frame=51.9, infer=32.8ms
+2026-09-30 14:10:18,460 [INFO] __main__: [prof node:node_03] ai 0.5 fps objs/frame=38.3 | infer=27.1ms track=4.3ms acquire=0.0ms
+2026-09-30 14:10:18,460 [INFO] __main__: [prof node:node_03] disp 12.7 fps | acquire=0.1ms render=1.7ms publish=3.0ms
+2026-09-30 14:10:18,461 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=38.3, infer=27.1ms
+2026-09-30 14:10:19,776 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=30.2 | infer=29.6ms track=2.1ms acquire=0.0ms
+2026-09-30 14:10:19,777 [INFO] __main__: [prof node:node_02] disp 17.1 fps | acquire=0.1ms render=1.7ms publish=2.8ms
+2026-09-30 14:10:19,777 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=30.2, infer=29.6ms
+2026-09-30 14:10:21,038 [INFO] __main__: [prof node:node_01] ai 11.7 fps objs/frame=52.1 | infer=30.0ms track=3.3ms acquire=0.0ms
+2026-09-30 14:10:21,039 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.0ms render=2.5ms publish=3.0ms
+2026-09-30 14:10:21,039 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=52.1, infer=30.0ms
+2026-09-30 14:10:24,168 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=48.5 | infer=23.7ms track=2.8ms acquire=0.0ms
+2026-09-30 14:10:24,168 [INFO] __main__: [prof node:node_03] disp 22.2 fps | acquire=0.1ms render=2.2ms publish=2.8ms
+2026-09-30 14:10:24,168 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=48.5, infer=23.7ms
+2026-09-30 14:10:25,503 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=30.5 | infer=27.7ms track=2.6ms acquire=0.0ms
+2026-09-30 14:10:25,503 [INFO] __main__: [prof node:node_02] disp 12.9 fps | acquire=0.1ms render=2.1ms publish=2.7ms
+2026-09-30 14:10:25,504 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=30.5, infer=27.7ms
+2026-09-30 14:10:26,078 [INFO] __main__: [prof node:node_01] ai 11.9 fps objs/frame=51.0 | infer=28.0ms track=3.4ms acquire=0.0ms
+2026-09-30 14:10:26,078 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.0ms render=2.4ms publish=2.7ms
+2026-09-30 14:10:26,078 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=51.0, infer=28.0ms
+2026-09-30 14:10:29,887 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=54.8 | infer=40.0ms track=3.6ms acquire=0.0ms
+2026-09-30 14:10:29,888 [INFO] __main__: [prof node:node_03] disp 17.5 fps | acquire=0.1ms render=2.7ms publish=3.0ms
+2026-09-30 14:10:29,889 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=54.8, infer=40.0ms
+2026-09-30 14:10:31,190 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=23.0 | infer=20.3ms track=2.8ms acquire=0.0ms
+2026-09-30 14:10:31,190 [INFO] __main__: [prof node:node_02] disp 21.5 fps | acquire=0.1ms render=1.6ms publish=2.8ms
+2026-09-30 14:10:31,190 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=23.0, infer=20.3ms
+2026-09-30 14:10:31,217 [INFO] __main__: [prof node:node_01] ai 3.5 fps objs/frame=48.1 | infer=29.1ms track=4.1ms acquire=0.0ms
+2026-09-30 14:10:31,217 [INFO] __main__: [prof node:node_01] disp 3.7 fps | acquire=0.0ms render=2.3ms publish=2.9ms
+2026-09-30 14:10:31,217 [INFO] __main__: [prof node:node_01]   high>15: 18 frames, objs/frame=48.1, infer=29.1ms
+2026-09-30 14:10:35,620 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=49.0 | infer=32.9ms track=5.2ms acquire=0.0ms
+2026-09-30 14:10:35,621 [INFO] __main__: [prof node:node_03] disp 23.4 fps | acquire=0.1ms render=1.9ms publish=2.9ms
+2026-09-30 14:10:35,621 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=49.0, infer=32.9ms
+2026-09-30 14:10:36,606 [INFO] __main__: [prof node:node_01] ai 8.9 fps objs/frame=44.1 | infer=26.9ms track=3.5ms acquire=0.0ms
+2026-09-30 14:10:36,606 [INFO] __main__: [prof node:node_01] disp 9.3 fps | acquire=0.0ms render=2.7ms publish=2.8ms
+2026-09-30 14:10:36,606 [INFO] __main__: [prof node:node_01]   high>15: 48 frames, objs/frame=44.1, infer=26.9ms
+2026-09-30 14:10:36,907 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=22.2 | infer=20.5ms track=3.3ms acquire=0.0ms
+2026-09-30 14:10:36,908 [INFO] __main__: [prof node:node_02] disp 16.3 fps | acquire=0.1ms render=1.5ms publish=3.0ms
+2026-09-30 14:10:36,908 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=22.2, infer=20.5ms
+2026-09-30 14:10:38,878 [INFO] __main__: Node node_01 zone updated + saved: 4 pts on frame 704x576
+2026-09-30 14:10:41,328 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=47.0 | infer=36.6ms track=6.8ms acquire=0.0ms
+2026-09-30 14:10:41,328 [INFO] __main__: [prof node:node_03] disp 20.3 fps | acquire=0.1ms render=3.1ms publish=3.0ms
+2026-09-30 14:10:41,328 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=47.0, infer=36.6ms
+2026-09-30 14:10:41,633 [INFO] __main__: [prof node:node_01] ai 10.5 fps objs/frame=53.9 | infer=31.9ms track=3.7ms acquire=0.0ms
+2026-09-30 14:10:41,634 [INFO] __main__: [prof node:node_01] disp 10.7 fps | acquire=0.0ms render=3.2ms publish=3.0ms
+2026-09-30 14:10:41,634 [INFO] __main__: [prof node:node_01]   high>15: 53 frames, objs/frame=53.9, infer=31.9ms
+2026-09-30 14:10:42,628 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=31.5 | infer=24.5ms track=5.3ms acquire=0.0ms
+2026-09-30 14:10:42,628 [INFO] __main__: [prof node:node_02] disp 21.0 fps | acquire=0.1ms render=2.1ms publish=2.8ms
+2026-09-30 14:10:42,628 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=31.5, infer=24.5ms
+2026-09-30 14:10:43,369 [INFO] __main__: Node node_01 counts reset
+2026-09-30 14:10:47,001 [INFO] __main__: [prof node:node_01] ai 8.2 fps objs/frame=54.7 | infer=30.8ms track=3.0ms acquire=0.0ms
+2026-09-30 14:10:47,001 [INFO] __main__: [prof node:node_01] disp 8.6 fps | acquire=0.0ms render=3.3ms publish=3.3ms
+2026-09-30 14:10:47,001 [INFO] __main__: [prof node:node_01]   high>15: 44 frames, objs/frame=54.7, infer=30.8ms
+2026-09-30 14:10:47,047 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=39.0 | infer=31.7ms track=7.6ms acquire=0.0ms
+2026-09-30 14:10:47,047 [INFO] __main__: [prof node:node_03] disp 19.1 fps | acquire=0.1ms render=2.6ms publish=2.8ms
+2026-09-30 14:10:47,048 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=39.0, infer=31.7ms
+2026-09-30 14:10:48,342 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=27.2 | infer=20.2ms track=4.8ms acquire=0.0ms
+2026-09-30 14:10:48,342 [INFO] __main__: [prof node:node_02] disp 21.5 fps | acquire=0.1ms render=2.5ms publish=2.7ms
+2026-09-30 14:10:48,342 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=27.2, infer=20.2ms
+2026-09-30 14:10:52,031 [INFO] __main__: [prof node:node_01] ai 11.3 fps objs/frame=45.6 | infer=29.1ms track=3.7ms acquire=0.0ms
+2026-09-30 14:10:52,031 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.0ms render=3.3ms publish=2.8ms
+2026-09-30 14:10:52,031 [INFO] __main__: [prof node:node_01]   high>15: 57 frames, objs/frame=45.6, infer=29.1ms
+2026-09-30 14:10:52,741 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=33.0 | infer=26.3ms track=7.9ms acquire=0.0ms
+2026-09-30 14:10:52,741 [INFO] __main__: [prof node:node_03] disp 16.0 fps | acquire=0.1ms render=2.6ms publish=3.0ms
+2026-09-30 14:10:52,741 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=33.0, infer=26.3ms
+2026-09-30 14:10:54,053 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=15.2 | infer=18.4ms track=3.6ms acquire=0.0ms
+2026-09-30 14:10:54,055 [INFO] __main__: [prof node:node_02] disp 22.4 fps | acquire=0.1ms render=1.4ms publish=2.8ms
+2026-09-30 14:10:54,056 [INFO] __main__: [prof node:node_02]   high>15: 2 frames, objs/frame=16.5, infer=19.2ms
+2026-09-30 14:10:57,050 [INFO] __main__: [prof node:node_01] ai 11.8 fps objs/frame=42.6 | infer=26.5ms track=4.3ms acquire=0.0ms
+2026-09-30 14:10:57,050 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.0ms render=2.5ms publish=2.7ms
+2026-09-30 14:10:57,050 [INFO] __main__: [prof node:node_01]   high>15: 59 frames, objs/frame=42.6, infer=26.5ms
+2026-09-30 14:10:58,452 [INFO] __main__: [prof node:node_03] ai 0.5 fps objs/frame=26.7 | infer=17.4ms track=3.8ms acquire=0.0ms
+2026-09-30 14:10:58,452 [INFO] __main__: [prof node:node_03] disp 13.7 fps | acquire=0.1ms render=2.1ms publish=3.0ms
+2026-09-30 14:10:58,452 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=26.7, infer=17.4ms
+2026-09-30 14:10:59,766 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=17.0 | infer=18.3ms track=4.3ms acquire=0.0ms
+2026-09-30 14:10:59,766 [INFO] __main__: [prof node:node_02] disp 17.5 fps | acquire=0.1ms render=1.5ms publish=2.4ms
+2026-09-30 14:10:59,766 [INFO] __main__: [prof node:node_02]   high>15: 3 frames, objs/frame=17.7, infer=18.2ms
+2026-09-30 14:11:02,089 [INFO] __main__: [prof node:node_01] ai 10.9 fps objs/frame=46.9 | infer=26.6ms track=4.2ms acquire=0.0ms
+2026-09-30 14:11:02,089 [INFO] __main__: [prof node:node_01] disp 11.3 fps | acquire=0.0ms render=2.4ms publish=2.9ms
+2026-09-30 14:11:02,091 [INFO] __main__: [prof node:node_01]   high>15: 55 frames, objs/frame=46.9, infer=26.6ms
+2026-09-30 14:11:04,173 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=34.0 | infer=21.3ms track=8.0ms acquire=0.0ms
+2026-09-30 14:11:04,173 [INFO] __main__: [prof node:node_03] disp 21.3 fps | acquire=0.1ms render=2.1ms publish=2.8ms
+2026-09-30 14:11:04,173 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=34.0, infer=21.3ms
+2026-09-30 14:11:07,094 [INFO] __main__: [prof node:node_01] ai 12.0 fps objs/frame=42.2 | infer=25.8ms track=3.4ms acquire=0.0ms
+2026-09-30 14:11:07,094 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.0ms render=2.4ms publish=2.9ms
+2026-09-30 14:11:07,094 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=42.2, infer=25.8ms
+2026-09-30 14:11:07,485 [INFO] __main__: Node node_01 zone updated + saved: 4 pts on frame 704x576
+2026-09-30 14:11:15,505 [INFO] __main__: [prof node:node_02] ai 0.3 fps objs/frame=18.2 | infer=21.3ms track=4.4ms acquire=0.0ms
+2026-09-30 14:11:15,505 [INFO] __main__: [prof node:node_02] disp 6.0 fps | acquire=0.1ms render=1.9ms publish=2.6ms
+2026-09-30 14:11:15,505 [INFO] __main__: [prof node:node_02]   high>15: 3 frames, objs/frame=19.3, infer=22.5ms
+2026-09-30 14:11:16,022 [WARNING] src.stream.video_streamer: stream read failed, reconnecting
+2026-09-30 14:11:17,077 [INFO] __main__: [prof node:node_03] ai 0.1 fps objs/frame=39.0 | infer=25.1ms track=8.6ms acquire=0.0ms
+2026-09-30 14:11:17,084 [INFO] __main__: [prof node:node_03] disp 0.2 fps | acquire=0.1ms render=1.3ms publish=3.3ms
+2026-09-30 14:11:17,084 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=39.0, infer=25.1ms
+2026-09-30 14:11:19,682 [WARNING] src.stream.video_streamer: stream read failed, reconnecting
+2026-09-30 14:11:20,056 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 14:11:22,854 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 14:11:27,958 [INFO] __main__: [prof node:node_01] ai 0.5 fps objs/frame=44.4 | infer=25.1ms track=3.3ms acquire=0.0ms
+2026-09-30 14:11:27,972 [INFO] __main__: [prof node:node_01] disp 0.6 fps | acquire=0.0ms render=1.5ms publish=3.1ms
+2026-09-30 14:11:27,972 [INFO] __main__: [prof node:node_01]   high>15: 11 frames, objs/frame=44.4, infer=25.1ms
+2026-09-30 14:11:28,593 [WARNING] src.stream.video_streamer: stream read failed, reconnecting
+2026-09-30 14:11:36,855 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 2), retry in 4.0s
+2026-09-30 14:12:00,413 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 (attempt 2), retry in 4.0s
+2026-09-30 14:12:00,584 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 3), retry in 8.0s
+2026-09-30 14:12:00,930 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 14:12:03,437 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 2), retry in 4.0s
+2026-09-30 14:12:05,223 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 (attempt 3), retry in 8.0s
+2026-09-30 14:12:30,721 [INFO] src.stream.video_streamer: reconnected to https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+2026-09-30 14:12:30,721 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 opened at 12.0 fps
+2026-09-30 14:12:30,852 [INFO] __main__: [prof node:node_01] ai 0.2 fps objs/frame=40.3 | infer=26.0ms track=2.8ms acquire=0.0ms
+2026-09-30 14:12:30,852 [INFO] __main__: [prof node:node_01] disp 0.2 fps | acquire=0.0ms render=1.2ms publish=2.9ms
+2026-09-30 14:12:30,853 [INFO] __main__: [prof node:node_01]   high>15: 10 frames, objs/frame=40.3, infer=26.0ms
+2026-09-30 14:12:39,692 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 4), retry in 10.0s
+2026-09-30 14:12:40,047 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 (attempt 4), retry in 10.0s
+2026-09-30 14:12:50,109 [INFO] __main__: [prof node:node_01] ai 1.9 fps objs/frame=54.7 | infer=29.6ms track=2.6ms acquire=0.0ms
+2026-09-30 14:12:50,109 [INFO] __main__: [prof node:node_01] disp 2.0 fps | acquire=0.0ms render=2.3ms publish=2.8ms
+2026-09-30 14:12:50,109 [INFO] __main__: [prof node:node_01]   high>15: 37 frames, objs/frame=54.7, infer=29.6ms
+2026-09-30 14:12:50,812 [WARNING] src.stream.video_streamer: stream read failed, reconnecting
+2026-09-30 14:12:51,258 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 5), retry in 10.0s
+2026-09-30 14:13:06,049 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 (attempt 5), retry in 10.0s
+2026-09-30 14:13:25,864 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 14:13:41,975 [INFO] src.stream.video_streamer: reconnected to https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+2026-09-30 14:13:41,975 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 opened at 25.0 fps
+2026-09-30 14:13:42,685 [INFO] __main__: [prof node:node_02] ai 0.0 fps objs/frame=28.5 | infer=30.7ms track=7.0ms acquire=0.0ms
+2026-09-30 14:13:42,685 [INFO] __main__: [prof node:node_02] disp 0.2 fps | acquire=0.1ms render=0.8ms publish=2.1ms
+2026-09-30 14:13:42,685 [INFO] __main__: [prof node:node_02]   high>15: 2 frames, objs/frame=28.5, infer=30.7ms
+2026-09-30 14:13:58,419 [INFO] __main__: [prof node:node_02] ai 0.1 fps objs/frame=39.0 | infer=20.4ms track=3.1ms acquire=0.0ms
+2026-09-30 14:13:58,419 [INFO] __main__: [prof node:node_02] disp 2.0 fps | acquire=0.1ms render=1.0ms publish=2.3ms
+2026-09-30 14:13:58,419 [INFO] __main__: [prof node:node_02]   high>15: 2 frames, objs/frame=39.0, infer=20.4ms
+2026-09-30 14:14:00,676 [WARNING] src.stream.video_streamer: stream read failed, reconnecting
+2026-09-30 14:14:03,960 [ERROR] src.stream.video_streamer: gave up on https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 after 6 failed connects
+2026-09-30 14:14:13,002 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 2), retry in 4.0s
+2026-09-30 14:14:16,091 [INFO] src.stream.video_streamer: reconnected to https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+2026-09-30 14:14:16,093 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 opened at 25.0 fps
+2026-09-30 14:14:17,092 [INFO] __main__: [prof node:node_02] ai 0.1 fps objs/frame=36.0 | infer=46.8ms track=4.1ms acquire=0.0ms
+2026-09-30 14:14:17,092 [INFO] __main__: [prof node:node_02] disp 1.3 fps | acquire=0.1ms render=1.4ms publish=2.7ms
+2026-09-30 14:14:17,092 [INFO] __main__: [prof node:node_02]   high>15: 1 frames, objs/frame=36.0, infer=46.8ms
+2026-09-30 14:14:17,558 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 3), retry in 8.0s
+2026-09-30 14:14:20,682 [WARNING] src.stream.video_streamer: stream read failed, reconnecting
+2026-09-30 14:14:23,237 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 1), retry in 2.0s
+2026-09-30 14:14:26,091 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 2), retry in 4.0s
+2026-09-30 14:14:38,307 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 4), retry in 10.0s
+2026-09-30 14:14:45,633 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 (attempt 3), retry in 8.0s
+2026-09-30 14:15:04,861 [WARNING] src.stream.video_streamer: could not open https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 (attempt 5), retry in 10.0s
+2026-09-30 14:15:11,757 [INFO] __main__: node node_01 done: counted=16
+2026-09-30 14:15:13,439 [INFO] src.stream.video_streamer: reconnected to https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+2026-09-30 14:15:13,439 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 opened at 25.0 fps
+2026-09-30 14:15:13,439 [INFO] __main__: node node_02 done: counted=8
+2026-09-30 14:15:13,445 [INFO] __main__: node node_03 done: counted=12
+2026-10-01 07:24:34,892 [INFO] __main__: API server on http://localhost:8000 (3 nodes)
+2026-10-01 07:24:35,031 [INFO] __main__: node node_01: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+2026-10-01 07:24:35,042 [INFO] __main__: node node_02: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+2026-10-01 07:24:35,044 [INFO] __main__: node node_03: streaming https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
+2026-10-01 07:24:35,621 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8 opened at 12.0 fps
+2026-10-01 07:24:36,211 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8 opened at 25.0 fps
+2026-10-01 07:24:36,797 [INFO] src.stream.video_streamer: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8 opened at 25.0 fps
+2026-10-01 07:24:40,775 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=37.5 | infer=617.0ms track=1.9ms acquire=0.0ms
+2026-10-01 07:24:40,775 [INFO] __main__: [prof node:node_01] disp 11.0 fps | acquire=0.1ms render=1.0ms publish=1.8ms
+2026-10-01 07:24:40,776 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=37.5, infer=617.0ms
+2026-10-01 07:24:40,795 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=41.5 | infer=608.5ms track=1.4ms acquire=0.0ms
+2026-10-01 07:24:40,795 [INFO] __main__: [prof node:node_02] disp 18.9 fps | acquire=0.1ms render=1.4ms publish=2.6ms
+2026-10-01 07:24:40,795 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=41.5, infer=608.5ms
+2026-10-01 07:24:40,836 [INFO] __main__: [prof node:node_03] ai 0.5 fps objs/frame=33.0 | infer=318.5ms track=0.9ms acquire=0.0ms
+2026-10-01 07:24:40,836 [INFO] __main__: [prof node:node_03] disp 16.0 fps | acquire=0.1ms render=1.6ms publish=2.7ms
+2026-10-01 07:24:40,836 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=33.0, infer=318.5ms
+2026-10-01 07:24:46,489 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=35.8 | infer=19.4ms track=2.5ms acquire=0.0ms
+2026-10-01 07:24:46,489 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=1.6ms publish=1.9ms
+2026-10-01 07:24:46,489 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=35.8, infer=19.4ms
+2026-10-01 07:24:46,517 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=34.2 | infer=23.9ms track=1.7ms acquire=0.0ms
+2026-10-01 07:24:46,517 [INFO] __main__: [prof node:node_02] disp 22.0 fps | acquire=0.1ms render=1.7ms publish=1.9ms
+2026-10-01 07:24:46,517 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=34.2, infer=23.9ms
+2026-10-01 07:24:46,563 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=26.0 | infer=20.8ms track=2.3ms acquire=0.0ms
+2026-10-01 07:24:46,563 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=1.6ms publish=2.0ms
+2026-10-01 07:24:46,565 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=26.0, infer=20.8ms
+2026-10-01 07:24:51,516 [INFO] __main__: [prof node:node_01] ai 8.9 fps objs/frame=37.8 | infer=23.0ms track=3.6ms acquire=0.0ms
+2026-10-01 07:24:51,516 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.0ms render=2.2ms publish=2.8ms
+2026-10-01 07:24:51,516 [INFO] __main__: [prof node:node_01]   high>15: 45 frames, objs/frame=37.8, infer=23.0ms
+2026-10-01 07:24:52,207 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=42.0 | infer=29.2ms track=3.1ms acquire=0.0ms
+2026-10-01 07:24:52,210 [INFO] __main__: [prof node:node_02] disp 24.9 fps | acquire=0.1ms render=2.3ms publish=2.5ms
+2026-10-01 07:24:52,210 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=42.0, infer=29.2ms
+2026-10-01 07:24:52,280 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=23.0 | infer=31.7ms track=3.4ms acquire=0.0ms
+2026-10-01 07:24:52,280 [INFO] __main__: [prof node:node_03] disp 24.1 fps | acquire=0.1ms render=1.7ms publish=2.8ms
+2026-10-01 07:24:52,280 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=23.0, infer=31.7ms
+2026-10-01 07:24:56,578 [INFO] __main__: [prof node:node_01] ai 11.9 fps objs/frame=43.8 | infer=25.7ms track=3.7ms acquire=0.0ms
+2026-10-01 07:24:56,578 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.0ms render=2.6ms publish=2.7ms
+2026-10-01 07:24:56,578 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=43.8, infer=25.7ms
+2026-10-01 07:24:57,944 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=39.2 | infer=28.1ms track=2.9ms acquire=0.0ms
+2026-10-01 07:24:57,945 [INFO] __main__: [prof node:node_02] disp 24.6 fps | acquire=0.1ms render=2.1ms publish=2.8ms
+2026-10-01 07:24:57,945 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=39.2, infer=28.1ms
+2026-10-01 07:24:57,988 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=19.2 | infer=17.7ms track=2.8ms acquire=0.0ms
+2026-10-01 07:24:57,988 [INFO] __main__: [prof node:node_03] disp 24.9 fps | acquire=0.1ms render=1.5ms publish=2.7ms
+2026-10-01 07:24:57,988 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=19.2, infer=17.7ms
+2026-10-01 07:25:01,640 [INFO] __main__: [prof node:node_01] ai 12.1 fps objs/frame=47.1 | infer=26.5ms track=2.8ms acquire=0.0ms
+2026-10-01 07:25:01,640 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.0ms render=2.7ms publish=2.9ms
+2026-10-01 07:25:01,642 [INFO] __main__: [prof node:node_01]   high>15: 61 frames, objs/frame=47.1, infer=26.5ms
+2026-10-01 07:25:02,300 [INFO] __main__: Node node_01 zone updated + saved: 4 pts on frame 704x576
+2026-10-01 07:25:03,578 [INFO] __main__: Node node_01 counts reset
+2026-10-01 07:25:03,647 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=33.5 | infer=21.7ms track=4.0ms acquire=0.0ms
+2026-10-01 07:25:03,648 [INFO] __main__: [prof node:node_02] disp 24.7 fps | acquire=0.1ms render=2.2ms publish=2.6ms
+2026-10-01 07:25:03,650 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=33.5, infer=21.7ms
+2026-10-01 07:25:03,701 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=34.5 | infer=26.9ms track=5.0ms acquire=0.0ms
+2026-10-01 07:25:03,701 [INFO] __main__: [prof node:node_03] disp 24.9 fps | acquire=0.1ms render=1.9ms publish=2.7ms
+2026-10-01 07:25:03,701 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=34.5, infer=26.9ms
+2026-10-01 07:25:06,746 [INFO] __main__: [prof node:node_01] ai 11.6 fps objs/frame=46.3 | infer=26.6ms track=3.2ms acquire=0.0ms
+2026-10-01 07:25:06,747 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.0ms render=3.2ms publish=2.7ms
+2026-10-01 07:25:06,747 [INFO] __main__: [prof node:node_01]   high>15: 59 frames, objs/frame=46.3, infer=26.6ms
+2026-10-01 07:25:09,356 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=37.0 | infer=25.5ms track=4.7ms acquire=0.0ms
+2026-10-01 07:25:09,356 [INFO] __main__: [prof node:node_02] disp 24.9 fps | acquire=0.1ms render=2.7ms publish=2.8ms
+2026-10-01 07:25:09,362 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=37.0, infer=25.5ms
+2026-10-01 07:25:09,419 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=36.8 | infer=27.3ms track=5.6ms acquire=0.0ms
+2026-10-01 07:25:09,419 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=2.7ms publish=2.8ms
+2026-10-01 07:25:09,419 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=36.8, infer=27.3ms
+2026-10-01 07:25:11,758 [INFO] __main__: [prof node:node_01] ai 11.7 fps objs/frame=40.8 | infer=25.5ms track=3.2ms acquire=0.0ms
+2026-10-01 07:25:11,769 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.0ms render=2.8ms publish=2.5ms
+2026-10-01 07:25:11,769 [INFO] __main__: [prof node:node_01]   high>15: 59 frames, objs/frame=40.8, infer=25.5ms
+2026-10-01 07:25:15,091 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=39.2 | infer=28.6ms track=3.5ms acquire=0.0ms
+2026-10-01 07:25:15,092 [INFO] __main__: [prof node:node_02] disp 23.7 fps | acquire=0.1ms render=2.8ms publish=2.8ms
+2026-10-01 07:25:15,092 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=39.2, infer=28.6ms
+2026-10-01 07:25:15,160 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=26.8 | infer=34.9ms track=6.1ms acquire=0.0ms
+2026-10-01 07:25:15,161 [INFO] __main__: [prof node:node_03] disp 23.4 fps | acquire=0.1ms render=2.2ms publish=2.7ms
+2026-10-01 07:25:15,162 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=26.8, infer=34.9ms
+2026-10-01 07:25:16,814 [INFO] __main__: [prof node:node_01] ai 11.9 fps objs/frame=46.1 | infer=26.7ms track=2.7ms acquire=0.0ms
+2026-10-01 07:25:16,820 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.0ms render=2.8ms publish=2.7ms
+2026-10-01 07:25:16,820 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=46.1, infer=26.7ms
+2026-10-01 07:25:18,259 [WARNING] __main__: Recording in multi-node mode is not yet supported to save CPU.
+2026-10-01 07:25:20,782 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=40.5 | infer=23.6ms track=3.3ms acquire=0.0ms
+2026-10-01 07:25:20,782 [INFO] __main__: [prof node:node_02] disp 24.6 fps | acquire=0.1ms render=1.7ms publish=2.5ms
+2026-10-01 07:25:20,783 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=40.5, infer=23.6ms
+2026-10-01 07:25:20,836 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=16.5 | infer=19.9ms track=6.2ms acquire=0.0ms
+2026-10-01 07:25:20,836 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=1.3ms publish=2.4ms
+2026-10-01 07:25:20,837 [INFO] __main__: [prof node:node_03]   low<10: 1 frames, objs/frame=7.0, infer=15.5ms
+2026-10-01 07:25:20,837 [INFO] __main__: [prof node:node_03]   high>15: 2 frames, objs/frame=22.5, infer=23.1ms
+2026-10-01 07:25:21,827 [INFO] __main__: [prof node:node_01] ai 11.8 fps objs/frame=34.8 | infer=21.1ms track=2.1ms acquire=0.0ms
+2026-10-01 07:25:21,827 [INFO] __main__: [prof node:node_01] disp 12.2 fps | acquire=0.0ms render=1.8ms publish=2.4ms
+2026-10-01 07:25:21,827 [INFO] __main__: [prof node:node_01]   high>15: 59 frames, objs/frame=34.8, infer=21.1ms
+2026-10-01 07:25:26,522 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=38.8 | infer=25.7ms track=2.7ms acquire=0.0ms
+2026-10-01 07:25:26,522 [INFO] __main__: [prof node:node_02] disp 24.7 fps | acquire=0.1ms render=1.3ms publish=1.7ms
+2026-10-01 07:25:26,522 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=38.8, infer=25.7ms
+2026-10-01 07:25:26,584 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=11.8 | infer=21.5ms track=4.9ms acquire=0.0ms
+2026-10-01 07:25:26,584 [INFO] __main__: [prof node:node_03] disp 23.8 fps | acquire=0.1ms render=0.8ms publish=1.7ms
+2026-10-01 07:25:26,587 [INFO] __main__: [prof node:node_03]   low<10: 1 frames, objs/frame=5.0, infer=14.4ms
+2026-10-01 07:25:26,587 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=17.0, infer=40.9ms
+2026-10-01 07:25:26,894 [INFO] __main__: [prof node:node_01] ai 11.8 fps objs/frame=39.8 | infer=20.6ms track=1.6ms acquire=0.0ms
+2026-10-01 07:25:26,894 [INFO] __main__: [prof node:node_01] disp 11.8 fps | acquire=0.0ms render=1.9ms publish=2.0ms
+2026-10-01 07:25:26,894 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=39.8, infer=20.6ms
+2026-10-01 07:25:26,926 [WARNING] __main__: Recording in multi-node mode is not yet supported to save CPU.
+2026-10-01 07:25:31,913 [INFO] __main__: [prof node:node_01] ai 11.6 fps objs/frame=43.9 | infer=20.8ms track=1.6ms acquire=0.0ms
+2026-10-01 07:25:31,913 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.0ms render=1.9ms publish=1.7ms
+2026-10-01 07:25:31,913 [INFO] __main__: [prof node:node_01]   high>15: 58 frames, objs/frame=43.9, infer=20.8ms
+2026-10-01 07:25:32,212 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=44.5 | infer=19.2ms track=2.5ms acquire=0.0ms
+2026-10-01 07:25:32,215 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.1ms render=1.6ms publish=2.0ms
+2026-10-01 07:25:32,215 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=44.5, infer=19.2ms
+2026-10-01 07:25:32,289 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=22.2 | infer=16.3ms track=3.6ms acquire=0.0ms
+2026-10-01 07:25:32,292 [INFO] __main__: [prof node:node_03] disp 24.4 fps | acquire=0.1ms render=1.3ms publish=1.9ms
+2026-10-01 07:25:32,292 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=22.2, infer=16.3ms
+2026-10-01 07:25:36,916 [INFO] __main__: [prof node:node_01] ai 12.0 fps objs/frame=49.1 | infer=20.8ms track=1.6ms acquire=0.0ms
+2026-10-01 07:25:36,916 [INFO] __main__: [prof node:node_01] disp 12.2 fps | acquire=0.0ms render=1.6ms publish=1.6ms
+2026-10-01 07:25:36,916 [INFO] __main__: [prof node:node_01]   high>15: 60 frames, objs/frame=49.1, infer=20.8ms
+2026-10-01 07:25:37,940 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=41.8 | infer=20.9ms track=2.5ms acquire=0.0ms
+2026-10-01 07:25:37,940 [INFO] __main__: [prof node:node_02] disp 24.8 fps | acquire=0.1ms render=1.5ms publish=1.5ms
+2026-10-01 07:25:37,943 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=41.8, infer=20.9ms
+2026-10-01 07:25:37,987 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=19.8 | infer=17.0ms track=3.8ms acquire=0.0ms
+2026-10-01 07:25:37,987 [INFO] __main__: [prof node:node_03] disp 25.1 fps | acquire=0.1ms render=1.1ms publish=1.7ms
+2026-10-01 07:25:37,987 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=19.8, infer=17.0ms
+2026-10-01 07:25:42,066 [INFO] __main__: [prof node:node_01] ai 8.7 fps objs/frame=46.2 | infer=25.1ms track=2.4ms acquire=0.0ms
+2026-10-01 07:25:42,066 [INFO] __main__: [prof node:node_01] disp 11.8 fps | acquire=0.0ms render=2.4ms publish=2.3ms
+2026-10-01 07:25:42,068 [INFO] __main__: [prof node:node_01]   high>15: 45 frames, objs/frame=46.2, infer=25.1ms
+2026-10-01 07:25:43,647 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=39.5 | infer=25.5ms track=4.9ms acquire=0.0ms
+2026-10-01 07:25:43,647 [INFO] __main__: [prof node:node_02] disp 25.1 fps | acquire=0.1ms render=2.0ms publish=2.4ms
+2026-10-01 07:25:43,647 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=39.5, infer=25.5ms
+2026-10-01 07:25:43,702 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=22.0 | infer=20.7ms track=9.8ms acquire=0.0ms
+2026-10-01 07:25:43,703 [INFO] __main__: [prof node:node_03] disp 24.5 fps | acquire=0.1ms render=1.6ms publish=2.3ms
+2026-10-01 07:25:43,703 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=22.0, infer=20.7ms
+2026-10-01 07:25:47,773 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=39.0 | infer=21.1ms track=2.6ms acquire=0.0ms
+2026-10-01 07:25:47,773 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=1.9ms publish=2.3ms
+2026-10-01 07:25:47,774 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=39.0, infer=21.1ms
+2026-10-01 07:25:49,355 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=40.8 | infer=26.0ms track=4.9ms acquire=0.0ms
+2026-10-01 07:25:49,355 [INFO] __main__: [prof node:node_02] disp 25.1 fps | acquire=0.1ms render=1.9ms publish=2.4ms
+2026-10-01 07:25:49,355 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=40.8, infer=26.0ms
+2026-10-01 07:25:49,411 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=22.2 | infer=19.6ms track=6.7ms acquire=0.0ms
+2026-10-01 07:25:49,411 [INFO] __main__: [prof node:node_03] disp 25.2 fps | acquire=0.1ms render=1.6ms publish=2.4ms
+2026-10-01 07:25:49,411 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=22.2, infer=19.6ms
+2026-10-01 07:25:53,487 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=39.0 | infer=21.6ms track=2.6ms acquire=0.0ms
+2026-10-01 07:25:53,487 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=1.5ms publish=2.5ms
+2026-10-01 07:25:53,488 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=39.0, infer=21.6ms
+2026-10-01 07:25:55,069 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=39.5 | infer=21.5ms track=4.5ms acquire=0.0ms
+2026-10-01 07:25:55,069 [INFO] __main__: [prof node:node_02] disp 24.3 fps | acquire=0.1ms render=1.9ms publish=2.8ms
+2026-10-01 07:25:55,076 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=39.5, infer=21.5ms
+2026-10-01 07:25:55,132 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=20.5 | infer=18.7ms track=8.0ms acquire=0.0ms
+2026-10-01 07:25:55,132 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=1.4ms publish=2.5ms
+2026-10-01 07:25:55,132 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=22.3, infer=18.5ms
+2026-10-01 07:25:59,208 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=45.0 | infer=25.8ms track=4.2ms acquire=0.0ms
+2026-10-01 07:25:59,208 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=2.1ms publish=2.7ms
+2026-10-01 07:25:59,208 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=45.0, infer=25.8ms
+2026-10-01 07:26:00,795 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=39.2 | infer=25.0ms track=5.7ms acquire=0.0ms
+2026-10-01 07:26:00,796 [INFO] __main__: [prof node:node_02] disp 24.8 fps | acquire=0.1ms render=1.8ms publish=2.5ms
+2026-10-01 07:26:00,796 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=39.2, infer=25.0ms
+2026-10-01 07:26:00,847 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=17.0 | infer=17.7ms track=7.7ms acquire=0.0ms
+2026-10-01 07:26:00,847 [INFO] __main__: [prof node:node_03] disp 24.5 fps | acquire=0.1ms render=1.1ms publish=2.3ms
+2026-10-01 07:26:00,848 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=17.7, infer=17.4ms
+2026-10-01 07:26:04,924 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=42.2 | infer=23.7ms track=5.4ms acquire=0.0ms
+2026-10-01 07:26:04,924 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=2.4ms publish=2.3ms
+2026-10-01 07:26:04,924 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=42.2, infer=23.7ms
+2026-10-01 07:26:06,500 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=42.8 | infer=25.1ms track=7.9ms acquire=0.0ms
+2026-10-01 07:26:06,500 [INFO] __main__: [prof node:node_02] disp 24.9 fps | acquire=0.1ms render=2.0ms publish=2.4ms
+2026-10-01 07:26:06,506 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=42.8, infer=25.1ms
+2026-10-01 07:26:06,562 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=17.0 | infer=19.6ms track=8.6ms acquire=0.0ms
+2026-10-01 07:26:06,562 [INFO] __main__: [prof node:node_03] disp 24.3 fps | acquire=0.1ms render=1.3ms publish=2.4ms
+2026-10-01 07:26:06,562 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=17.7, infer=19.5ms
+2026-10-01 07:26:10,632 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=39.8 | infer=31.6ms track=6.5ms acquire=0.0ms
+2026-10-01 07:26:10,632 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=2.4ms publish=2.9ms
+2026-10-01 07:26:10,632 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=39.8, infer=31.6ms
+2026-10-01 07:26:12,221 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=38.2 | infer=24.8ms track=8.4ms acquire=0.0ms
+2026-10-01 07:26:12,221 [INFO] __main__: [prof node:node_02] disp 24.8 fps | acquire=0.1ms render=2.1ms publish=2.6ms
+2026-10-01 07:26:12,221 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=38.2, infer=24.8ms
+2026-10-01 07:26:12,284 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=15.8 | infer=19.4ms track=8.9ms acquire=0.0ms
+2026-10-01 07:26:12,285 [INFO] __main__: [prof node:node_03] disp 24.7 fps | acquire=0.1ms render=1.3ms publish=2.7ms
+2026-10-01 07:26:12,285 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=16.7, infer=19.3ms
+2026-10-01 07:26:16,340 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=36.5 | infer=21.7ms track=5.1ms acquire=0.0ms
+2026-10-01 07:26:16,340 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=2.1ms publish=3.0ms
+2026-10-01 07:26:16,340 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=36.5, infer=21.7ms
+2026-10-01 07:26:17,930 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=32.8 | infer=19.6ms track=4.5ms acquire=0.0ms
+2026-10-01 07:26:17,930 [INFO] __main__: [prof node:node_02] disp 24.2 fps | acquire=0.1ms render=2.1ms publish=2.9ms
+2026-10-01 07:26:17,930 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=32.8, infer=19.6ms
+2026-10-01 07:26:17,976 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=27.0 | infer=18.1ms track=5.3ms acquire=0.0ms
+2026-10-01 07:26:17,976 [INFO] __main__: [prof node:node_03] disp 24.4 fps | acquire=0.1ms render=1.8ms publish=2.8ms
+2026-10-01 07:26:17,976 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=27.0, infer=18.1ms
+2026-10-01 07:26:22,074 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=34.5 | infer=20.9ms track=6.3ms acquire=0.0ms
+2026-10-01 07:26:22,074 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.2ms render=2.8ms publish=3.3ms
+2026-10-01 07:26:22,077 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=34.5, infer=20.9ms
+2026-10-01 07:26:23,641 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=20.8 | infer=18.5ms track=5.5ms acquire=0.0ms
+2026-10-01 07:26:23,641 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.2ms render=2.3ms publish=3.3ms
+2026-10-01 07:26:23,641 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=20.8, infer=18.5ms
+2026-10-01 07:26:23,716 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=33.5 | infer=21.0ms track=10.3ms acquire=0.0ms
+2026-10-01 07:26:23,716 [INFO] __main__: [prof node:node_03] disp 23.9 fps | acquire=0.2ms render=2.8ms publish=3.2ms
+2026-10-01 07:26:23,716 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=33.5, infer=21.0ms
+2026-10-01 07:26:27,777 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=31.0 | infer=21.0ms track=6.3ms acquire=0.0ms
+2026-10-01 07:26:27,777 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.2ms render=3.3ms publish=3.3ms
+2026-10-01 07:26:27,777 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=31.0, infer=21.0ms
+2026-10-01 07:26:29,357 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=30.2 | infer=20.6ms track=6.1ms acquire=0.0ms
+2026-10-01 07:26:29,357 [INFO] __main__: [prof node:node_02] disp 24.8 fps | acquire=0.2ms render=3.0ms publish=3.1ms
+2026-10-01 07:26:29,357 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=30.2, infer=20.6ms
+2026-10-01 07:26:29,421 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=27.5 | infer=20.2ms track=7.7ms acquire=0.0ms
+2026-10-01 07:26:29,421 [INFO] __main__: [prof node:node_03] disp 24.4 fps | acquire=0.2ms render=3.1ms publish=3.0ms
+2026-10-01 07:26:29,421 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=27.5, infer=20.2ms
+2026-10-01 07:26:33,481 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=26.8 | infer=21.7ms track=7.7ms acquire=0.0ms
+2026-10-01 07:26:33,481 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.2ms render=2.8ms publish=3.7ms
+2026-10-01 07:26:33,481 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=26.8, infer=21.7ms
+2026-10-01 07:26:35,063 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=21.0 | infer=20.0ms track=6.9ms acquire=0.0ms
+2026-10-01 07:26:35,079 [INFO] __main__: [prof node:node_02] disp 24.3 fps | acquire=0.2ms render=3.0ms publish=3.4ms
+2026-10-01 07:26:35,079 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=21.0, infer=20.0ms
+2026-10-01 07:26:35,144 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=27.5 | infer=21.3ms track=10.0ms acquire=0.0ms
+2026-10-01 07:26:35,144 [INFO] __main__: [prof node:node_03] disp 24.3 fps | acquire=0.2ms render=3.2ms publish=3.3ms
+2026-10-01 07:26:35,144 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=27.5, infer=21.3ms
+2026-10-01 07:26:39,234 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=23.2 | infer=25.5ms track=5.8ms acquire=0.0ms
+2026-10-01 07:26:39,234 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.2ms render=2.5ms publish=3.2ms
+2026-10-01 07:26:39,234 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=23.2, infer=25.5ms
+2026-10-01 07:26:40,783 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=30.2 | infer=20.2ms track=6.3ms acquire=0.0ms
+2026-10-01 07:26:40,783 [INFO] __main__: [prof node:node_02] disp 24.2 fps | acquire=0.2ms render=2.4ms publish=3.0ms
+2026-10-01 07:26:40,783 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=30.2, infer=20.2ms
+2026-10-01 07:26:40,839 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=31.2 | infer=21.0ms track=9.1ms acquire=0.0ms
+2026-10-01 07:26:40,839 [INFO] __main__: [prof node:node_03] disp 24.0 fps | acquire=0.2ms render=2.3ms publish=3.0ms
+2026-10-01 07:26:40,839 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=31.2, infer=21.0ms
+2026-10-01 07:26:44,921 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=26.0 | infer=20.0ms track=7.3ms acquire=0.0ms
+2026-10-01 07:26:44,922 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.1ms render=2.1ms publish=2.8ms
+2026-10-01 07:26:44,923 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=26.0, infer=20.0ms
+2026-10-01 07:26:46,520 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=31.2 | infer=22.5ms track=9.4ms acquire=0.0ms
+2026-10-01 07:26:46,520 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.1ms render=1.8ms publish=2.6ms
+2026-10-01 07:26:46,520 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=31.2, infer=22.5ms
+2026-10-01 07:26:46,568 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=20.8 | infer=19.5ms track=10.8ms acquire=0.0ms
+2026-10-01 07:26:46,568 [INFO] __main__: [prof node:node_03] disp 24.3 fps | acquire=0.1ms render=1.7ms publish=2.7ms
+2026-10-01 07:26:46,568 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=20.8, infer=19.5ms
+2026-10-01 07:26:50,631 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=29.8 | infer=21.6ms track=9.8ms acquire=0.0ms
+2026-10-01 07:26:50,631 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=1.8ms publish=2.8ms
+2026-10-01 07:26:50,631 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=29.8, infer=21.6ms
+2026-10-01 07:26:52,221 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.0 | infer=24.0ms track=7.4ms acquire=0.0ms
+2026-10-01 07:26:52,221 [INFO] __main__: [prof node:node_02] disp 24.2 fps | acquire=0.1ms render=1.7ms publish=2.8ms
+2026-10-01 07:26:52,221 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.0, infer=24.0ms
+2026-10-01 07:26:52,277 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=13.5 | infer=19.2ms track=13.5ms acquire=0.0ms
+2026-10-01 07:26:52,277 [INFO] __main__: [prof node:node_03] disp 24.4 fps | acquire=0.1ms render=1.1ms publish=2.6ms
+2026-10-01 07:26:52,277 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=16.0, infer=19.6ms
+2026-10-01 07:26:56,360 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=24.2 | infer=22.4ms track=10.8ms acquire=0.0ms
+2026-10-01 07:26:56,360 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.1ms render=1.5ms publish=2.8ms
+2026-10-01 07:26:56,360 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=24.2, infer=22.4ms
+2026-10-01 07:26:57,971 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.2 | infer=45.2ms track=17.7ms acquire=0.0ms
+2026-10-01 07:26:57,971 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.1ms render=2.1ms publish=3.6ms
+2026-10-01 07:26:57,977 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.2, infer=45.2ms
+2026-10-01 07:26:58,005 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=9.5 | infer=36.5ms track=11.7ms acquire=0.0ms
+2026-10-01 07:26:58,005 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=1.1ms publish=3.4ms
+2026-10-01 07:26:58,005 [INFO] __main__: [prof node:node_03]   low<10: 1 frames, objs/frame=4.0, infer=74.8ms
+2026-10-01 07:27:02,060 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=31.2 | infer=30.9ms track=12.6ms acquire=0.0ms
+2026-10-01 07:27:02,060 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.2ms render=3.3ms publish=5.7ms
+2026-10-01 07:27:02,060 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=31.2, infer=30.9ms
+2026-10-01 07:27:03,700 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=42.0 | infer=39.0ms track=17.6ms acquire=0.0ms
+2026-10-01 07:27:03,702 [INFO] __main__: [prof node:node_02] disp 24.1 fps | acquire=0.2ms render=4.5ms publish=5.5ms
+2026-10-01 07:27:03,704 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=42.0, infer=39.0ms
+2026-10-01 07:27:03,752 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=6.0 | infer=25.7ms track=19.5ms acquire=0.0ms
+2026-10-01 07:27:03,753 [INFO] __main__: [prof node:node_03] disp 24.2 fps | acquire=0.2ms render=2.3ms publish=5.4ms
+2026-10-01 07:27:03,754 [INFO] __main__: [prof node:node_03]   low<10: 3 frames, objs/frame=4.3, infer=27.3ms
+2026-10-01 07:27:07,798 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=32.2 | infer=29.1ms track=12.7ms acquire=0.0ms
+2026-10-01 07:27:07,798 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.2ms render=3.9ms publish=5.3ms
+2026-10-01 07:27:07,798 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=32.2, infer=29.1ms
+2026-10-01 07:27:09,415 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.5 | infer=39.1ms track=19.6ms acquire=0.0ms
+2026-10-01 07:27:09,416 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.2ms render=3.5ms publish=5.4ms
+2026-10-01 07:27:09,421 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.5, infer=39.1ms
+2026-10-01 07:27:09,457 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=16.0 | infer=26.4ms track=23.1ms acquire=0.0ms
+2026-10-01 07:27:09,463 [INFO] __main__: [prof node:node_03] disp 24.7 fps | acquire=0.2ms render=2.3ms publish=5.6ms
+2026-10-01 07:27:09,471 [INFO] __main__: [prof node:node_03]   low<10: 2 frames, objs/frame=9.0, infer=27.6ms
+2026-10-01 07:27:09,478 [INFO] __main__: [prof node:node_03]   high>15: 2 frames, objs/frame=23.0, infer=25.1ms
+2026-10-01 07:27:13,520 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=33.8 | infer=34.5ms track=19.4ms acquire=0.0ms
+2026-10-01 07:27:13,520 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=3.2ms publish=5.6ms
+2026-10-01 07:27:13,520 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=33.8, infer=34.5ms
+2026-10-01 07:27:15,089 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=33.8 | infer=30.3ms track=17.0ms acquire=0.0ms
+2026-10-01 07:27:15,092 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.1ms render=3.4ms publish=5.5ms
+2026-10-01 07:27:15,093 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=33.8, infer=30.3ms
+2026-10-01 07:27:15,141 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=14.2 | infer=22.6ms track=19.2ms acquire=0.0ms
+2026-10-01 07:27:15,141 [INFO] __main__: [prof node:node_03] disp 25.0 fps | acquire=0.2ms render=2.4ms publish=5.7ms
+2026-10-01 07:27:15,142 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=17.0, infer=20.4ms
+2026-10-01 07:27:19,212 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=32.2 | infer=22.4ms track=10.8ms acquire=0.0ms
+2026-10-01 07:27:19,212 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=3.8ms publish=5.2ms
+2026-10-01 07:27:19,212 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=32.2, infer=22.4ms
+2026-10-01 07:27:20,819 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=41.2 | infer=38.7ms track=15.0ms acquire=0.0ms
+2026-10-01 07:27:20,822 [INFO] __main__: [prof node:node_02] disp 24.6 fps | acquire=0.2ms render=3.9ms publish=5.0ms
+2026-10-01 07:27:20,826 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=41.2, infer=38.7ms
+2026-10-01 07:27:20,862 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=18.0 | infer=27.1ms track=17.8ms acquire=0.0ms
+2026-10-01 07:27:20,862 [INFO] __main__: [prof node:node_03] disp 24.5 fps | acquire=0.1ms render=2.5ms publish=5.2ms
+2026-10-01 07:27:20,863 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=19.0, infer=27.2ms
+2026-10-01 07:27:24,914 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=31.5 | infer=24.2ms track=8.6ms acquire=0.0ms
+2026-10-01 07:27:24,914 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=2.5ms publish=3.6ms
+2026-10-01 07:27:24,914 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=31.5, infer=24.2ms
+2026-10-01 07:27:26,501 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=32.8 | infer=22.3ms track=6.1ms acquire=0.0ms
+2026-10-01 07:27:26,502 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.1ms render=2.3ms publish=2.8ms
+2026-10-01 07:27:26,502 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=32.8, infer=22.3ms
+2026-10-01 07:27:26,547 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=19.2 | infer=16.7ms track=4.8ms acquire=0.0ms
+2026-10-01 07:27:26,547 [INFO] __main__: [prof node:node_03] disp 25.1 fps | acquire=0.1ms render=2.1ms publish=2.7ms
+2026-10-01 07:27:26,547 [INFO] __main__: [prof node:node_03]   high>15: 3 frames, objs/frame=21.3, infer=17.0ms
+2026-10-01 07:27:30,630 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=30.5 | infer=17.9ms track=4.1ms acquire=0.0ms
+2026-10-01 07:27:30,630 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=2.2ms publish=2.3ms
+2026-10-01 07:27:30,630 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=30.5, infer=17.9ms
+2026-10-01 07:27:32,216 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=27.8 | infer=20.3ms track=4.2ms acquire=0.0ms
+2026-10-01 07:27:32,216 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.1ms render=1.5ms publish=2.2ms
+2026-10-01 07:27:32,216 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=27.8, infer=20.3ms
+2026-10-01 07:27:32,277 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=28.5 | infer=20.7ms track=6.3ms acquire=0.0ms
+2026-10-01 07:27:32,277 [INFO] __main__: [prof node:node_03] disp 24.6 fps | acquire=0.1ms render=1.8ms publish=2.2ms
+2026-10-01 07:27:32,277 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=28.5, infer=20.7ms
+2026-10-01 07:27:36,343 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=30.0 | infer=21.7ms track=3.9ms acquire=0.0ms
+2026-10-01 07:27:36,343 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.2ms render=2.8ms publish=2.8ms
+2026-10-01 07:27:36,343 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=30.0, infer=21.7ms
+2026-10-01 07:27:37,920 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=30.2 | infer=20.3ms track=4.0ms acquire=0.0ms
+2026-10-01 07:27:37,920 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.2ms render=2.0ms publish=2.9ms
+2026-10-01 07:27:37,920 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=30.2, infer=20.3ms
+2026-10-01 07:27:37,989 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=37.5 | infer=19.3ms track=4.8ms acquire=0.0ms
+2026-10-01 07:27:37,990 [INFO] __main__: [prof node:node_03] disp 24.9 fps | acquire=0.2ms render=2.3ms publish=2.8ms
+2026-10-01 07:27:37,990 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=37.5, infer=19.3ms
+2026-10-01 07:27:42,056 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=32.2 | infer=18.1ms track=3.9ms acquire=0.0ms
+2026-10-01 07:27:42,056 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.2ms render=3.5ms publish=2.8ms
+2026-10-01 07:27:42,056 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=32.2, infer=18.1ms
+2026-10-01 07:27:43,651 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=43.5 | infer=21.0ms track=5.1ms acquire=0.0ms
+2026-10-01 07:27:43,651 [INFO] __main__: [prof node:node_02] disp 24.8 fps | acquire=0.2ms render=3.7ms publish=2.7ms
+2026-10-01 07:27:43,651 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=43.5, infer=21.0ms
+2026-10-01 07:27:43,698 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=37.0 | infer=23.8ms track=4.5ms acquire=0.0ms
+2026-10-01 07:27:43,698 [INFO] __main__: [prof node:node_03] disp 24.7 fps | acquire=0.2ms render=3.8ms publish=2.7ms
+2026-10-01 07:27:43,698 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=37.0, infer=23.8ms
+2026-10-01 07:27:47,767 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=31.2 | infer=17.8ms track=4.2ms acquire=0.0ms
+2026-10-01 07:27:47,767 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.2ms render=2.8ms publish=2.7ms
+2026-10-01 07:27:47,767 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=31.2, infer=17.8ms
+2026-10-01 07:27:49,350 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=43.5 | infer=20.8ms track=4.1ms acquire=0.0ms
+2026-10-01 07:27:49,350 [INFO] __main__: [prof node:node_02] disp 24.9 fps | acquire=0.2ms render=2.9ms publish=2.6ms
+2026-10-01 07:27:49,350 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=43.5, infer=20.8ms
+2026-10-01 07:27:49,413 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=33.8 | infer=18.7ms track=4.4ms acquire=0.0ms
+2026-10-01 07:27:49,413 [INFO] __main__: [prof node:node_03] disp 24.7 fps | acquire=0.2ms render=2.9ms publish=2.5ms
+2026-10-01 07:27:49,413 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=33.8, infer=18.7ms
+2026-10-01 07:27:53,495 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=30.0 | infer=27.2ms track=8.8ms acquire=0.0ms
+2026-10-01 07:27:53,495 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=2.9ms publish=2.6ms
+2026-10-01 07:27:53,495 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=30.0, infer=27.2ms
+2026-10-01 07:27:55,065 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=35.5 | infer=21.0ms track=3.9ms acquire=0.0ms
+2026-10-01 07:27:55,065 [INFO] __main__: [prof node:node_02] disp 24.2 fps | acquire=0.2ms render=3.0ms publish=2.7ms
+2026-10-01 07:27:55,072 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=35.5, infer=21.0ms
+2026-10-01 07:27:55,132 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=36.0 | infer=19.8ms track=5.2ms acquire=0.0ms
+2026-10-01 07:27:55,132 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=2.8ms publish=2.7ms
+2026-10-01 07:27:55,132 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=36.0, infer=19.8ms
+2026-10-01 07:27:59,229 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=28.8 | infer=28.2ms track=19.2ms acquire=0.0ms
+2026-10-01 07:27:59,231 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.1ms render=3.3ms publish=4.5ms
+2026-10-01 07:27:59,231 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=28.8, infer=28.2ms
+2026-10-01 07:28:00,805 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=43.8 | infer=31.2ms track=14.0ms acquire=0.0ms
+2026-10-01 07:28:00,806 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.2ms render=3.8ms publish=4.6ms
+2026-10-01 07:28:00,807 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=43.8, infer=31.2ms
+2026-10-01 07:28:00,874 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=38.5 | infer=33.4ms track=24.5ms acquire=0.0ms
+2026-10-01 07:28:00,883 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.1ms render=4.0ms publish=4.9ms
+2026-10-01 07:28:00,888 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=38.5, infer=33.4ms
+2026-10-01 07:28:04,943 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=29.8 | infer=29.1ms track=17.6ms acquire=0.0ms
+2026-10-01 07:28:04,945 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=3.4ms publish=5.0ms
+2026-10-01 07:28:04,946 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=29.8, infer=29.1ms
+2026-10-01 07:28:06,512 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=41.5 | infer=35.5ms track=15.1ms acquire=0.0ms
+2026-10-01 07:28:06,513 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.2ms render=4.8ms publish=5.2ms
+2026-10-01 07:28:06,515 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=41.5, infer=35.5ms
+2026-10-01 07:28:06,581 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=30.5 | infer=26.4ms track=17.1ms acquire=0.0ms
+2026-10-01 07:28:06,582 [INFO] __main__: [prof node:node_03] disp 24.5 fps | acquire=0.1ms render=4.0ms publish=5.6ms
+2026-10-01 07:28:06,583 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=30.5, infer=26.4ms
+2026-10-01 07:28:10,643 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=37.2 | infer=37.5ms track=26.7ms acquire=0.0ms
+2026-10-01 07:28:10,645 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.2ms render=5.0ms publish=6.2ms
+2026-10-01 07:28:10,647 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=37.2, infer=37.5ms
+2026-10-01 07:28:12,233 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=39.0 | infer=35.9ms track=14.5ms acquire=0.0ms
+2026-10-01 07:28:12,235 [INFO] __main__: [prof node:node_02] disp 24.5 fps | acquire=0.2ms render=4.1ms publish=5.4ms
+2026-10-01 07:28:12,235 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=39.0, infer=35.9ms
+2026-10-01 07:28:12,299 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=15.0 | infer=31.8ms track=18.7ms acquire=0.0ms
+2026-10-01 07:28:12,300 [INFO] __main__: [prof node:node_03] disp 24.3 fps | acquire=0.2ms render=3.3ms publish=5.6ms
+2026-10-01 07:28:12,303 [INFO] __main__: [prof node:node_03]   low<10: 1 frames, objs/frame=9.0, infer=17.7ms
+2026-10-01 07:28:12,304 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=24.0, infer=32.6ms
+2026-10-01 07:28:16,386 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=41.2 | infer=37.8ms track=24.9ms acquire=0.0ms
+2026-10-01 07:28:16,389 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.1ms render=4.3ms publish=5.8ms
+2026-10-01 07:28:16,389 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=41.2, infer=37.8ms
+2026-10-01 07:28:17,979 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=37.8 | infer=37.3ms track=23.2ms acquire=0.0ms
+2026-10-01 07:28:17,980 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.2ms render=4.4ms publish=5.7ms
+2026-10-01 07:28:17,984 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=37.8, infer=37.3ms
+2026-10-01 07:28:18,017 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=6.2 | infer=27.2ms track=15.2ms acquire=0.0ms
+2026-10-01 07:28:18,017 [INFO] __main__: [prof node:node_03] disp 24.8 fps | acquire=0.2ms render=2.7ms publish=5.9ms
+2026-10-01 07:28:18,019 [INFO] __main__: [prof node:node_03]   low<10: 3 frames, objs/frame=5.0, infer=29.7ms
+2026-10-01 07:28:22,100 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=43.5 | infer=46.6ms track=21.9ms acquire=0.0ms
+2026-10-01 07:28:22,100 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.2ms render=4.4ms publish=5.5ms
+2026-10-01 07:28:22,100 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=43.5, infer=46.6ms
+2026-10-01 07:28:23,678 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.0 | infer=36.4ms track=17.1ms acquire=0.0ms
+2026-10-01 07:28:23,679 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.2ms render=4.4ms publish=5.4ms
+2026-10-01 07:28:23,680 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.0, infer=36.4ms
+2026-10-01 07:28:23,716 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=2.8 | infer=24.7ms track=16.9ms acquire=0.0ms
+2026-10-01 07:28:23,716 [INFO] __main__: [prof node:node_03] disp 24.6 fps | acquire=0.2ms render=1.3ms publish=5.6ms
+2026-10-01 07:28:23,717 [INFO] __main__: [prof node:node_03]   low<10: 4 frames, objs/frame=2.8, infer=24.7ms
+2026-10-01 07:28:27,796 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=39.8 | infer=35.3ms track=21.1ms acquire=0.0ms
+2026-10-01 07:28:27,797 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.1ms render=4.4ms publish=5.4ms
+2026-10-01 07:28:27,797 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=39.8, infer=35.3ms
+2026-10-01 07:28:29,399 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=37.8 | infer=38.8ms track=13.7ms acquire=0.0ms
+2026-10-01 07:28:29,405 [INFO] __main__: [prof node:node_02] disp 24.3 fps | acquire=0.1ms render=3.9ms publish=5.5ms
+2026-10-01 07:28:29,408 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=37.8, infer=38.8ms
+2026-10-01 07:28:29,449 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=4.2 | infer=23.1ms track=20.1ms acquire=0.0ms
+2026-10-01 07:28:29,449 [INFO] __main__: [prof node:node_03] disp 24.6 fps | acquire=0.2ms render=1.5ms publish=5.8ms
+2026-10-01 07:28:29,449 [INFO] __main__: [prof node:node_03]   low<10: 4 frames, objs/frame=4.2, infer=23.1ms
+2026-10-01 07:28:33,516 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=37.2 | infer=39.7ms track=18.1ms acquire=0.0ms
+2026-10-01 07:28:33,517 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=3.6ms publish=5.3ms
+2026-10-01 07:28:33,518 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=37.2, infer=39.7ms
+2026-10-01 07:28:35,114 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.8 | infer=49.4ms track=19.9ms acquire=0.0ms
+2026-10-01 07:28:35,115 [INFO] __main__: [prof node:node_02] disp 24.1 fps | acquire=0.1ms render=3.8ms publish=5.5ms
+2026-10-01 07:28:35,116 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.8, infer=49.4ms
+2026-10-01 07:28:35,146 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=2.8 | infer=35.3ms track=18.7ms acquire=0.0ms
+2026-10-01 07:28:35,150 [INFO] __main__: [prof node:node_03] disp 24.1 fps | acquire=0.1ms render=1.4ms publish=5.9ms
+2026-10-01 07:28:35,164 [INFO] __main__: [prof node:node_03]   low<10: 4 frames, objs/frame=2.8, infer=35.3ms
+2026-10-01 07:28:39,275 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=39.5 | infer=45.2ms track=20.6ms acquire=0.0ms
+2026-10-01 07:28:39,278 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.1ms render=3.7ms publish=6.7ms
+2026-10-01 07:28:39,282 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=39.5, infer=45.2ms
+2026-10-01 07:28:40,808 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=37.0 | infer=36.1ms track=16.3ms acquire=0.0ms
+2026-10-01 07:28:40,808 [INFO] __main__: [prof node:node_02] disp 23.9 fps | acquire=0.1ms render=5.0ms publish=5.8ms
+2026-10-01 07:28:40,809 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=37.0, infer=36.1ms
+2026-10-01 07:28:40,872 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=2.2 | infer=28.7ms track=16.8ms acquire=0.0ms
+2026-10-01 07:28:40,878 [INFO] __main__: [prof node:node_03] disp 24.6 fps | acquire=0.1ms render=2.3ms publish=6.0ms
+2026-10-01 07:28:40,892 [INFO] __main__: [prof node:node_03]   low<10: 4 frames, objs/frame=2.2, infer=28.7ms
+2026-10-01 07:28:44,951 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=36.5 | infer=42.0ms track=23.1ms acquire=0.0ms
+2026-10-01 07:28:44,955 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.2ms render=4.7ms publish=5.4ms
+2026-10-01 07:28:44,959 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=36.5, infer=42.0ms
+2026-10-01 07:28:46,521 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.0 | infer=33.6ms track=14.6ms acquire=0.0ms
+2026-10-01 07:28:46,523 [INFO] __main__: [prof node:node_02] disp 24.0 fps | acquire=0.2ms render=3.5ms publish=5.6ms
+2026-10-01 07:28:46,525 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.0, infer=33.6ms
+2026-10-01 07:28:46,595 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=8.8 | infer=24.0ms track=16.6ms acquire=0.0ms
+2026-10-01 07:28:46,604 [INFO] __main__: [prof node:node_03] disp 24.1 fps | acquire=0.2ms render=1.6ms publish=5.6ms
+2026-10-01 07:28:46,610 [INFO] __main__: [prof node:node_03]   low<10: 3 frames, objs/frame=5.0, infer=21.5ms
+2026-10-01 07:28:46,614 [INFO] __main__: [prof node:node_03]   high>15: 1 frames, objs/frame=20.0, infer=31.3ms
+2026-10-01 07:28:50,666 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=42.2 | infer=43.4ms track=17.1ms acquire=0.0ms
+2026-10-01 07:28:50,671 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.2ms render=4.6ms publish=6.2ms
+2026-10-01 07:28:50,671 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=42.2, infer=43.4ms
+2026-10-01 07:28:52,216 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=37.5 | infer=37.2ms track=14.3ms acquire=0.0ms
+2026-10-01 07:28:52,216 [INFO] __main__: [prof node:node_02] disp 24.6 fps | acquire=0.2ms render=4.9ms publish=6.2ms
+2026-10-01 07:28:52,216 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=37.5, infer=37.2ms
+2026-10-01 07:28:52,299 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=30.2 | infer=27.1ms track=15.2ms acquire=0.0ms
+2026-10-01 07:28:52,301 [INFO] __main__: [prof node:node_03] disp 24.4 fps | acquire=0.2ms render=3.7ms publish=5.9ms
+2026-10-01 07:28:52,303 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=30.2, infer=27.1ms
+2026-10-01 07:28:56,387 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=45.0 | infer=40.7ms track=14.5ms acquire=0.0ms
+2026-10-01 07:28:56,387 [INFO] __main__: [prof node:node_01] disp 12.1 fps | acquire=0.2ms render=5.7ms publish=7.1ms
+2026-10-01 07:28:56,388 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=45.0, infer=40.7ms
+2026-10-01 07:28:57,982 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=35.5 | infer=33.1ms track=19.1ms acquire=0.0ms
+2026-10-01 07:28:57,987 [INFO] __main__: [prof node:node_02] disp 24.1 fps | acquire=0.2ms render=4.5ms publish=6.0ms
+2026-10-01 07:28:57,993 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=35.5, infer=33.1ms
+2026-10-01 07:28:58,024 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=43.0 | infer=43.3ms track=24.1ms acquire=0.0ms
+2026-10-01 07:28:58,024 [INFO] __main__: [prof node:node_03] disp 24.3 fps | acquire=0.2ms render=4.9ms publish=5.8ms
+2026-10-01 07:28:58,025 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=43.0, infer=43.3ms
+2026-10-01 07:29:02,088 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=36.8 | infer=50.9ms track=23.3ms acquire=0.0ms
+2026-10-01 07:29:02,098 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=4.2ms publish=6.2ms
+2026-10-01 07:29:02,107 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=36.8, infer=50.9ms
+2026-10-01 07:29:03,685 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=36.5 | infer=31.0ms track=13.2ms acquire=0.0ms
+2026-10-01 07:29:03,686 [INFO] __main__: [prof node:node_02] disp 24.4 fps | acquire=0.1ms render=4.1ms publish=5.7ms
+2026-10-01 07:29:03,687 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=36.5, infer=31.0ms
+2026-10-01 07:29:03,726 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=42.5 | infer=30.9ms track=12.9ms acquire=0.0ms
+2026-10-01 07:29:03,727 [INFO] __main__: [prof node:node_03] disp 24.7 fps | acquire=0.2ms render=5.5ms publish=5.5ms
+2026-10-01 07:29:03,727 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=42.5, infer=30.9ms
+2026-10-01 07:29:07,824 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=41.2 | infer=38.2ms track=20.8ms acquire=0.0ms
+2026-10-01 07:29:07,828 [INFO] __main__: [prof node:node_01] disp 12.0 fps | acquire=0.1ms render=5.4ms publish=6.1ms
+2026-10-01 07:29:07,831 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=41.2, infer=38.2ms
+2026-10-01 07:29:09,422 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=41.0 | infer=42.2ms track=13.6ms acquire=0.0ms
+2026-10-01 07:29:09,423 [INFO] __main__: [prof node:node_02] disp 24.8 fps | acquire=0.2ms render=5.1ms publish=5.9ms
+2026-10-01 07:29:09,424 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=41.0, infer=42.2ms
+2026-10-01 07:29:09,452 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=38.2 | infer=32.0ms track=16.0ms acquire=0.0ms
+2026-10-01 07:29:09,453 [INFO] __main__: [prof node:node_03] disp 24.6 fps | acquire=0.1ms render=5.2ms publish=5.4ms
+2026-10-01 07:29:09,453 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=38.2, infer=32.0ms
+2026-10-01 07:29:13,515 [INFO] __main__: [prof node:node_01] ai 0.7 fps objs/frame=33.5 | infer=35.4ms track=24.0ms acquire=0.0ms
+2026-10-01 07:29:13,521 [INFO] __main__: [prof node:node_01] disp 11.9 fps | acquire=0.1ms render=4.9ms publish=5.9ms
+2026-10-01 07:29:13,532 [INFO] __main__: [prof node:node_01]   high>15: 4 frames, objs/frame=33.5, infer=35.4ms
+2026-10-01 07:29:15,091 [INFO] __main__: [prof node:node_02] ai 0.7 fps objs/frame=38.8 | infer=44.3ms track=12.1ms acquire=0.0ms
+2026-10-01 07:29:15,091 [INFO] __main__: [prof node:node_02] disp 24.3 fps | acquire=0.2ms render=4.6ms publish=5.4ms
+2026-10-01 07:29:15,091 [INFO] __main__: [prof node:node_02]   high>15: 4 frames, objs/frame=38.8, infer=44.3ms
+2026-10-01 07:29:15,147 [INFO] __main__: [prof node:node_03] ai 0.7 fps objs/frame=25.5 | infer=26.6ms track=13.6ms acquire=0.0ms
+2026-10-01 07:29:15,147 [INFO] __main__: [prof node:node_03] disp 24.2 fps | acquire=0.2ms render=3.8ms publish=5.7ms
+2026-10-01 07:29:15,147 [INFO] __main__: [prof node:node_03]   high>15: 4 frames, objs/frame=25.5, infer=26.6ms
+2026-10-01 07:29:18,687 [INFO] __main__: node node_01 done: counted=0
+2026-10-01 07:29:18,709 [INFO] __main__: node node_02 done: counted=7
+2026-10-01 07:29:18,941 [INFO] __main__: node node_03 done: counted=23

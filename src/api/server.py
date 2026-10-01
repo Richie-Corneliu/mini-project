@@ -7,7 +7,9 @@ import time
 from pathlib import Path
 
 import yaml
-from fastapi import FastAPI, HTTPException
+from typing import Optional
+
+from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import cv2
@@ -195,14 +197,34 @@ def set_focus(node_id: str):
 
 
 @app.post("/api/v1/control/{node_id}/{action}")
-def control_node(node_id: str, action: str):
+def control_node(node_id: str, action: str,
+                 payload: Optional[dict] = Body(default=None)):
     if node_id not in REGISTRY and node_id not in nodes_state:
         raise HTTPException(status_code=404, detail=f"unknown node {node_id}")
-    if action not in {"reset", "record"}:
+    if action == "update_zone":
+        # Trust boundary: payload comes from the browser, so every point is
+        # re-checked as a 0.0-1.0 pair before it reaches the AI worker.
+        points = (payload or {}).get("points")
+        try:
+            clean = [[float(p[0]), float(p[1])] for p in points]
+        except (TypeError, ValueError, IndexError):
+            clean = None
+        if (not isinstance(points, list) or len(points) < 3
+                or clean is None
+                or not all(0.0 <= x <= 1.0 and 0.0 <= y <= 1.0 for x, y in clean)):
+            raise HTTPException(
+                status_code=400,
+                detail="update_zone needs points: [[x, y], ...] with >=3 "
+                       "pairs normalized to 0.0-1.0")
+        command = {"action": "update_zone", "points": clean}
+    elif action in {"reset", "record"}:
+        command = action
+    else:
         raise HTTPException(status_code=400,
-                            detail="unsupported action; use reset or record")
+                            detail="unsupported action; use reset, record "
+                                   "or update_zone")
     with _command_lock:
-        COMMAND_QUEUE.setdefault(node_id, []).append(action)
+        COMMAND_QUEUE.setdefault(node_id, []).append(command)
     return {"node_id": node_id, "action": action, "queued": True}
 
 

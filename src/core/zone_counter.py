@@ -273,3 +273,20 @@ class ZoneCounter:
         self._missing.clear()
         self._counted = [set() for _ in self.zones]
         self._recent = [deque() for _ in self.zones]
+
+    def update_polygon(self, normalized_points, frame_width: int,
+                       frame_height: int, zone_index: int = 0) -> None:
+        """Swap zone `zone_index` for a polygon drawn on the web dashboard.
+
+        `normalized_points` are 0.0-1.0 ratios of the raw frame (the frontend
+        letterbox-maps clicks to the video box first), so they scale to any
+        stream resolution. Replaces the sv.PolygonZone in place; the latches
+        reset so vehicles inside the new polygon re-qualify."""
+        pts = np.asarray(normalized_points, dtype=np.float64).reshape(-1, 2)
+        if pts.shape[0] < 3:
+            raise ValueError("polygon needs >= 3 points")
+        pixel_pts = pts * [float(frame_width), float(frame_height)]
+        self.zones[zone_index] = sv.PolygonZone(
+            polygon=pixel_pts.astype(np.float32))
+        self._counted = [set() for _ in self.zones]
+        self._recent = [deque() for _ in self.zones]

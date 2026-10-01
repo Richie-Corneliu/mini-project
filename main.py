@@ -35,6 +35,7 @@ from src.core.zone_counter import ZoneCounter
 from src.stream.video_streamer import VideoStreamer
 from src.ui.renderer import Renderer, ZoneEditor
 from src.utils.logger import AuditLogger, get_logger, setup_logging
+from src.utils.zone_store import persist_zone
 
 log = get_logger(__name__)
 
@@ -225,6 +226,22 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
         frame, arrival, wall = raw
 
         command = pop_command(node_id)
+        # update_zone arrives as {"action": "update_zone", "points": [[0-1], ...]}.
+        # The polygon is rebuilt against the CURRENT raw frame so the ratios
+        # land on the right pixels whatever the stream resolution is; on
+        # failure the zone config from settings.yaml stays active.
+        if isinstance(command, dict) and command.get("action") == "update_zone":
+            try:
+                frame_h, frame_w = frame.shape[:2]
+                pixel_pts = [[int(x * frame_w), int(y * frame_h)]
+                             for x, y in command["points"]]
+                counter.update_polygon(command["points"], frame_w, frame_h)
+                persist_zone(node_id, pixel_pts)
+                log.info("Node %s zone updated + saved: %d pts on frame %dx%d",
+                         node_id, len(command["points"]), frame_w, frame_h)
+            except (KeyError, TypeError, ValueError) as e:
+                log.warning("Node %s rejected update_zone (%s)", node_id, e)
+            command = None
         if command == "record":
             if not recording_supported:
                 log.warning("Recording in multi-node mode is not yet supported to save CPU.")
