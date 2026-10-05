@@ -4,8 +4,10 @@ Grab -> Detect -> Count -> Log -> Render -> Display -> Audit video.
 Asynchronous pipeline, three threads per node:
   ingest  VideoStreamer decodes HLS/RTSP into a bounded queue (native rate)
   display consumes every frame, draws the newest overlay, shows / publishes it
-  ai      samples the newest raw frame at target_fps (focused) or throttle_fps
-          (background), runs RT-DETR + ByteTrack, stores the overlay
+          (render + MJPEG encode are skipped for nodes nobody is watching)
+  ai      samples every raw frame the display delivers (acquire rate, no
+          throttle) and runs RT-DETR + ByteTrack; counting accuracy must not
+          depend on whether an operator is watching
 
 The display loop never waits on the model, so the video stays fluid at the
 source's native rate while the boxes refresh at the AI rate. The display is
@@ -57,23 +59,6 @@ def save_zones(config_path, zones, zone_cfgs):
     ]
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(c, f, allow_unicode=True, sort_keys=False)
-
-
-def open_audit_writer(frame, fps):
-    """Timestamped annotated-video sink in logs/. mp4v first, AVI/XVID
-    fallback for Windows builds without an MP4 backend."""
-    h, w = frame.shape[:2]
-    ts = time.strftime("%Y%m%d_%H%M%S")
-    Path("logs").mkdir(exist_ok=True)
-    for fourcc, ext in (("mp4v", "mp4"), ("XVID", "avi")):
-        path = f"logs/audit_video_{ts}.{ext}"
-        vw = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*fourcc), fps, (w, h))
-        if vw.isOpened():
-            return vw, path
-        vw.release()
-        Path(path).unlink(missing_ok=True)
-    log.warning("no working VideoWriter codec; audit video disabled")
-    return None, None
 
 
 class FrameBus:
@@ -189,41 +174,42 @@ class StageProfiler:
             log.info("%s", line)
 
 
-def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt,
+def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                stop_event, prof, reset_flag, t_start, audit=None, debug=False,
-               publish_api=False, force_focus=False, record_state=None,
-               record_lock=None, recording_supported=False):
-    """Throttled inference loop. Samples the newest raw frame, runs the model,
-    and stores the overlay for the display thread. Paced to frame_dt when this
-    node is focused, idle_dt otherwise (Lazy Inference).
+               publish_api=False, force_focus=False, record_dir=None,
+               record_desired=False):
+    """Inference loop: consumes every raw frame the display thread delivers
+    (acquire rate, no idle throttling — ByteTrack needs temporal density for
+    accurate background counting), runs the model, and stores the overlay.
 
-    `force_focus` pins a node to frame_dt regardless of the API focus state.
-    Single-node mode sets it: there is only one stream and no map to switch
-    away to, so it must always run at target_fps."""
+    MJPEG + render are skipped when this node is not focused (Lazy Rendering);
+    detection, tracking and counting never are. `force_focus` pins a node to
+    full rendering regardless of the API focus state (single-node mode).
+
+    Recording is per-node: `record_desired` seeds the initial state (--record),
+    and the `record` command toggles it. While desired, a per-node writer
+    opened at the raw resolution gets every annotated frame, with or without
+    UI subscribers. The AI loop runs at acquire rate, so the file paces to
+    the source fps."""
     last_seq = 0
-    next_ai = time.perf_counter()
     start_time = time.time()
     peak_occupancy = 0
     hourly_counts = {}
+    writer = None          # per-node cv2.VideoWriter, open while recording
+    record_desired = bool(record_desired)
+    if record_desired:
+        log.info("Node %s starts recording (--record)", node_id)
     while not stop_event.is_set():
-        now = time.perf_counter()
-        if next_ai > now:
-            stop_event.wait(next_ai - now)
-            continue
-
-        focused = force_focus or get_active_focus() == node_id
-        dt = frame_dt if focused else idle_dt
-
-        # Non-blocking: take whatever is newest right now. If the display has
-        # not produced a fresh frame yet, wait one interval and retry.
+        # Blocking: take the next raw frame the display thread delivers. The
+        # display runs at the source's native rate, so this paces the AI loop
+        # at acquire rate; no extra sleep/throttle in between.
         t = time.perf_counter()
-        raw, last_seq = bus.wait_raw(last_seq, stop_event, timeout=0.0)
+        raw, last_seq = bus.wait_raw(last_seq, stop_event, timeout=1.0)
         t_acquire = time.perf_counter() - t
         if raw is None:
-            next_ai = time.perf_counter() + dt
             continue
-        next_ai = max(next_ai + dt, time.perf_counter())
         frame, arrival, wall = raw
+        focused = force_focus or get_active_focus() == node_id
 
         command = pop_command(node_id)
         # update_zone arrives as {"action": "update_zone", "points": [[0-1], ...]}.
@@ -243,13 +229,18 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
                 log.warning("Node %s rejected update_zone (%s)", node_id, e)
             command = None
         if command == "record":
-            if not recording_supported:
-                log.warning("Recording in multi-node mode is not yet supported to save CPU.")
-            elif record_state is not None and record_lock is not None:
-                with record_lock:
-                    record_state["enabled"] = not record_state["enabled"]
-                    enabled = record_state["enabled"]
-                log.info("record %s", "ON" if enabled else "OFF")
+            record_desired = not record_desired
+            log.info("Node %s record -> %s",
+                     node_id, "ON" if record_desired else "OFF")
+
+        # Writer follows the desired state (open lazily, close on toggle-off).
+        if record_desired and writer is None:
+            writer = _open_writer(frame, node_id, record_dir,
+                                  streamer.effective_fps())
+        elif not record_desired and writer is not None:
+            writer.release()
+            writer = None
+            log.info("Node %s recording saved", node_id)
 
         if reset_flag["v"] or command == "reset":
             counter.reset()
@@ -304,6 +295,16 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
             "trails": {k: list(v) for k, v in counter.trails.items()},
         })
 
+        # Recording: annotate on a copy and write, subscriber or not. The AI
+        # loop runs at acquire rate, so the file paces to the source fps.
+        if writer is not None:
+            out = frame.copy()
+            if renderer is not None:
+                renderer.draw(out, snap, dict(counter.total_by_class),
+                              trails={k: list(v)
+                                      for k, v in counter.trails.items()})
+            writer.write(np.ascontiguousarray(out))
+
         if publish_api:
             totals = counter.total_by_class
             update_node_data(node_id, {
@@ -320,17 +321,50 @@ def _ai_worker(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt
         prof.tick_ai(len(dets), infer=t_infer, track=t_track, acquire=t_acquire)
         prof.maybe_log()
 
+    if writer is not None:
+        writer.release()
+        log.info("Node %s recording saved on shutdown", node_id)
 
-def _display_worker(streamer, bus, renderer, stop_event, prof, sink, deadline=None):
+
+def _open_writer(frame, node_id, record_dir, fps):
+    """Per-node annotated-video sink: logs/output_{node_id}_{ts}.mp4.
+    mp4v first, AVI/XVID fallback for Windows builds without an MP4 backend.
+    fps follows the AI loop = the acquire rate, so playback is real-time."""
+    h, w = frame.shape[:2]
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    out_dir = Path(record_dir) if record_dir else Path("logs")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for fourcc, ext in (("mp4v", "mp4"), ("XVID", "avi")):
+        path = out_dir / f"output_{node_id}_{ts}.{ext}"
+        vw = cv2.VideoWriter(str(path), cv2.VideoWriter_fourcc(*fourcc),
+                             round(fps) or 25, (w, h))
+        if vw.isOpened():
+            log.info("Node %s audit video: %s", node_id, path)
+            return vw
+        vw.release()
+        Path(path).unlink(missing_ok=True)
+    log.warning("no working VideoWriter codec; recording disabled for %s",
+                node_id)
+    return None
+
+
+def _display_worker(node_id, streamer, bus, renderer, stop_event, prof, sink,
+                    focused=None, deadline=None):
     """Fast loop. Sole consumer of the stream queue: pulls every frame at the
     source's native rate, overlays the newest AI result, and hands the frame
     to `sink` (imshow or MJPEG publish). Never blocks on inference.
+
+    `focused(node_id)` gates the expensive path (render + JPEG encode): an
+    unwatched node still publishes raw frames to the AI but skips drawing and
+    streaming entirely. Defaults to always-focused (single-node window).
 
     Pacing matters because FFmpeg's HLS demuxer buffers whole segments and
     releases them in a burst (~0ms gaps, then a multi-second stall). Draining
     that burst unpaced looks like fast-forward, so each frame is spaced to the
     source rate and the bounded queue backpressures the pump into real time."""
     next_frame = time.monotonic()
+    if focused is None:
+        focused = lambda _nid: True
     while not stop_event.is_set():
         if deadline is not None and time.monotonic() > deadline:
             stop_event.set()
@@ -345,17 +379,22 @@ def _display_worker(streamer, bus, renderer, stop_event, prof, sink, deadline=No
         t_acquire = time.perf_counter() - t
 
         overlay = bus.get_overlay()
-        # Draw on a copy: the array handed to the AI stays pristine.
-        out = frame.copy()
-        t = time.perf_counter()
-        if renderer is not None and overlay is not None:
-            renderer.draw(out, overlay["snap"], overlay["counts"],
-                          trails=overlay["trails"])
-        t_render = time.perf_counter() - t
+        # Lazy Rendering: boxes + JPEG encode only for the watched node.
+        # Detection/counting in the AI worker is unaffected.
+        if focused(node_id):
+            # Draw on a copy: the array handed to the AI stays pristine.
+            out = frame.copy()
+            t = time.perf_counter()
+            if renderer is not None and overlay is not None:
+                renderer.draw(out, overlay["snap"], overlay["counts"],
+                              trails=overlay["trails"])
+            t_render = time.perf_counter() - t
 
-        t = time.perf_counter()
-        sink(out)
-        t_publish = time.perf_counter() - t
+            t = time.perf_counter()
+            sink(out)
+            t_publish = time.perf_counter() - t
+        else:
+            t_render = t_publish = 0.0
 
         prof.tick_display(acquire=t_acquire, render=t_render, publish=t_publish)
 
@@ -379,8 +418,6 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     source = str(sc["source"])
     if source.isdigit():
         source = int(source)
-    frame_dt = 1.0 / float(sc.get("target_fps", 25))
-    idle_dt = 1.0 / float(sc.get("throttle_fps", 0.7))
 
     zone_cfgs = cfg.get("zones", [])
     zones = build_zones(zone_cfgs)
@@ -431,47 +468,18 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         ).start()
         log.info("API server on http://localhost:8000")
 
-    writer = None
-    audit_path = None
-    audit_fps = round(1.0 / frame_dt)
-    record_state = {"enabled": bool(record)}
-    record_lock = threading.Lock()
-
     if show:
         cv2.namedWindow("ATCS", cv2.WINDOW_NORMAL)
         cv2.setMouseCallback("ATCS", editor.on_mouse)
 
     def sink(out):
         # Runs on the main thread: imshow/highgui stays on one thread.
-        nonlocal writer, audit_path
-        if serve_api:
-            set_latest_frame(node_id, out)
-        with record_lock:
-            recording = record_state["enabled"]
-        if recording and writer is None:
-            writer, audit_path = open_audit_writer(out, audit_fps)
-            if writer:
-                log.info("audit video: %s", audit_path)
-            else:
-                with record_lock:
-                    record_state["enabled"] = False
-        elif not recording and writer is not None:
-            writer.release()
-            log.info("audit video saved: %s", audit_path)
-            writer, audit_path = None, None
-        if writer:
-            writer.write(np.ascontiguousarray(out))
         if not show:
             return
         cv2.imshow("ATCS", out)
         k = cv2.waitKey(1) & 0xFF
         if k == ord("q"):
             stop.set()
-        elif k == ord("c"):
-            with record_lock:
-                record_state["enabled"] = not record_state["enabled"]
-                enabled = record_state["enabled"]
-            log.info("record %s", "ON" if enabled else "OFF")
         elif k in (ord("r"), ord("R")):
             # Defer to the AI thread; it owns the counter.
             reset_flag["v"] = True
@@ -484,24 +492,22 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     t0 = time.monotonic()
     ai = threading.Thread(
         target=_ai_worker,
-        args=(node_id, bus, streamer, det, counter, gpu_lock, frame_dt, idle_dt,
+        args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
               stop, prof, reset_flag, t0, audit, debug, serve_api, True,
-              record_state, record_lock, True),
+              None, bool(record)),
         daemon=True, name="ai")
     ai.start()
 
     deadline = t0 + duration if duration else None
     try:
-        _display_worker(streamer, bus, renderer, stop, prof, sink, deadline)
+        _display_worker(node_id, streamer, bus, renderer, stop, prof, sink,
+                        focused=lambda _nid: True, deadline=deadline)
     finally:
         stop.set()
         ai.join(timeout=5.0)
         streamer.stop()
         if audit:
             audit.close()
-        if writer:
-            writer.release()
-            log.info("audit video saved: %s", audit_path)
         cv2.destroyAllWindows()
         elapsed = time.monotonic() - t0
         log.info("Final: total=%d %s", counter.total, dict(counter.total_by_class))
@@ -526,8 +532,6 @@ def run_multi(cfg, nodes, duration=None, debug=False):
     dc = cfg["detector"]
     counter_cfg = cfg.get("counter", {})
     zone_cfgs = cfg.get("zones", [])
-    frame_dt = 1.0 / float(sc.get("target_fps", 25))
-    idle_dt = 1.0 / float(sc.get("throttle_fps", 0.7))
 
     det = Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
                    model_size=dc.get("model", "rtdetr-l"),
@@ -580,13 +584,15 @@ def run_multi(cfg, nodes, duration=None, debug=False):
 
         ai = threading.Thread(
             target=_ai_worker,
-            args=(node_id, bus, streamer, det, counter, gpu_lock, frame_dt,
-                  idle_dt, stop, prof, reset_flag, t0, None, debug, True),
+            args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
+                  stop, prof, reset_flag, t0, None, debug, True, False,
+                  "logs", False),
             daemon=True, name=f"ai-{node_id}")
         disp = threading.Thread(
             target=_display_worker,
-            args=(streamer, bus, renderer, stop, prof,
+            args=(node_id, streamer, bus, renderer, stop, prof,
                   lambda out, nid=node_id: set_latest_frame(nid, out)),
+            kwargs={"focused": lambda _nid: get_active_focus() == _nid},
             daemon=True, name=f"disp-{node_id}")
         ai.start()
         disp.start()

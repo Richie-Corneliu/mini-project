@@ -11,14 +11,14 @@ nodes:
   zones:
   - name: zone
     polygon:
-    - - 54
-      - 134
-    - - 76
-      - 182
-    - - 145
-      - 139
-    - - 106
-      - 137
+    - - 42
+      - 209
+    - - 61
+      - 485
+    - - 677
+      - 445
+    - - 620
+      - 243
 - id: node_02
   nama: Simpang Museum BRI
   lat: -7.421
@@ -29,3 +29,14 @@ nodes:
   lat: -7.4228
   lng: 109.2345
   source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
+  zones:
+  - name: zone
+    polygon:
+    - - 694
+      - 494
+    - - 692
+      - 204
+    - - 14
+      - 221
+    - - 5
+      - 504
