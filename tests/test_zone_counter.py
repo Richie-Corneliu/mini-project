@@ -5,18 +5,21 @@ import time
 import numpy as np
 import supervision as sv
 
-from src.core.detector import cross_class_nms
+from src.core.detector import cross_class_nms, reclassify_small_trucks
 from src.core.zone_counter import ZoneCounter
 
 
-def _dets(xyxy, cls, conf=None, tid=None):
+def _dets(xyxy, cls, conf=None, tid=None, reclassified=None):
     n = len(xyxy)
-    return sv.Detections(
+    d = sv.Detections(
         xyxy=np.asarray(xyxy, dtype=np.float32),
         confidence=np.asarray(conf if conf is not None else [0.9] * n, dtype=np.float32),
         class_id=np.asarray(cls, dtype=np.int32),
         tracker_id=np.asarray(tid, dtype=np.int64) if tid is not None else None,
     )
+    if reclassified is not None:
+        d.data["reclassified"] = np.asarray(reclassified, dtype=bool)
+    return d
 
 
 def test_nms_car_beats_motorcycle():
@@ -30,6 +33,28 @@ def test_nms_tie_keeps_bigger():
     kept = cross_class_nms(d, duplicate_iou=0.3)
     assert len(kept) == 1
     assert kept.xyxy[0][2] == 100
+
+
+def test_small_truck_demoted_to_car():
+    # 60x60=3600 < 8000 -> car; 200x200=40000 stays truck; car/motor untouched
+    d = _dets([[0, 0, 60, 60], [0, 100, 200, 300],
+               [0, 400, 40, 440], [0, 500, 50, 550]],
+              [7, 7, 2, 3])
+    out = reclassify_small_trucks(d, truck_min_area=8000)
+    assert list(out.class_id) == [2, 7, 2, 3], out.class_id
+
+
+def test_reclassify_disabled_and_boundary():
+    d = _dets([[0, 0, 10, 10]], [7])
+    assert list(reclassify_small_trucks(d, truck_min_area=0).class_id) == [7]
+    # exact threshold is NOT below -> stays truck
+    d2 = _dets([[0, 0, 100, 100]], [7])   # area == 10000
+    assert list(reclassify_small_trucks(d2, truck_min_area=10000).class_id) == [7]
+
+
+def test_reclassify_empty_dets():
+    d = sv.Detections.empty()
+    assert reclassify_small_trucks(d, truck_min_area=8000) is d
 
 
 def test_zone_latch_and_dedup():
@@ -214,6 +239,37 @@ def test_same_size_car_not_suppressed_as_cabin():
                          tid=[1, 2]), now=t + 1)
     assert any(e["track_id"] == 1 for e in ev), f"same-size car wrongly suppressed: {ev}"
     assert zc.suppressed_cabin == 0, zc.suppressed_cabin
+
+
+def _cabin_frame(flagged):
+    """Small car-class box whose centroid lands inside a big truck box (area
+    ratio 1600/19600 < 0.55, IoU > 0.6) — the exact cabin geometry. Both boxes
+    move 50px so the displacement gate passes. `flagged` adds the reclassified
+    marker to the car row."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 7: "truk/bus"},
+                     min_displacement_px=50)
+    t = time.monotonic()
+    mark = [flagged, False] if flagged is not None else None
+    zc.update(_dets([[80, 80, 120, 120], [70, 70, 210, 210]], [2, 7], tid=[1, 2],
+                    reclassified=mark), now=t)
+    return zc, zc.update(_dets([[120, 120, 160, 160], [110, 110, 250, 250]], [2, 7],
+                               tid=[1, 2], reclassified=mark), now=t + 1)
+
+
+def test_reclassified_small_truck_not_suppressed_as_cabin():
+    """A size-demoted truck (class 2, flagged) overlapping a real truck box must
+    still count: the cabin filter only applies to genuine cars."""
+    zc, ev = _cabin_frame(flagged=True)
+    assert zc.suppressed_cabin == 0, zc.suppressed_cabin
+    assert any(e["track_id"] == 1 for e in ev), f"reclassified truck dropped: {ev}"
+
+
+def test_genuine_car_cabin_still_suppressed():
+    """Unflagged car inside a truck box is still discarded as the cabin."""
+    zc, ev = _cabin_frame(flagged=None)
+    assert zc.suppressed_cabin == 1, zc.suppressed_cabin
+    assert not any(e["track_id"] == 1 for e in ev), ev
 
 
 if __name__ == "__main__":

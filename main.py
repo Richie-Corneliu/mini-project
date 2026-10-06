@@ -433,7 +433,8 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
                    model_size=dc.get("model", "rtdetr-l"),
                    min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
                    device=dc.get("device", "cuda:0"), half=dc.get("half", True),
-                   duplicate_iou=dc.get("duplicate_iou", 0.65))
+                   duplicate_iou=dc.get("duplicate_iou", 0.65),
+                   truck_min_area=dc.get("truck_min_area", 8000))
     counter = ZoneCounter(zones,
                           class_labels={2: "mobil", 3: "motor", 5: "truk/bus", 7: "truk/bus"},
                           tracker_config=dc.get("tracker_config"),
@@ -537,7 +538,8 @@ def run_multi(cfg, nodes, duration=None, debug=False):
                    model_size=dc.get("model", "rtdetr-l"),
                    min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
                    device=dc.get("device", "cuda:0"), half=dc.get("half", True),
-                   duplicate_iou=dc.get("duplicate_iou", 0.65))
+                   duplicate_iou=dc.get("duplicate_iou", 0.65),
+                   truck_min_area=dc.get("truck_min_area", 8000))
     gpu_lock = threading.Lock()
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())

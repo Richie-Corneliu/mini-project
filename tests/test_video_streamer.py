@@ -1,9 +1,28 @@
 """VideoStreamer checks: per-frame gap carrying, jitter flag, no-drop backpressure.
 Run:  python -m tests.test_video_streamer"""
+import os
 import threading
 import time
 
 from src.stream.video_streamer import VideoStreamer
+
+
+def test_ffmpeg_capture_options_set():
+    # Set at import so it applies to the first cv2.VideoCapture.
+    assert "OPENCV_FFMPEG_CAPTURE_OPTIONS" in os.environ
+
+
+def test_latest_nonblocking_and_uncouned():
+    s = VideoStreamer("unused://")
+    assert s.latest() is None            # before any frame, no block, no raise
+    frame = object()
+    t0 = time.monotonic()
+    with s._lock:
+        s._latest = (frame, t0, t0)
+    got = s.latest()                     # instant read of the pump's slot
+    assert got is not None and got[0] is frame
+    assert s.frames_delivered == 0       # latest() consumes nothing
+    assert s._queue.empty()              # and does not touch the queue
 
 
 def test_gap_is_per_frame_point_in_time():
@@ -43,6 +62,10 @@ def test_bounded_put_keeps_every_frame():
 
 
 if __name__ == "__main__":
+    test_ffmpeg_capture_options_set()
+    print("PASS test_ffmpeg_capture_options_set")
+    test_latest_nonblocking_and_uncouned()
+    print("PASS test_latest_nonblocking_and_uncouned")
     test_gap_is_per_frame_point_in_time()
     print("PASS test_gap_is_per_frame_point_in_time")
     test_bounded_put_keeps_every_frame()

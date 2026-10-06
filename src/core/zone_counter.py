@@ -183,6 +183,13 @@ class ZoneCounter:
         truck_boxes = ([dets.xyxy[j] for j in range(len(dets))
                         if int(dets.class_id[j]) in self.TRUCK_CLS]
                        if dets.class_id is not None else [])
+        # Rows the detector demoted truck->car by size (detector.py) carry a
+        # flag in Detections.data. A demoted pickup shown as class 2 would
+        # otherwise be swallowed by the cabin filter if another truck box
+        # overlaps it — but it is a whole vehicle, never a truck cabin.
+        flags = dets.data.get("reclassified") if dets.data else None
+        if flags is None or len(flags) != len(dets):
+            flags = None
 
         for i in range(len(dets)):
             tid = int(tids[i])
@@ -226,8 +233,11 @@ class ZoneCounter:
                     else:
                         continue
                 vote = self._voted_class(tid, cls)
-                # Filter 3: a car inside a truck box is the truck cabin.
+                # Filter 3: a car inside a truck box is the truck cabin. A
+                # size-demoted truck (flags[i]) is exempt — it only reads as a
+                # car, so it must never be discarded as another truck's cabin.
                 if (vote == self.CAR_CLS and truck_boxes
+                        and not (flags is not None and bool(flags[i]))
                         and self._inside_truck(dets.xyxy[i], truck_boxes,
                                                self.cabin_iou,
                                                self.cabin_area_ratio)):

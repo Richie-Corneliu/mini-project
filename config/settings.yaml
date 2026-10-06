@@ -1,5 +1,5 @@
 stream:
-  source: https://www.banyumaskab.go.id/cctv-stream/cctv_simpang_museum_bri/video1_stream.m3u8
+  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
   reconnect: true
   max_retries: 5
   backoff_sec: 2.0
@@ -41,6 +41,9 @@ detector:
   - 5
   - 7
   min_area: 20
+  # Truck boxes smaller than this (pixels, w*h) are demoted to car: small
+  # pickups/box cars that COCO groups under truck. Tune per camera; 0 disables.
+  truck_min_area: 8000
   show_dims: true
   tracker_config:
     lost_track_buffer: 90
