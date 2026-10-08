@@ -20,18 +20,33 @@
 
   <header class="topbar">
     <div class="brand">
-      <svg class="logo" viewBox="0 0 48 48" role="img" aria-label="Logo CCTV Smart ATCS">
-        <path class="logo-mount" d="M14 40h20v4H14z"/>
-        <path class="logo-mount" d="M22 26h4v14h-4z"/>
-        <path class="logo-body" d="M8 12h24a4 4 0 0 1 4 4v8a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4v-8a4 4 0 0 1 4-4z"/>
-        <circle class="logo-lens-halo" cx="36" cy="20" r="7"/>
-        <circle class="logo-lens" cx="36" cy="20" r="4.5"/>
-        <circle class="logo-lens-core" cx="36" cy="20" r="2"/>
-        <circle class="logo-rec" cx="11" cy="18" r="2"/>
-      </svg>
+      <div class="logo-3d-box">
+        <svg class="cctv-3d-icon" width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo CCTV Smart ATCS">
+          <!-- Ceiling Mount Bracket -->
+          <rect x="18" y="4" width="12" height="3" rx="1.5" fill="#94a3b8"/>
+          <path d="M24 7V13" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="24" cy="14" r="3" fill="#38bdf8"/>
+
+          <!-- Camera Sunshield / Top Visor -->
+          <path d="M11 16L32 20C34.5 20.5 36 22 36 23.5L13 19.5C11 19 10 17.5 11 16Z" fill="#e2e8f0"/>
+
+          <!-- Camera Body (3D Cylinder) -->
+          <path d="M12 20L32 24C34.5 24.5 36 26.5 35 28.5L32 34C31 35.5 29 36 27 35.5L11 32C9 31.5 8 29.5 9 27.5L10 22C10.5 20.5 11 20 12 20Z" fill="#0284c7"/>
+          <path d="M12 20L32 24C34 24.5 35 26 34.5 27.5L11 23C10.5 21.5 11.2 20.2 12 20Z" fill="#38bdf8"/>
+
+          <!-- Lens Face & Glass Glow -->
+          <ellipse cx="32" cy="29" rx="5" ry="6.5" transform="rotate(15 32 29)" fill="#0f172a" stroke="#38bdf8" stroke-width="1.5"/>
+          <ellipse cx="32" cy="29" rx="3.5" ry="4.5" transform="rotate(15 32 29)" fill="#0284c7"/>
+          <circle cx="32.5" cy="29" r="2.2" fill="#00f2fe"/>
+          <circle cx="31.2" cy="27.8" r="1" fill="#ffffff"/>
+
+          <!-- Rec LED Indicator -->
+          <circle cx="27" cy="22" r="1.2" fill="#ef4444"/>
+        </svg>
+      </div>
       <div class="brand-text">
         <h1>SMART ATCS BANYUMAS</h1>
-        <span class="live-badge"><span class="live-dot"></span>COMMAND CENTER - LIVE</span>
+        <span class="live-badge"><span class="live-dot pulse-dot"></span>COMMAND CENTER - LIVE</span>
       </div>
     </div>
 

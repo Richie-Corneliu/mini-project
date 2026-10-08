@@ -7,8 +7,8 @@
 nodes:
 - id: node_01
   nama: Simpang Omnia
-  lat: -7.4372
-  lng: 109.2321
+  lat: -7.419797
+  lng: 109.229791
   source: rtsp://{user}:{pass}@10.26.110.128/h264/ch1/main/av_stream/
   zones:
   - name: zone
@@ -27,8 +27,8 @@ nodes:
       - 177
 - id: node_02
   nama: Underpass
-  lat: -7.421
-  lng: 109.235
+  lat: -7.423800
+  lng: 109.223655
   source: rtsp://{user}:{pass}@10.26.110.139/h264/ch1/main/av_stream
   zones:
   - name: zone
@@ -43,8 +43,8 @@ nodes:
       - 600
 - id: node_03
   nama: Simpang Kebon Dalem Timur
-  lat: -7.4228
-  lng: 109.2345
+  lat: -7.423112
+  lng: 109.243761
   source: rtsp://{user}:{pass}@10.26.110.127/h264/ch1/main/av_stream
   zones:
   - name: zone
@@ -59,8 +59,8 @@ nodes:
       - 300
 - id: node_04
   nama: Simpang Museum BRI
-  lat: -7.425451
-  lng: 109.238772
+  lat: -7.424040
+  lng: 109.225888
   source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
   zones:
   - name: zone
