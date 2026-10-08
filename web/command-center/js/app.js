@@ -1,11 +1,13 @@
 ﻿/* Smart ATCS Banyumas - Command Center
-   MOCK_NODES renders instantly so the console never boots empty; the FastAPI
-   backend then overlays live counts on a 1.5s poll. If the API is unreachable
-   the mock simply stays on screen.
+   Node identity (markers + sidebar) comes from /api/v1/nodes, which reads
+   nodes.yaml fresh per request, so a new simpang appears without a redeploy.
+   /api/v1/traffic-data then overlays live counts on a 1.5s poll; markers and
+   sidebar repaint from the same snapshot.
 
    Two views share one page:
      view-map    WebGIS overview, Leaflet map plus the floating dashboard menu
-     view-count  full-bleed MJPEG stream with the analytics drawer along the bottom
+     view-count  fixed-height split screen: stream + action bar (left),
+                 scrollable analytics sidebar (right)
 */
 
 "use strict";
@@ -15,12 +17,24 @@ const MAP_ZOOM = 14;
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 /* Backend: FastAPI serves processed MJPEG + tracker JSON. The frontend never
-   touches RTSP/HLS directly, only these HTTP endpoints. */
-const API_BASE = "http://localhost:8000/api/v1";
+   touches RTSP/HLS directly, only these HTTP endpoints.
+
+   Absolute by default so the page works from Live Server (localhost:5500) and
+   from the backend itself (localhost:8000). Override at deploy time by setting
+   window.ATCS_API_BASE before this script loads, or ?api= on the query string
+   (handy when the dashboard is served from another host). */
+const API_BASE = (
+  new URLSearchParams(location.search).get("api") ||
+  window.ATCS_API_BASE ||
+  "http://localhost:8000"
+).replace(/\/$/, "") + "/api/v1";
 const POLL_MS = 1500;
 
 const STATUS_ORDER = ["LANCAR", "PADAT", "MACET"];
-const STATUS_CLASS = { LANCAR: "st-LANCAR", PADAT: "st-PADAT", MACET: "st-MACET" };
+const STATUS_CLASS = {
+  LANCAR: "st-LANCAR", PADAT: "st-PADAT", MACET: "st-MACET",
+  OFFLINE: "st-OFFLINE",
+};
 
 const NOTES = {
   LANCAR: "Arus lalu lintas lancar, tidak ada penumpukan kendaraan.",
@@ -29,48 +43,6 @@ const NOTES = {
 };
 
 const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 50;
-
-/* ---- Mock data -------------------------------------------------- *
-   Three simpang held in Purwokerto. hourly[] is fallback data for offline boot. */
-
-const MOCK_NODES = [
-  {
-    id: "node_01",
-    nama: "Simpang Sawangan",
-    lat: -7.424374345027274,
-    lng: 109.2267977305384,
-    motor: 100,
-    mobil: 40,
-    truk: 10,
-    occupancy: 48,
-    status: "PADAT",
-    hourly: [96, 128, 142, 118, 134, 104],
-  },
-  {
-    id: "node_02",
-    nama: "Museum BRI",
-    lat: -7.424048458534053,
-    lng: 109.22583187510753,
-    motor: 62,
-    mobil: 22,
-    truk: 4,
-    occupancy: 17,
-    status: "LANCAR",
-    hourly: [88, 104, 96, 112, 90, 76],
-  },
-  {
-    id: "node_03",
-    nama: "Simpang Kebon Dalem Timur",
-    lat: -7.423139,
-    lng: 109.244000,
-    motor: 156,
-    mobil: 71,
-    truk: 18,
-    occupancy: 74,
-    status: "MACET",
-    hourly: [142, 186, 208, 176, 198, 164],
-  },
-];
 
 /* ---- DOM refs --------------------------------------------------- */
 
@@ -96,11 +68,7 @@ const el = {
     MACET: byId("split-MACET"),
   },
 
-  drawer: byId("drawer"),
-  drawerHandle: byId("drawer-handle"),
-  drawerToggle: byId("drawer-toggle"),
-  toggleLabel: byId("toggle-label"),
-  drawerPlace: byId("drawer-place"),
+  panelPlace: byId("panel-place"),
   resetCounterBtn: byId("reset-counter-btn"),
   toggleRecordBtn: byId("toggle-record-btn"),
   drawZoneBtn: byId("draw-zone-btn"),
@@ -136,7 +104,22 @@ let selectedId = null;
 let lastEscapeAt = 0;
 
 const total = (node) => node.motor + node.mobil + node.truk;
-const statusOf = (node) => STATUS_CLASS[node.status] || "st-LANCAR";
+
+/* Raw status for data-status attributes, CSS class for st-* selectors. */
+function rawStatus(node) {
+  if (!node.online) return "OFFLINE";
+  return STATUS_ORDER.includes(node.status) ? node.status : "unknown";
+}
+function stClass(node) {
+  return STATUS_CLASS[rawStatus(node)] || "st-unknown";
+}
+
+function escapeHtml(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;",
+  })[c]);
+}
 
 /* ---- Map -------------------------------------------------------- */
 
@@ -147,24 +130,36 @@ function initMap() {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
 }
-
 /* 44px hit box keeps the pin tappable; ring, core and label centre inside it. */
 function markerIcon(node) {
   return L.divIcon({
-    className: "veh-marker " + statusOf(node),
+    className: "veh-marker " + stClass(node),
     html: '<div class="ring"></div><div class="core"></div><div class="pin-label"></div>',
     iconSize: [44, 44],
     iconAnchor: [22, 22],
   });
 }
 
+/* Hover preview of the same numbers the sidebar shows. */
+function tooltipHtml(node) {
+  const status = rawStatus(node);
+  return '<strong>' + escapeHtml(node.nama) + "</strong><br>" +
+    '<span class="tip-status ' + stClass(node) + '">' + status + "</span>" +
+    ' &middot; okupansi <span class="tip-occ">' + (node.occupancy || 0) + "%</span><br>" +
+    "Motor " + node.motor + " &middot; Mobil " + node.mobil +
+    " &middot; Truk " + node.truk;
+}
+
 /* Marker creation and refresh share one path so a poll can recolor a pin in
-   place. The icon is rebuilt only when the status actually changed, which
-   keeps the pulse animation from restarting on every poll cycle. */
+   place. The icon is rebuilt only when the status class actually changed
+   (keeps the pulse from restarting every cycle); the tooltip content is
+   refreshed with every snapshot so occupancy stays live. */
 function upsertMarkers() {
+  if (!map) return;   // Leaflet unavailable: sidebar still renders below.
   nodes.forEach((node) => {
     if (node.lat == null || node.lng == null) return;
 
+    const status = stClass(node);
     const existing = markers.get(node.id);
     if (!existing) {
       const marker = L.marker([node.lat, node.lng], {
@@ -182,18 +177,22 @@ function upsertMarkers() {
         if (label) label.textContent = node.nama;
       });
       marker.on("click", () => openCounting(node.id));
+      marker.bindTooltip(tooltipHtml(node), {
+        className: "veh-tip", direction: "top", offset: [0, -14],
+      });
 
       marker.addTo(map);
-      marker._status = node.status;
+      marker._status = status;
       markers.set(node.id, marker);
       return;
     }
 
     existing.setLatLng([node.lat, node.lng]);
-    if (existing._status !== node.status) {
+    if (existing._status !== status) {
       existing.setIcon(markerIcon(node));
-      existing._status = node.status;
+      existing._status = status;
     }
+    existing.setTooltipContent(tooltipHtml(node));
   });
 }
 
@@ -208,7 +207,7 @@ function renderMenu() {
   el.menuCount.textContent = list.length + " titik";
 
   STATUS_ORDER.forEach((status) => {
-    const count = list.filter((node) => node.status === status).length;
+    const count = list.filter((node) => rawStatus(node) === status).length;
     const seg = el.split[status];
     seg.dataset.count = count;
     seg.style.flexGrow = count || 0.001;
@@ -217,9 +216,9 @@ function renderMenu() {
 
   el.menuList.innerHTML = list.map((node) => (
     '<li><button type="button" class="menu-item" data-id="' + node.id +
-    '" data-status="' + statusOf(node) + '">' +
+    '" data-status="' + rawStatus(node) + '">' +
       '<span class="menu-dot"></span>' +
-      '<span class="menu-name">' + node.nama + "</span>" +
+      '<span class="menu-name">' + escapeHtml(node.nama) + "</span>" +
       '<span class="menu-val">' + total(node) + "</span>" +
     "</button></li>"
   )).join("");
@@ -245,8 +244,6 @@ function showView(which) {
      is what stops the stream and frees the browser's bandwidth. */
   if (toCounting) attachStream(selectedId);
   else clearStream();
-
-  if (toCounting) settle(true);
 }
 
 /* ---- Backend bridge (focus + MJPEG) ----------------------------- */
@@ -461,33 +458,24 @@ function openCounting(id) {
 
 el.backBtn.addEventListener("click", () => showView("map"));
 
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  lastEscapeAt = performance.now();
+  if (el.viewCount.classList.contains("is-visible")) showView("map");
+});
+
 /* ---- Analytics (VIEW 2) ----------------------------------------- */
 
 function renderAnalytics(node) {
-  const grand = total(node);
-  const cls = statusOf(node);
+  const cls = stClass(node);
 
   el.controlStatus.textContent = "";
-  el.drawerPlace.textContent = node.nama;
-  el.camChip.textContent = "CAM " + String([...nodes.keys()].indexOf(node.id) + 1).padStart(2, "0");
+  el.panelPlace.textContent = node.nama;
+  el.camChip.textContent = "CAM " +
+    String([...nodes.keys()].indexOf(node.id) + 1).padStart(2, "0");
   el.camChip.className = "cam-chip " + cls;
 
-  el.sumTotal.textContent = grand;
-  el.sumMotor.textContent = node.motor;
-  el.sumMobil.textContent = node.mobil;
-  el.sumTruk.textContent = node.truk;
-
-  el.countMotor.textContent = node.motor;
-  el.countMobil.textContent = node.mobil;
-  el.countTruk.textContent = node.truk;
-
-  renderLiveMetrics(node);
-}
-
-function renderLiveMetrics(node) {
-  const grand = total(node);
-
-  el.sumTotal.textContent = grand;
+  el.sumTotal.textContent = total(node);
   el.sumMotor.textContent = node.motor;
   el.sumMobil.textContent = node.mobil;
   el.sumTruk.textContent = node.truk;
@@ -499,7 +487,6 @@ function renderLiveMetrics(node) {
   el.avgHour.textContent = averagePerHour(node);
   el.peakHour.textContent = node.startTime ? node.peakOccupancy : 0;
 
-  el.camChip.className = "cam-chip " + statusOf(node);
   renderChart(node);
   renderGauge(node);
 }
@@ -511,17 +498,10 @@ function averagePerHour(node) {
 }
 
 function chartData(node) {
-  if (node.startTime) {
-    const hours = Object.keys(node.hourlyCounts || {}).sort().slice(-6);
-    return hours.map((hour) => ({
-      hour: hour,
-      value: Number(node.hourlyCounts[hour] || 0),
-    }));
-  }
-
-  return (node.hourly || []).map((value, index) => ({
-    hour: String(8 + index).padStart(2, "0"),
-    value: Number(value || 0),
+  const hours = Object.keys(node.hourlyCounts || {}).sort().slice(-6);
+  return hours.map((hour) => ({
+    hour: hour,
+    value: Number(node.hourlyCounts[hour] || 0),
   }));
 }
 
@@ -549,130 +529,50 @@ function renderChart(node) {
 }
 
 function renderGauge(node) {
+  const cls = stClass(node);
   const pct = Math.max(0, Math.min(100, node.occupancy));
 
-  el.gauge.className = "gauge " + statusOf(node);
+  el.gauge.className = "gauge " + cls;
   el.gaugeFill.style.strokeDashoffset = GAUGE_CIRCUMFERENCE * (1 - pct / 100);
   el.occValue.textContent = pct + "%";
 
-  el.gaugeStatus.className = "gauge-status " + statusOf(node);
-  el.occLabel.textContent = node.status;
+  el.gaugeStatus.className = "gauge-status " + cls;
+  el.occLabel.textContent = rawStatus(node);
   el.occNote.textContent = NOTES[node.status] || "";
 }
 
-/* ---- Drawer: expand, collapse, drag ----------------------------- */
+/* ---- Dynamic node registry -------------------------------------- */
 
-const drawer = el.drawer;
-let drawerOpen = false;
-
-/* How far the panel sits below its expanded position while collapsed.
-   --drawer-peek is a plain px value so it reads back fine, but
-   --drawer-panel-h is a clamp(), and a custom property hands back the raw
-   token stream rather than a resolved length, so the rest is measured. */
-function panelHeight() {
-  const peek = parseFloat(getComputedStyle(drawer).getPropertyValue("--drawer-peek"));
-  return Math.max(0, drawer.offsetHeight - (Number.isFinite(peek) ? peek : 0));
+/* /api/v1/nodes reads nodes.yaml fresh per request, so markers + sidebar
+   cover every configured simpang the moment the page boots. */
+async function loadRegistry() {
+  const res = await fetch(API_BASE + "/nodes", { cache: "no-store" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const payload = await res.json();
+  (payload.nodes || []).forEach((incoming) => {
+    const prev = nodes.get(incoming.id);
+    nodes.set(incoming.id, {
+      id: incoming.id,
+      nama: incoming.nama || (prev && prev.nama) || incoming.id,
+      lat: incoming.lat != null ? incoming.lat : (prev && prev.lat),
+      lng: incoming.lng != null ? incoming.lng : (prev && prev.lng),
+      motor: (prev && prev.motor) || 0,
+      mobil: (prev && prev.mobil) || 0,
+      truk: (prev && prev.truk) || 0,
+      occupancy: (prev && prev.occupancy) || 0,
+      online: prev ? prev.online : false,
+      status: (prev && prev.status) || "OFFLINE",
+      startTime: (prev && prev.startTime) || 0,
+      peakOccupancy: (prev && prev.peakOccupancy) || 0,
+      hourlyCounts: (prev && prev.hourlyCounts) || {},
+    });
+  });
 }
-
-function dragTo(offset) {
-  drawer.classList.add("is-dragging");
-  drawer.style.transform = "translateX(-50%) translateY(" + offset + "px)";
-}
-
-/* Handing control back to the class means dropping the inline transform,
-   which is safe because the class transform and px 0 describe the same place. */
-function settle(open) {
-  drawerOpen = open;
-  drawer.classList.remove("is-dragging");
-  drawer.style.transform = "";
-  drawer.classList.toggle("is-open", open);
-  el.drawerToggle.setAttribute("aria-expanded", String(open));
-  el.drawerHandle.setAttribute("aria-expanded", String(open));
-  el.toggleLabel.textContent = open ? "Tutup" : "Rincian";
-}
-
-el.drawerToggle.addEventListener("click", () => settle(!drawerOpen));
-/* ---- Drag to expand / collapse ---------------------------------- *
-   Tracking runs on document rather than the handle. A capture on the handle
-   alone is not enough: if the pointer leaves it mid-gesture the moves stop
-   arriving, and the panel freezes halfway. */
-
-const drag = { active: false, startY: 0, startOffset: 0, moved: false, pointerId: null };
-
-function clampedOffset(clientY) {
-  const span = panelHeight();
-  const travel = drag.startOffset + (clientY - drag.startY);
-  return Math.max(0, Math.min(span, travel));
-}
-
-el.drawerHandle.addEventListener("pointerdown", (event) => {
-  drag.active = true;
-  drag.moved = false;
-  drag.pointerId = event.pointerId;
-  drag.startY = event.clientY;
-  drag.startOffset = drawerOpen ? 0 : panelHeight();
-  drawer.classList.add("is-dragging");
-  event.preventDefault();
-});
-
-document.addEventListener("pointermove", (event) => {
-  if (!drag.active || event.pointerId !== drag.pointerId) return;
-  if (Math.abs(event.clientY - drag.startY) > 4) drag.moved = true;
-  if (drag.moved) dragTo(clampedOffset(event.clientY));
-});
-
-function endDrag(event) {
-  if (!drag.active || event.pointerId !== drag.pointerId) return;
-  drag.active = false;
-
-  /* A press that never moved is a tap, and a tap on the handle toggles. */
-  if (!drag.moved) {
-    settle(!drawerOpen);
-    return;
-  }
-
-  settle(clampedOffset(event.clientY) < panelHeight() / 2);
-}
-
-document.addEventListener("pointerup", endDrag);
-document.addEventListener("pointercancel", endDrag);
-
-/* The handle is a real button, so Enter and Space already toggle it. */
-el.drawerHandle.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowUp" && !drawerOpen) { event.preventDefault(); settle(true); }
-  if (event.key === "ArrowDown" && drawerOpen) { event.preventDefault(); settle(false); }
-});
-
-/* Collapse when the pointer goes down anywhere outside an open drawer. */
-document.addEventListener("pointerdown", (event) => {
-  if (!drawerOpen) return;
-  if (drawer.contains(event.target)) return;
-  if (el.backBtn.contains(event.target)) return;
-  settle(false);
-});
-
-document.addEventListener("keydown", (event) => {
-  if (event.key !== "Escape") return;
-  lastEscapeAt = performance.now();
-  /* Only the frontmost layer steps back, so the drawer closes before the view. */
-  if (drawerOpen) settle(false);
-  else if (el.viewCount.classList.contains("is-visible")) showView("map");
-});
-
-/* A resize changes the vh-derived panel height, so the collapsed offset has
-   to be re-applied or the panel drifts off its resting position. */
-window.addEventListener("resize", () => {
-  if (drag.active) return;
-  drawer.classList.add("is-dragging");
-  drawer.style.transform = drawerOpen ? "translateX(-50%) translateY(0px)"
-    : "translateX(-50%) translateY(" + panelHeight() + "px)";
-  void drawer.offsetWidth;
-  drawer.classList.remove("is-dragging");
-});
 
 /* ---- Live polling ----------------------------------------------- */
 
-/* Merge tracker snapshots over mock identity and fallback chart data. */
+/* Overlay tracker snapshots on the registry identity; unknown ids are added
+   so a node that appears in /traffic-data without /nodes still shows up. */
 function applyNodes(apiNodes) {
   Object.entries(apiNodes).forEach(([id, incoming]) => {
     const prev = nodes.get(id);
@@ -685,19 +585,21 @@ function applyNodes(apiNodes) {
       mobil: incoming.mobil || 0,
       truk: incoming.truk || 0,
       occupancy: incoming.occupancy || 0,
-      status: incoming.status || "LANCAR",
-       hourly: prev ? prev.hourly : null,
-       startTime: incoming.start_time != null
-         ? Number(incoming.start_time) : (prev && prev.startTime) || 0,
-       peakOccupancy: incoming.peak_occupancy != null
-         ? Number(incoming.peak_occupancy) : (prev && prev.peakOccupancy) || 0,
-       hourlyCounts: incoming.hourly_counts != null
-         ? incoming.hourly_counts : (prev && prev.hourlyCounts) || {},
-     });
+      online: incoming.online != null
+        ? Boolean(incoming.online) : (prev && prev.online) || false,
+      status: incoming.status || (prev && prev.status) || "OFFLINE",
+      startTime: incoming.start_time != null
+        ? Number(incoming.start_time) : (prev && prev.startTime) || 0,
+      peakOccupancy: incoming.peak_occupancy != null
+        ? Number(incoming.peak_occupancy) : (prev && prev.peakOccupancy) || 0,
+      hourlyCounts: incoming.hourly_counts != null
+        ? incoming.hourly_counts : (prev && prev.hourlyCounts) || {},
+    });
   });
 
+  upsertMarkers();
   renderMenu();
-  if (selectedId && nodes.has(selectedId)) renderLiveMetrics(nodes.get(selectedId));
+  if (selectedId && nodes.has(selectedId)) renderAnalytics(nodes.get(selectedId));
 }
 
 async function poll() {
@@ -707,8 +609,7 @@ async function poll() {
     const payload = await res.json();
     applyNodes(payload.nodes || {});
   } catch (err) {
-    /* Backend unreachable: the mock baseline is already on screen, so the
-       console just keeps showing it instead of blanking out. */
+    /* Backend unreachable: keep whatever is on screen. */
   }
 }
 
@@ -729,14 +630,35 @@ function tickClock() {
 
 /* ---- Boot ------------------------------------------------------- */
 
-MOCK_NODES.forEach((node) => nodes.set(node.id, node));
-initMap();
-upsertMarkers();
-renderMenu();
-tickClock();
-setInterval(tickClock, 1000);
-renderAnalytics(nodes.get(MOCK_NODES[0].id));
-settle(false);
+/* Chrome note: if the Leaflet CDN is blocked, `L` is undefined and every map
+   call throws. Letting that abort boot() is what froze the clock and left the
+   page blank, so each step below is isolated: a dead map or a dead backend
+   degrades that feature only, and the clock + poll always come up. */
+async function boot() {
+  tickClock();
+  setInterval(tickClock, 1000);
 
-poll();
-setInterval(poll, POLL_MS);
+  try {
+    initMap();
+  } catch (err) {
+    console.warn("[ATCS] map init failed (Leaflet CDN blocked?):", err.message);
+  }
+
+  try {
+    await loadRegistry();
+  } catch (err) {
+    console.warn("[ATCS] node registry unavailable, retrying via poll:", err.message);
+  }
+
+  try {
+    upsertMarkers();
+    renderMenu();
+  } catch (err) {
+    console.warn("[ATCS] initial render failed:", err.message);
+  }
+
+  poll();
+  setInterval(poll, POLL_MS);
+}
+
+boot();

@@ -61,6 +61,45 @@ def save_zones(config_path, zones, zone_cfgs):
         yaml.safe_dump(c, f, allow_unicode=True, sort_keys=False)
 
 
+def _build_detector(cfg):
+    dc = cfg["detector"]
+    return Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
+                    model_size=dc.get("model", "rtdetr-l"),
+                    min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
+                    device=dc.get("device", "cuda:0"), half=dc.get("half", True),
+                    duplicate_iou=dc.get("duplicate_iou", 0.65),
+                    truck_min_area=dc.get("truck_min_area", 8000))
+
+
+def _build_pipeline(cfg, zones, source, debug):
+    """Per-node streamer + counter + renderer from config, shared by run()
+    and run_multi(). `source` is this node's raw URL or USB device index."""
+    sc = cfg["stream"]
+    dc = cfg["detector"]
+    counter_cfg = cfg.get("counter", {})
+    if isinstance(source, str) and source.isdigit():
+        source = int(source)
+    streamer = VideoStreamer(source, max_queue=sc.get("queue_size", 3),
+                             reconnect=sc.get("reconnect", True),
+                             max_retries=sc.get("max_retries"),
+                             backoff_min=sc.get("backoff_sec", 2.0),
+                             gap_thresh_sec=sc.get("gap_thresh_sec", 0.5))
+    counter = ZoneCounter(zones,
+                          class_labels={2: "mobil", 3: "motor", 5: "truk/bus", 7: "truk/bus"},
+                          tracker_config=dc.get("tracker_config"),
+                          dedup_cooldown_sec=counter_cfg.get("dedup_cooldown_sec", 4.0),
+                          dedup_radius_px=counter_cfg.get("dedup_radius_px", 10),
+                          min_displacement_px=counter_cfg.get("min_displacement_px", 50),
+                          class_window=counter_cfg.get("class_window", 15),
+                          cabin_iou=counter_cfg.get("cabin_iou", 0.6),
+                          cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
+                          still_count_frames=counter_cfg.get("still_count_frames", 30),
+                          still_min_conf=counter_cfg.get("still_min_conf", 0.35),
+                          debug=debug)
+    renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug)
+    return streamer, counter, renderer
+
+
 class FrameBus:
     """Newest raw frame (display -> AI) and newest overlay (AI -> display).
 
@@ -414,40 +453,12 @@ def _display_worker(node_id, streamer, bus, renderer, stop_event, prof, sink,
 def run(cfg, show=True, config_path=None, duration=None, debug=False,
         record=False, serve_api=False, node_id="node_01"):
     sc = cfg["stream"]
-    dc = cfg["detector"]
-    source = str(sc["source"])
-    if source.isdigit():
-        source = int(source)
-
     zone_cfgs = cfg.get("zones", [])
     zones = build_zones(zone_cfgs)
-    counter_cfg = cfg.get("counter", {})
     audit = AuditLogger("logs/count_audit.csv") if debug else None
 
-    streamer = VideoStreamer(source, max_queue=sc.get("queue_size", 3),
-                             reconnect=sc.get("reconnect", True),
-                             max_retries=sc.get("max_retries"),
-                             backoff_min=sc.get("backoff_sec", 2.0),
-                             gap_thresh_sec=sc.get("gap_thresh_sec", 0.5))
-    det = Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
-                   model_size=dc.get("model", "rtdetr-l"),
-                   min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
-                   device=dc.get("device", "cuda:0"), half=dc.get("half", True),
-                   duplicate_iou=dc.get("duplicate_iou", 0.65),
-                   truck_min_area=dc.get("truck_min_area", 8000))
-    counter = ZoneCounter(zones,
-                          class_labels={2: "mobil", 3: "motor", 5: "truk/bus", 7: "truk/bus"},
-                          tracker_config=dc.get("tracker_config"),
-                          dedup_cooldown_sec=counter_cfg.get("dedup_cooldown_sec", 4.0),
-                          dedup_radius_px=counter_cfg.get("dedup_radius_px", 10),
-                          min_displacement_px=counter_cfg.get("min_displacement_px", 50),
-                          class_window=counter_cfg.get("class_window", 15),
-                          cabin_iou=counter_cfg.get("cabin_iou", 0.6),
-                          cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
-                          still_count_frames=counter_cfg.get("still_count_frames", 30),
-                          still_min_conf=counter_cfg.get("still_min_conf", 0.35),
-                          debug=debug)
-    renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug)
+    streamer, counter, renderer = _build_pipeline(cfg, zones, sc["source"], debug)
+    det = _build_detector(cfg)
     editor = ZoneEditor(zones, zone_cfgs)
 
     stop = threading.Event()
@@ -530,16 +541,9 @@ def run_multi(cfg, nodes, duration=None, debug=False):
     picks a node to watch and /set-focus decides which one runs full rate.
     """
     sc = cfg["stream"]
-    dc = cfg["detector"]
-    counter_cfg = cfg.get("counter", {})
     zone_cfgs = cfg.get("zones", [])
 
-    det = Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
-                   model_size=dc.get("model", "rtdetr-l"),
-                   min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
-                   device=dc.get("device", "cuda:0"), half=dc.get("half", True),
-                   duplicate_iou=dc.get("duplicate_iou", 0.65),
-                   truck_min_area=dc.get("truck_min_area", 8000))
+    det = _build_detector(cfg)
     gpu_lock = threading.Lock()
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -557,27 +561,8 @@ def run_multi(cfg, nodes, duration=None, debug=False):
     for n in nodes:
         node_id = n["id"]
         source = n.get("source") or sc["source"]
-        if isinstance(source, str) and source.isdigit():
-            source = int(source)
         zones = build_zones(n.get("zones") or zone_cfgs)
-        counter = ZoneCounter(zones,
-                              class_labels={2: "mobil", 3: "motor", 5: "truk/bus", 7: "truk/bus"},
-                              tracker_config=dc.get("tracker_config"),
-                              dedup_cooldown_sec=counter_cfg.get("dedup_cooldown_sec", 4.0),
-                              dedup_radius_px=counter_cfg.get("dedup_radius_px", 10),
-                              min_displacement_px=counter_cfg.get("min_displacement_px", 50),
-                              class_window=counter_cfg.get("class_window", 15),
-                              cabin_iou=counter_cfg.get("cabin_iou", 0.6),
-                              cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
-                              still_count_frames=counter_cfg.get("still_count_frames", 30),
-                              still_min_conf=counter_cfg.get("still_min_conf", 0.35),
-                              debug=debug)
-        renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug)
-        streamer = VideoStreamer(source, max_queue=sc.get("queue_size", 3),
-                                 reconnect=sc.get("reconnect", True),
-                                 max_retries=sc.get("max_retries"),
-                                 backoff_min=sc.get("backoff_sec", 2.0),
-                                 gap_thresh_sec=sc.get("gap_thresh_sec", 0.5))
+        streamer, counter, renderer = _build_pipeline(cfg, zones, source, debug)
         streamer.start()
         bus = FrameBus()
         prof = StageProfiler("node:" + node_id)

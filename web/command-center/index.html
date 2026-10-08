@@ -66,7 +66,7 @@
             <p class="eyebrow">Dashboard Menu</p>
             <h2>Ringkasan Simpang</h2>
           </div>
-          <span class="menu-count" id="menu-count">3 titik</span>
+          <span class="menu-count" id="menu-count">0 titik</span>
         </header>
 
         <div class="menu-total">
@@ -97,50 +97,28 @@
 
     <section class="view" id="view-count" aria-label="Analitik dan hitung kendaraan">
 
-      <div class="video-stage" id="video-stage">
-        <img class="stage-video" id="stage-video" alt="Siaran langsung CCTV simpang"
-             decoding="async">
-        <canvas id="zone-canvas" aria-label="Area gambar zona penghitungan"></canvas>
-      </div>
-      <div class="stage-scrim" aria-hidden="true"></div>
+      <div class="count-layout">
 
-      <button type="button" class="back-btn" id="back-btn">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-        Kembali ke Peta
-      </button>
+        <!-- Left 70%: live stream + action bar directly underneath -->
+        <div class="count-main">
+          <div class="video-stage" id="video-stage">
+            <img class="stage-video" id="stage-video" alt="Siaran langsung CCTV simpang"
+                 decoding="async">
+            <canvas id="zone-canvas" aria-label="Area gambar zona penghitungan"></canvas>
+            <div class="stage-scrim" aria-hidden="true"></div>
 
-      <div class="cam-hud" aria-label="Identitas kamera">
-        <span class="cam-chip"><span class="live-dot"></span>LIVE STREAM</span>
-        <span class="cam-chip st-PADAT" id="cam-chip">CAM 01</span>
-      </div>
+            <button type="button" class="back-btn" id="back-btn">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+              Kembali ke Peta
+            </button>
 
-      <section class="drawer" id="drawer" aria-label="Panel analitik">
-        <button type="button" class="drawer-handle" id="drawer-handle"
-                aria-expanded="false" aria-controls="drawer-body">
-          <span class="handle-bar" aria-hidden="true"></span>
-          <span class="visually-hidden">Buka panel analitik</span>
-        </button>
+            <div class="cam-hud" aria-label="Identitas kamera">
+              <span class="cam-chip"><span class="live-dot"></span>LIVE STREAM</span>
+              <span class="cam-chip st-LANCAR" id="cam-chip">CAM 00</span>
+            </div>
+          </div>
 
-        <div class="drawer-summary">
-          <h2 class="drawer-place" id="drawer-place">Simpang Kebon Dalem</h2>
-          <p class="drawer-metrics" id="drawer-metrics">
-            <span class="dm"><b id="sum-total">0</b> Total</span>
-            <span class="dm-sep" aria-hidden="true"></span>
-            <span class="dm">Motor <b id="sum-motor">0</b></span>
-            <span class="dm-sep" aria-hidden="true"></span>
-            <span class="dm">Mobil <b id="sum-mobil">0</b></span>
-            <span class="dm-sep" aria-hidden="true"></span>
-           <span class="dm">Truk <b id="sum-truk">0</b></span>
-          </p>
-          <button type="button" class="drawer-toggle" id="drawer-toggle"
-                  aria-expanded="false" aria-controls="drawer-body">
-            <span id="toggle-label">Rincian</span>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
-          </button>
-        </div>
-
-        <div class="drawer-body" id="drawer-body">
-          <div class="control-panel" aria-label="Kontrol kamera">
+          <div class="action-bar" aria-label="Kontrol kamera">
             <button type="button" class="control-btn" id="reset-counter-btn">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5M4 4v4.5h4.5"/></svg>
               Reset Counter
@@ -159,75 +137,87 @@
             </button>
             <p class="control-status" id="control-status" aria-live="polite"></p>
           </div>
-          <div class="drawer-grid">
-
-            <section class="drawer-col" aria-label="Hitungan kendaraan saat ini">
-              <p class="eyebrow">Hitungan Saat Ini</p>
-              <div class="count-cards">
-                <article class="count-card">
-                  <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <circle cx="5" cy="16" r="4"/><circle cx="19" cy="16" r="4"/>
-                    <path d="M5 16l3-7h5l2 7M9 9h7l3 3"/>
-                  </svg>
-                  <strong id="count-motor">0</strong>
-                  <span>Motor</span>
-                </article>
-                <article class="count-card">
-                  <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M3 15l2-6h14l2 6v4h-3M3 15v4h3M3 15h18"/>
-                    <circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
-                  </svg>
-                  <strong id="count-mobil">0</strong>
-                  <span>Mobil</span>
-                </article>
-                <article class="count-card">
-                  <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M2 16V7h11v9M13 10h5l4 4v2h-9"/>
-                    <circle cx="6" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
-                  </svg>
-                  <strong id="count-truk">0</strong>
-                  <span>Truk/Bus</span>
-                </article>
-              </div>
-              <dl class="mini-stats">
-                <div><dt>Rata-rata / jam</dt><dd id="avg-hour">0</dd></div>
-                <div><dt>Puncak tercatat</dt><dd id="peak-hour">0</dd></div>
-              </dl>
-            </section>
-
-            <section class="drawer-col" aria-label="Statistik per jam">
-              <p class="eyebrow">Statistik Per Jam</p>
-              <p class="col-sub">08:00 - 08:59</p>
-              <div class="chart" id="chart" role="img"
-                   aria-label="Diagram batang jumlah kendaraan per jam"></div>
-              <p class="chart-axis" id="chart-axis" aria-hidden="true"></p>
-            </section>
-
-            <section class="drawer-col" aria-label="Status okupansi simpang">
-              <p class="eyebrow">Status Okupansi</p>
-              <p class="col-sub" id="occ-sub">Kepadatan simpang</p>
-
-              <div class="gauge" id="gauge">
-                <svg viewBox="0 0 120 120" aria-hidden="true">
-                  <circle class="gauge-track" cx="60" cy="60" r="50"/>
-                  <circle class="gauge-fill" id="gauge-fill" cx="60" cy="60" r="50"/>
-                </svg>
-                <div class="gauge-read">
-                  <strong id="occ-value">0%</strong>
-                  <span>Okupansi</span>
-                </div>
-              </div>
-
-              <div class="gauge-status st-LANCAR" id="gauge-status">
-                <span class="gauge-dot"></span>
-                <span id="occ-label">LANCAR</span>
-              </div>
-              <p class="gauge-note" id="occ-note">Menunggu data deteksi.</p>
-            </section>
-
-          </div>
         </div>
-      </section>
+
+        <!-- Right 30%: vertically scrollable analytics sidebar -->
+        <aside class="analytics" aria-label="Panel analitik">
+          <div class="analytics-head">
+            <h2 class="analytics-place" id="panel-place">—</h2>
+            <span class="analytics-live"><span class="live-dot"></span>LIVE</span>
+          </div>
+
+          <section class="panel-block" aria-label="Hitungan kendaraan saat ini">
+            <p class="eyebrow">Hitungan Saat Ini</p>
+            <div class="count-cards">
+              <article class="count-card">
+                <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="5" cy="16" r="4"/><circle cx="19" cy="16" r="4"/>
+                  <path d="M5 16l3-7h5l2 7M9 9h7l3 3"/>
+                </svg>
+                <strong id="count-motor">0</strong>
+                <span>Motor</span>
+              </article>
+              <article class="count-card">
+                <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 15l2-6h14l2 6v4h-3M3 15v4h3M3 15h18"/>
+                  <circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
+                </svg>
+                <strong id="count-mobil">0</strong>
+                <span>Mobil</span>
+              </article>
+              <article class="count-card">
+                <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 16V7h11v9M13 10h5l4 4v2h-9"/>
+                  <circle cx="6" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
+                </svg>
+                <strong id="count-truk">0</strong>
+                <span>Truk/Bus</span>
+              </article>
+            </div>
+            <dl class="mini-stats">
+              <div><dt>Rata-rata / jam</dt><dd id="avg-hour">0</dd></div>
+              <div><dt>Puncak tercatat</dt><dd id="peak-hour">0</dd></div>
+            </dl>
+            <p class="panel-totals">
+              <span class="dm"><b id="sum-total">0</b> Total</span>
+              <span class="dm-sep" aria-hidden="true"></span>
+              <span class="dm">Motor <b id="sum-motor">0</b></span>
+              <span class="dm-sep" aria-hidden="true"></span>
+              <span class="dm">Mobil <b id="sum-mobil">0</b></span>
+              <span class="dm-sep" aria-hidden="true"></span>
+              <span class="dm">Truk <b id="sum-truk">0</b></span>
+            </p>
+          </section>
+
+          <section class="panel-block" aria-label="Statistik per jam">
+            <p class="eyebrow">Statistik Per Jam</p>
+            <p class="col-sub">6 jam terakhir</p>
+            <div class="chart" id="chart" role="img"
+                 aria-label="Diagram batang jumlah kendaraan per jam"></div>
+            <p class="chart-axis" id="chart-axis" aria-hidden="true"></p>
+          </section>
+
+          <section class="panel-block" aria-label="Status okupansi simpang">
+            <p class="eyebrow">Status Okupansi</p>
+            <div class="gauge" id="gauge">
+              <svg viewBox="0 0 120 120" aria-hidden="true">
+                <circle class="gauge-track" cx="60" cy="60" r="50"/>
+                <circle class="gauge-fill" id="gauge-fill" cx="60" cy="60" r="50"/>
+              </svg>
+              <div class="gauge-read">
+                <strong id="occ-value">0%</strong>
+                <span>Okupansi</span>
+              </div>
+            </div>
+            <div class="gauge-status st-LANCAR" id="gauge-status">
+              <span class="gauge-dot"></span>
+              <span id="occ-label">LANCAR</span>
+            </div>
+            <p class="gauge-note" id="occ-note">Menunggu data deteksi.</p>
+          </section>
+        </aside>
+
+      </div>
 
     </section>
 

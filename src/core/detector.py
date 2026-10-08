@@ -1,24 +1,15 @@
 """RT-DETR inference + cross-class NMS. No tracking, no counting here."""
 from __future__ import annotations
 
-from typing import List, Optional, Sequence
+from typing import Optional, Sequence
 
 import numpy as np
 import supervision as sv
 from pathlib import Path
 
-
-def iou(a: np.ndarray, b: np.ndarray) -> float:
-    ix1, iy1 = np.maximum(a[:2], b[:2])
-    ix2, iy2 = np.minimum(a[2:], b[2:])
-    inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)
-    aa = (a[2] - a[0]) * (a[3] - a[1])
-    ab = (b[2] - b[0]) * (b[3] - b[1])
-    return inter / max(aa + ab - inter, 1e-6)
-
-
 # COCO ids: 2 car, 3 motorcycle, 5 bus, 7 truck. mobil/bus/truk > motor.
 CLASS_PRIORITY = {2: 2, 5: 2, 7: 2, 3: 1}
+
 
 # Size heuristic: COCO's `truck` head (7) swallows small pickups and box cars.
 # A truck box smaller than this many pixels is demoted to car (2). Pixels, not
@@ -60,14 +51,15 @@ def reclassify_small_trucks(dets: sv.Detections, truck_min_area: float,
     return dets
 
 
-def cross_class_nms(dets: sv.Detections, duplicate_iou: float,
-                    class_priority: Optional[dict] = None) -> sv.Detections:
+def cross_class_nms(dets: sv.Detections,
+                    duplicate_iou: float) -> sv.Detections:
     """Suppress overlapping cross-class boxes. Higher class priority wins;
-    on a tie the bigger box (area-descending sweep) wins."""
-    prio = class_priority or CLASS_PRIORITY
+    on a tie the bigger box (area-descending sweep) wins. The IoU matrix is
+    computed once; the sweep is O(n²) over the kept candidates."""
     xyxy, cls = dets.xyxy, dets.class_id
     areas = (xyxy[:, 2] - xyxy[:, 0]) * (xyxy[:, 3] - xyxy[:, 1])
     order = np.argsort(-areas)
+    iou_m = sv.box_iou_batch(xyxy, xyxy)
     keep = np.ones(len(dets), dtype=bool)
     for ai in range(len(order)):
         i = order[ai]
@@ -75,9 +67,9 @@ def cross_class_nms(dets: sv.Detections, duplicate_iou: float,
             continue
         for bi in range(ai + 1, len(order)):
             j = order[bi]
-            if not keep[j] or iou(xyxy[i], xyxy[j]) < duplicate_iou:
+            if not keep[j] or iou_m[i, j] < duplicate_iou:
                 continue
-            if prio.get(int(cls[i]), 0) < prio.get(int(cls[j]), 0):
+            if CLASS_PRIORITY.get(int(cls[i]), 0) < CLASS_PRIORITY.get(int(cls[j]), 0):
                 keep[i] = False
                 break
             keep[j] = False

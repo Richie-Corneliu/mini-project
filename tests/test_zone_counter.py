@@ -1,5 +1,8 @@
 """Core-logic checks for cross_class_nms + ZoneCounter (no GPU needed).
 Run:  python -m tests.test_zone_counter  (repo root on PYTHONPATH)"""
+import csv
+import os
+import tempfile
 import time
 
 import numpy as np
@@ -7,6 +10,7 @@ import supervision as sv
 
 from src.core.detector import cross_class_nms, reclassify_small_trucks
 from src.core.zone_counter import ZoneCounter
+from src.utils.logger import AuditLogger
 
 
 def _dets(xyxy, cls, conf=None, tid=None, reclassified=None):
@@ -270,6 +274,42 @@ def test_genuine_car_cabin_still_suppressed():
     zc, ev = _cabin_frame(flagged=None)
     assert zc.suppressed_cabin == 1, zc.suppressed_cabin
     assert not any(e["track_id"] == 1 for e in ev), ev
+
+
+def test_latch_survives_exit_and_reset_clears_it():
+    """One vehicle inside both overlapping zones counts once per zone; the
+    latch survives an exit + re-entry; reset clears latches; empty dets safe."""
+    za = sv.PolygonZone(polygon=np.array([(100, 200), (350, 200), (350, 500), (100, 500)]))
+    zb = sv.PolygonZone(polygon=np.array([(340, 200), (600, 200), (600, 500), (340, 500)]))
+    zc = ZoneCounter([za, zb], class_labels={3: "motor"}, dedup_cooldown_sec=0.0,
+                     min_displacement_px=0)
+    t = time.monotonic()
+    zc.update(_dets([[300, 300, 400, 400]], [3], tid=[1]), now=t)   # centroid in both
+    assert zc.total == 2, zc.total
+    zc.update(_dets([[20, 250, 80, 350]], [3], tid=[1]), now=t + 1)  # exits
+    zc.update(_dets([[300, 300, 400, 400]], [3], tid=[1]), now=t + 2)  # re-enters
+    assert zc.total == 2, zc.total
+    zc.update(sv.Detections.empty(), now=t + 3)
+    assert zc.total == 2
+    zc.reset()
+    assert zc.total == 0
+    zc.update(_dets([[300, 300, 400, 400]], [3], tid=[1]), now=t + 4)
+    assert zc.total == 2, "reset must clear per-zone latches"
+
+
+def test_audit_logger_writes_header_and_row():
+    """One accepted count -> header + one CSV row."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]]))
+    zc = ZoneCounter([zone], class_labels={3: "motor"}, min_displacement_px=0)
+    ev = zc.update(_dets([[90, 90, 110, 110]], [3], tid=[7]), now=time.monotonic())
+    tmp = os.path.join(tempfile.mkdtemp(), "count_audit.csv")
+    al = AuditLogger(tmp)
+    al.write(ev[0])
+    al.close()
+    rows = list(csv.reader(open(tmp)))
+    assert rows[0] == ["timestamp", "track_id", "class_name", "confidence",
+                       "centroid_x", "centroid_y"], rows[0]
+    assert len(rows) == 2 and rows[1][1] == "7" and rows[1][2] == "motor", rows
 
 
 if __name__ == "__main__":

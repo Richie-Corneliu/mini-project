@@ -1,42 +1,75 @@
-# Live CCTV registry for the Smart ATCS Command Center.
+﻿# Live CCTV registry for the Smart ATCS Command Center.
 # Read by src/api/server.py (node identity + coords for the WebGIS map) and
 # main.py --multi (one worker thread per node).
 # NOTE: lat/lng are best-effort Purwokerto landmarks — verify against the map.
+# RTSP urls use {user}/{pass} placeholders, filled from .env at load time
+# (CCTV_USER / CCTV_PASS). Never commit real credentials here.
 nodes:
 - id: node_01
-  nama: Simpang Sawangan
+  nama: Simpang Omnia
   lat: -7.4372
   lng: 109.2321
-  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_sawangan/video1_stream.m3u8
+  source: rtsp://{user}:{pass}@10.26.110.128/h264/ch1/main/av_stream/
   zones:
   - name: zone
     polygon:
-    - - 42
-      - 209
-    - - 61
-      - 485
-    - - 677
-      - 445
-    - - 620
-      - 243
+    - - 53
+      - 336
+    - - 24
+      - 1047
+    - - 1855
+      - 1054
+    - - 1646
+      - 293
+    - - 1569
+      - 253
+    - - 923
+      - 177
 - id: node_02
-  nama: Simpang Museum BRI
+  nama: Underpass
   lat: -7.421
   lng: 109.235
-  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+  source: rtsp://{user}:{pass}@10.26.110.139/h264/ch1/main/av_stream
+  zones:
+  - name: zone
+    polygon:
+    - - 138
+      - 692
+    - - 195
+      - 236
+    - - 629
+      - 236
+    - - 873
+      - 600
 - id: node_03
   nama: Simpang Kebon Dalem Timur
   lat: -7.4228
   lng: 109.2345
-  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_kebon_dalem_timur/video1_stream.m3u8
+  source: rtsp://{user}:{pass}@10.26.110.127/h264/ch1/main/av_stream
   zones:
   - name: zone
     polygon:
-    - - 694
-      - 494
-    - - 692
-      - 204
-    - - 14
-      - 221
-    - - 5
-      - 504
+    - - 1241
+      - 697
+    - - 6
+      - 687
+    - - 50
+      - 382
+    - - 1057
+      - 300
+- id: node_04
+  nama: Simpang Museum BRI
+  lat: -7.425451
+  lng: 109.238772
+  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+  zones:
+  - name: zone
+    polygon:
+    - - 9
+      - 169
+    - - 24
+      - 446
+    - - 657
+      - 445
+    - - 601
+      - 175

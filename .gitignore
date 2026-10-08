@@ -15,6 +15,14 @@ runs/
 *.avi
 *.mkv
 
+# Runtime logs & audit output (keep the folder)
+logs/*
+!logs/.gitkeep
+
 # Cache
 __pycache__/
 .vscode/
+
+# Secrets (commit the template, never .env)
+.env
+!.env.example

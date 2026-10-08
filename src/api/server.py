@@ -2,17 +2,23 @@
 for the Command Center WebGIS. One worker thread per CCTV node calls the
 setters below; the frontend polls /api/v1/traffic-data and opens
 /api/v1/video-feed/{node_id} per selected node."""
+import os
 import threading
 import time
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 from typing import Optional
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 import cv2
+
+# Credentials live in .env (gitignored), never in nodes.yaml. Loading here
+# covers every entry point that imports the server; main.py also imports it.
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 app = FastAPI(
     title="Smart ATCS Dishub Banyumas - Multi-Node API",
@@ -39,33 +45,57 @@ _command_lock = threading.Lock()
 COMMAND_QUEUE = {}
 
 
+def _expand_source(source):
+    """Fill {user}/{pass} placeholders in a stream URL from the environment.
+
+    nodes.yaml carries rtsp://{user}:{pass}@host/... so no credential is ever
+    committed. A URL without placeholders (HLS, USB index) passes through
+    untouched; a placeholder with no matching env var stays literal, which
+    makes the failure visible in the logs instead of silently connecting
+    with an empty password.
+    """
+    if not isinstance(source, str):
+        return source
+    return (source.replace("{user}", os.getenv("CCTV_USER", "{user}"))
+                  .replace("{pass}", os.getenv("CCTV_PASS", "{pass}")))
+
+
 def load_node_registry(path=None):
     """Daftar node dari config/nodes.yaml: [{id, nama, lat, lng, source}]."""
     if path is None:
         path = Path(__file__).resolve().parents[2] / "config" / "nodes.yaml"
     try:
         with open(path, encoding="utf-8") as f:
-            return yaml.safe_load(f).get("nodes", []) or []
+            nodes = yaml.safe_load(f).get("nodes", []) or []
     except FileNotFoundError:
         return []
+    for node in nodes:
+        if "source" in node:
+            node["source"] = _expand_source(node["source"])
+    return nodes
 
 
-REGISTRY = {n["id"]: n for n in load_node_registry()}
+def _blank_state():
+    return {"motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
+            "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
+            "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {}}
+
+
+def _registry():
+    """nodes.yaml dibaca segar tiap request: node baru muncul tanpa restart."""
+    return {n["id"]: n for n in load_node_registry()}
+
 
 # Global State per node (ditulis worker AI, dibaca endpoint JSON)
-nodes_state = {
-    nid: {"motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
-          "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
-          "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {}}
-    for nid in REGISTRY
-}
+nodes_state = {}
 
 # Global frame storage per node untuk Video Streaming MJPEG
 latest_frames = {}
 
 # Node yang sedang ditonton operator (di-set lewat POST /api/v1/set-focus).
-# Dibaca worker AI di main.py: node ini jalan di target_fps penuh, sisanya
-# di-throttle agar GPU hanya bekerja untuk stream yang benar-benar dilihat.
+# Dibaca worker AI di main.py: hanya node ini yang menjalankan render + encode
+# MJPEG penuh, sisanya melewatkannya agar GPU/CPU tidak bekerja untuk stream
+# yang tidak dilihat.
 ACTIVE_FOCUS_NODE = None
 _focus_lock = threading.Lock()
 
@@ -81,13 +111,7 @@ def _status_for(occupancy: int) -> str:
 def update_node_data(node_id: str, data: dict):
     """Dipanggil worker AI tiap frame. data: motor/mobil/truk/occupancy/fps."""
     with _lock:
-        st = nodes_state.setdefault(node_id, {"motor": 0, "mobil": 0,
-                                               "truk": 0, "occupancy": 0,
-                                               "status": "LANCAR", "fps": 0.0,
-                                               "last_seen": 0.0,
-                                               "start_time": 0.0,
-                                               "peak_occupancy": 0,
-                                               "hourly_counts": {}})
+        st = nodes_state.setdefault(node_id, _blank_state())
         st["motor"] = int(data.get("motor", 0))
         st["mobil"] = int(data.get("mobil", 0))
         st["truk"] = int(data.get("truk", 0))
@@ -131,8 +155,8 @@ def set_latest_frame(node_id: str, frame):
 def get_active_focus():
     """Node id yang sedang ditonton operator, atau None saat kembali ke peta.
 
-    Dibaca worker AI (main.py) tiap iterasi untuk memilih laju inferensi:
-    node fokus di target_fps penuh, sisanya di-throttle ke throttle_fps.
+    Dibaca worker AI (main.py) tiap iterasi untuk memilih jalur render:
+    node fokus menggambar overlay + encode MJPEG, sisanya melewatinya.
     """
     with _focus_lock:
         return ACTIVE_FOCUS_NODE
@@ -164,30 +188,45 @@ def _public_state(node_id, reg, st, now):
 @app.get("/")
 def root():
     return {"message": "Smart ATCS API Server Running", "status": "active",
-            "nodes": list(REGISTRY)}
+            "nodes": list(_registry())}
+
+
+@app.get("/api/v1/nodes")
+def get_nodes():
+    """Identitas node dari nodes.yaml, dibaca segar tiap request.
+
+    Frontend memakai ini untuk membangun marker + sidebar secara dinamis;
+    file yang diedit langsung terlihat tanpa restart server.
+    """
+    reg = _registry()
+    return {"nodes": [
+        {"id": nid, "nama": reg.get("nama", nid),
+         "lat": reg.get("lat"), "lng": reg.get("lng")}
+        for nid, reg in reg.items()
+    ]}
 
 
 @app.get("/api/v1/traffic-data")
 def get_traffic_data():
-    """Endpoint JSON untuk ditarik oleh Leaflet.js / script.js"""
+    """Endpoint JSON untuk ditarik oleh Leaflet.js / app.js"""
+    reg = _registry()
     now = time.monotonic()
     with _lock:
-        snap = {nid: _public_state(nid, REGISTRY.get(nid, {}), st, now)
-                for nid, st in nodes_state.items()}
-    for nid, reg in REGISTRY.items():
-        snap.setdefault(nid, _public_state(nid, reg, nodes_state.get(nid, {
-            "motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
-            "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
-            "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {}}), now))
+        tracked = dict(nodes_state)
+    snap = {nid: _public_state(nid, reg.get(nid, {}), st, now)
+            for nid, st in tracked.items()}
+    for nid, reg_node in reg.items():
+        snap.setdefault(nid, _public_state(nid, reg_node,
+                                           tracked.get(nid, _blank_state()), now))
     return {"nodes": snap}
 
 
 @app.post("/api/v1/set-focus/{node_id}")
 def set_focus(node_id: str):
-    """Tandai satu node sebagai fokus live; worker-nya naik ke target_fps.
+    """Tandai satu node sebagai fokus live; worker-nya merender + encode MJPEG.
 
     Frontend memanggil ini saat membuka Counting View. `none` mereset fokus
-    (kembali ke peta) sehingga semua node kembali di-throttle.
+    (kembali ke peta) sehingga semua node melewatkan render.
     """
     global ACTIVE_FOCUS_NODE
     with _focus_lock:
@@ -199,7 +238,7 @@ def set_focus(node_id: str):
 @app.post("/api/v1/control/{node_id}/{action}")
 def control_node(node_id: str, action: str,
                  payload: Optional[dict] = Body(default=None)):
-    if node_id not in REGISTRY and node_id not in nodes_state:
+    if node_id not in _registry() and node_id not in nodes_state:
         raise HTTPException(status_code=404, detail=f"unknown node {node_id}")
     if action == "update_zone":
         # Trust boundary: payload comes from the browser, so every point is
@@ -241,7 +280,7 @@ def generate_video_stream(node_id: str):
 @app.get("/api/v1/video-feed/{node_id}")
 def video_feed(node_id: str):
     """Endpoint Video Stream MJPEG untuk elemen <img> pada WebGIS"""
-    if node_id not in REGISTRY and node_id not in nodes_state:
+    if node_id not in _registry() and node_id not in nodes_state:
         raise HTTPException(status_code=404, detail=f"unknown node {node_id}")
     return StreamingResponse(
         generate_video_stream(node_id),

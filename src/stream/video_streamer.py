@@ -31,8 +31,7 @@ class VideoStreamer:
     A blocking bounded queue is used on purpose: decoded frames are never
     dropped. If the consumer stalls, backpressure raises latency instead of
     skipping frames — that matters here because detection accuracy depends on
-    temporal density (ByteTrack). `latest()` is the escape hatch for callers
-    that instead want the freshest frame with zero wait.
+    temporal density (ByteTrack).
     """
 
     def __init__(self, url, max_queue=3, backoff_min=0.5, backoff_max=10.0,
@@ -50,16 +49,12 @@ class VideoStreamer:
         self._last_gap = None
         self.frames_delivered = 0
         self.connects = 0
-        self.reconnects = 0
         # Source frame rate from CAP_PROP_FPS; 0.0 until the stream is open.
         # Consumers pace playback against effective_fps() because FFmpeg's HLS
         # demuxer buffers whole segments and hands them over in one burst
         # (~0ms gaps, then a multi-second stall), so an unpaced consumer would
         # race through each burst -> fast-forward.
         self.native_fps = 0.0
-        # Newest decoded (frame, arrival_mono, arrival_wall), read without the
-        # queue. None until the first frame. See latest().
-        self._latest = None
 
     def effective_fps(self, default=DEFAULT_FPS):
         """Source frame rate, or `default` when FFmpeg reports 0/NaN.
@@ -98,32 +93,11 @@ class VideoStreamer:
             self.frames_delivered += 1
         return frame, arrival, wall
 
-    def latest(self):
-        """Newest decoded (frame, arrival_mono, arrival_wall) at this instant,
-        or None before the first frame.
-
-        Non-blocking: just a lock read of the pointer the pump refreshes. No
-        frame is consumed and no counter moves, so a caller can sample the
-        freshest frame while another (or the same) caller drains the queue.
-        The frame array is shared with the queue item, so annotate a copy.
-
-        ponytail: the slot is intentionally not published to the queue. The
-        pump's blocking queue keeps the streamer's no-drop backpressure
-        contract, and wiring latest() into it would reintroduce the idle
-        stall the codebase deliberately removed (see _ai_worker).
-        """
-        with self._lock:
-            return self._latest
-
     def read(self, timeout=1.0):
         """Frame-only view for simple consumers (harvester). Blocking until a
         frame is ready or timeout; returns None on timeout."""
         item = self.get(timeout=timeout)
         return item[0] if item else None
-
-    def last_gap(self):
-        with self._lock:
-            return self._last_gap
 
     def is_frozen(self):
         """Point-in-time jitter guard: True only for frames delivered with a
@@ -174,7 +148,6 @@ class VideoStreamer:
             self.connects += 1
             attempts = 0
             if self.connects > 1:
-                self.reconnects += 1
                 logger.info("reconnected to %s", self.url)
             backoff = self._backoff_min
             logger.info("%s opened at %.1f fps", self.url, native_fps)
@@ -200,11 +173,6 @@ class VideoStreamer:
             # must NOT mark frames as jitter — only a decode stall does.
             gap = None if prev is None else arrival - prev
             prev = arrival
-            # Publish the freshest frame for non-blocking latest() readers.
-            # Independent of the queue: latest() never consumes, the queue
-            # keeps its no-drop contract.
-            with self._lock:
-                self._latest = (frame, arrival, wall)
             # Blocking put = no frame is ever skipped here.
             # ponytail: if the consumer is permanently slower than the stream,
             # upstream buffering grows without bound. Add a qsize watchdog

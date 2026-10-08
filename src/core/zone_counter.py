@@ -92,10 +92,7 @@ class ZoneCounter:
         self.suppressed = 0
         self.suppressed_cabin = 0
         self.total_by_class = defaultdict(int)
-        self.counted_tracks_by_class = defaultdict(set)
         self.n_frames = 0
-        self.n_detections = 0
-        self.n_tracked = 0
         self.class_hist = {}   # tid -> deque of (class_id, confidence)
         self.trails = {}       # tid -> deque of centroid pts (debug render)
         self._prev = {}        # tid -> last centroid, for jump-over-edge sweep
@@ -170,11 +167,9 @@ class ZoneCounter:
         events = []
         if len(dets) == 0 or dets.tracker_id is None:
             return events
-        self.n_detections += len(dets)
         cents = centroids(dets.xyxy)
         tids = dets.tracker_id.astype(int)
         live = set(int(t) for t in tids)
-        self.n_tracked = len(live)
         # contours rebuilt per frame: ZoneEditor drags polygon points live
         polys = [np.asarray(z.polygon, dtype=np.float64) for z in self.zones]
         contours = [p.reshape(-1, 1, 2).astype(np.int32) for p in polys]
@@ -253,7 +248,6 @@ class ZoneCounter:
                 label = self._label(vote)
                 self.total += 1
                 self.total_by_class[label] += 1
-                self.counted_tracks_by_class[label].add(tid)
                 events.append({"zone": zi, "track_id": tid, "class_id": vote,
                                "class_name": label, "confidence": conf,
                                "cx": pt[0], "cy": pt[1], "t": now})
@@ -275,7 +269,6 @@ class ZoneCounter:
         self.suppressed = 0
         self.suppressed_cabin = 0
         self.total_by_class.clear()
-        self.counted_tracks_by_class.clear()
         self._prev.clear()
         self._start.clear()
         self._zone_still.clear()

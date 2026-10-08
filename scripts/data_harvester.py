@@ -60,12 +60,7 @@ class DataHarvester:
                 self._frame_idx += 1
 
                 now = time.monotonic()
-                if now - last_save < self._interval:
-                    if max_frames is not None and self._frame_idx >= max_frames:
-                        break
-                    continue
-
-                if self._save(frame):
+                if now - last_save >= self._interval and self._save(frame):
                     last_save = now
                     self._saved += 1
                     if self._saved % 20 == 0:

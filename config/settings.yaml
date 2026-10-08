@@ -1,12 +1,10 @@
 stream:
-  source: https://cctv.dev.banyumaskab.go.id/cctv_simpang_museum_bri/video1_stream.m3u8
+  source: rtsp://admin:Marktel12345@10.26.110.124/h264/ch1/main/av_stream
   reconnect: true
   max_retries: 5
   backoff_sec: 2.0
   queue_size: 3
   gap_thresh_sec: 0.5
-  target_fps: 15
-  throttle_fps: 0.7
 zones:
 - name: underpass
   polygon:
@@ -18,16 +16,6 @@ zones:
     - 330
   - - 605
     - 161
-lines:
-  items:
-  - p1:
-    - 30
-    - 340
-    p2:
-    - 674
-    - 340
-    direction: up
-    name: garis
 detector:
   conf: 0.2
   model: rtdetr-l.engine
@@ -60,11 +48,6 @@ counter:
   cabin_area_ratio: 0.55
   still_count_frames: 30
   still_min_conf: 0.35
-harvest:
-  output_dir: dataset/raw_images
-  interval_sec: 2.0
-  prefix: frame
-  jpeg_quality: 90
 logging:
   level: INFO
   file: logs/app.log
