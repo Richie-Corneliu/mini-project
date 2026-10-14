@@ -108,6 +108,26 @@ def _status_for(occupancy: int) -> str:
     return "LANCAR"
 
 
+def _clean_hourly(raw):
+    """Normalize hourly buckets to {hour: {motor, mobil, truk, total}}.
+
+    The worker sends per-class buckets, but a bucket can legitimately carry a
+    total with no class split yet (legacy snapshot, or an hour the worker
+    attributed to an unknown label). That total is preserved rather than
+    recomputed as 0, otherwise the frontend gets a 693-vehicle hour with three
+    empty segments and draws nothing.
+    """
+    out = {}
+    for hour, bucket in (raw or {}).items():
+        if isinstance(bucket, dict):
+            b = {k: int(bucket.get(k, 0)) for k in ("motor", "mobil", "truk")}
+            b["total"] = max(int(bucket.get("total") or 0), sum(b.values()))
+        else:
+            b = {"motor": 0, "mobil": 0, "truk": 0, "total": int(bucket or 0)}
+        out[str(hour)] = b
+    return out
+
+
 def update_node_data(node_id: str, data: dict):
     """Dipanggil worker AI tiap frame. data: motor/mobil/truk/occupancy/fps."""
     with _lock:
@@ -119,10 +139,8 @@ def update_node_data(node_id: str, data: dict):
         st["fps"] = round(float(data.get("fps", 0.0)), 1)
         st["start_time"] = float(data.get("start_time", st["start_time"]))
         st["peak_occupancy"] = int(data.get("peak_occupancy", st["peak_occupancy"]))
-        st["hourly_counts"] = {
-            str(hour): int(count)
-            for hour, count in data.get("hourly_counts", st["hourly_counts"]).items()
-        }
+        st["hourly_counts"] = _clean_hourly(
+            data.get("hourly_counts", st["hourly_counts"]))
         st["status"] = _status_for(st["occupancy"])
         st["last_seen"] = time.monotonic()
 
@@ -176,7 +194,7 @@ def _public_state(node_id, reg, st, now):
         "fps": st["fps"],
         "start_time": st["start_time"],
         "peak_occupancy": st["peak_occupancy"],
-        "hourly_counts": dict(st["hourly_counts"]),
+        "hourly_counts": {h: dict(b) for h, b in st["hourly_counts"].items()},
         "online": online,
     }
 

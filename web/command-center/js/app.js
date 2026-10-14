@@ -14,7 +14,49 @@
 
 const MAP_CENTER = [-7.4245, 109.2302];
 const MAP_ZOOM = 14;
-const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+/* Dark basemap providers. Stadia Maps is the default: it needs NO key from
+   localhost/127.0.0.1, and in production you authorise the domain in their
+   dashboard (also keyless). An API key is only needed for non-browser
+   clients. MapTiler is the alternate and does want a key: paste it below and
+   open the page with ?tiles=maptiler. A provider with no key falls back to
+   Stadia, so the map can never go blank.
+   Frontend keys are public by nature — that is how these services work. */
+const FREE_KEYS = {
+  maptiler: "",   // https://cloud.maptiler.com/account/keys/
+  stadia: "",     // optional in a browser: localhost/domain auth needs none
+};
+
+const TILE_PROVIDERS = {
+  stadia: {
+    url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
+    subdomains: "",
+    maxZoom: 20,
+    attr: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  maptiler: {
+    url: "https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}@2x.png?key={key}",
+    subdomains: "",
+    maxZoom: 20,
+    attr: '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+};
+
+/* Named provider with a key on board, else the Stadia default. Returns the
+   provider with its url already keyed, so callers just hand it to Leaflet. */
+function pickTileProvider() {
+  const want = new URLSearchParams(location.search).get("tiles");
+  const chosen = TILE_PROVIDERS[want];
+  if (!chosen) return TILE_PROVIDERS.stadia;
+  if (chosen.url.includes("{key}")) {
+    const key = FREE_KEYS[want];
+    if (!key) {
+      console.warn("[ATCS] no key for tiles=" + want + ", using Stadia dark");
+      return TILE_PROVIDERS.stadia;
+    }
+    return Object.assign({}, chosen, { url: chosen.url.replace("{key}", key) });
+  }
+  return chosen;
+}
 
 /* Backend: FastAPI serves processed MJPEG + tracker JSON. The frontend never
    touches RTSP/HLS directly, only these HTTP endpoints.
@@ -124,30 +166,55 @@ function escapeHtml(s) {
 /* ---- Map -------------------------------------------------------- */
 
 function initMap() {
+  const prov = pickTileProvider();
   map = L.map("map", { center: MAP_CENTER, zoom: MAP_ZOOM });
-  L.tileLayer(TILE_URL, {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  L.tileLayer(prov.url, {
+    subdomains: prov.subdomains || "abc",
+    maxZoom: prov.maxZoom,
+    detectRetina: true,
+    attribution: prov.attr,
   }).addTo(map);
 }
-/* 44px hit box keeps the pin tappable; ring, core and label centre inside it. */
+/* 44px hit box keeps the pin tappable; two staggered ping waves, the core and
+   the pill label all centre inside it. The name is escaped into the markup
+   directly — the divIcon is rebuilt on every status change, so an "add"
+   listener would only ever fill the label on the first render. */
 function markerIcon(node) {
   return L.divIcon({
     className: "veh-marker " + stClass(node),
-    html: '<div class="ring"></div><div class="core"></div><div class="pin-label"></div>',
+    html:
+      '<div class="ping"></div><div class="ping ping-2"></div>' +
+      '<div class="core"></div>' +
+      '<div class="pin-label">' + escapeHtml(node.nama) + "</div>",
     iconSize: [44, 44],
     iconAnchor: [22, 22],
   });
 }
 
-/* Hover preview of the same numbers the sidebar shows. */
+/* Hover card: identity, status, occupancy with a mini bar, vehicle counts.
+   Fixed row structure so refreshing the numbers on a poll cannot resize the
+   card under the cursor. */
 function tooltipHtml(node) {
   const status = rawStatus(node);
-  return '<strong>' + escapeHtml(node.nama) + "</strong><br>" +
-    '<span class="tip-status ' + stClass(node) + '">' + status + "</span>" +
-    ' &middot; okupansi <span class="tip-occ">' + (node.occupancy || 0) + "%</span><br>" +
-    "Motor " + node.motor + " &middot; Mobil " + node.mobil +
-    " &middot; Truk " + node.truk;
+  const occ = Math.max(0, Math.min(100, Number(node.occupancy) || 0));
+  return (
+    '<div class="veh-tip-inner ' + stClass(node) + '">' +
+      '<div class="tip-head">' +
+        '<span class="tip-name">' + escapeHtml(node.nama) + "</span>" +
+        '<span class="tip-badge">' + status + "</span>" +
+      "</div>" +
+      '<div class="tip-occ-row">' +
+        "<span>Okupansi</span>" +
+        '<span class="tip-occ-val">' + occ + "%</span>" +
+      "</div>" +
+      '<div class="tip-bar"><i style="width:' + occ + '%"></i></div>' +
+      '<div class="tip-counts">' +
+        "<span><b>" + (Number(node.motor) || 0) + "</b>Motor</span>" +
+        "<span><b>" + (Number(node.mobil) || 0) + "</b>Mobil</span>" +
+        "<span><b>" + (Number(node.truk) || 0) + "</b>Truk/Bus</span>" +
+      "</div>" +
+    "</div>"
+  );
 }
 
 /* Marker creation and refresh share one path so a poll can recolor a pin in
@@ -170,15 +237,16 @@ function upsertMarkers() {
         alt: node.nama,
       });
 
-      /* Leaflet injects divIcon html as markup, so the name goes in as text. */
-      marker.on("add", () => {
-        const icon = marker.getElement();
-        const label = icon && icon.querySelector(".pin-label");
-        if (label) label.textContent = node.nama;
-      });
       marker.on("click", () => openCounting(node.id));
+      /* Anchored (not sticky) tooltip: it hangs off the marker instead of
+         chasing the cursor, which is what caused the jitter. */
       marker.bindTooltip(tooltipHtml(node), {
-        className: "veh-tip", direction: "top", offset: [0, -14],
+        className: "veh-tip",
+        direction: "top",
+        offset: [0, -16],
+        opacity: 1,
+        sticky: false,
+        interactive: false,
       });
 
       marker.addTo(map);
@@ -497,33 +565,143 @@ function averagePerHour(node) {
   return Math.round(total(node) / elapsedHours);
 }
 
+/* Hourly buckets arrive as {motor, mobil, truk, total}; older snapshots carry
+   a bare number. An hour whose class split is missing (legacy total, or an
+   hour counted before per-class tracking) is apportioned by the node's
+   cumulative mix so the column still renders instead of collapsing to 0px. */
 function chartData(node) {
-  const hours = Object.keys(node.hourlyCounts || {}).sort().slice(-6);
-  return hours.map((hour) => ({
-    hour: hour,
-    value: Number(node.hourlyCounts[hour] || 0),
-  }));
+  const raw = node.hourlyCounts || {};
+  const hours = Object.keys(raw).sort().slice(-6);
+
+  const cm = Number(node.motor) || 0;
+  const cb = Number(node.mobil) || 0;
+  const ct = Number(node.truk) || 0;
+  const csum = cm + cb + ct;
+
+  return hours.map((hour) => {
+    const b = raw[hour];
+    let motor = 0;
+    let mobil = 0;
+    let truk = 0;
+    let total = 0;
+
+    if (b != null && typeof b === "object") {
+      motor = Number(b.motor) || 0;
+      mobil = Number(b.mobil) || 0;
+      truk = Number(b.truk) || 0;
+      total = Number(b.total) || motor + mobil + truk;
+    } else {
+      total = Number(b || 0);
+    }
+
+    /* Anything the classes do not account for is unattributed: an hour whose
+       split is entirely missing (legacy total), or one where only some events
+       were classed. Apportion that gap by the cumulative mix — floor the first
+       two and hand the remainder to the last, so the parts always sum back to
+       the reported total and none can go negative. */
+    const sum = motor + mobil + truk;
+    if (total > sum) {
+      const gap = total - sum;
+      if (csum > 0) {
+        const gm = Math.floor((gap * cm) / csum);
+        const gb = Math.floor((gap * cb) / csum);
+        motor += gm;
+        mobil += gb;
+        truk += Math.max(0, gap - gm - gb);
+      } else {
+        motor += gap;   // no mix to go on: show the volume as one segment
+      }
+    }
+    return { hour, motor, mobil, truk, total };
+  });
+}
+
+const CLASS_META = [
+  { key: "motor", label: "Motor" },
+  { key: "mobil", label: "Mobil" },
+  { key: "truk", label: "Truk/Bus" },
+];
+
+/* Stack order, bottom -> top. .chart-stack is column-reverse, so the first
+   DOM child renders at the bottom. */
+const SEG_ORDER = ["motor", "mobil", "truk"];
+
+/* Indonesian thousands separator: 2114 -> "2.114" */
+const fmtNum = (n) => Number(n || 0).toLocaleString("id-ID");
+
+/* Hours currently in the DOM; a change means the structure must be rebuilt. */
+let chartKey = "";
+
+function chartBarHtml(p) {
+  const segs = SEG_ORDER.map((k) =>
+    '<i class="seg seg-' + k + '" data-cls="' + k + '"></i>').join("");
+  const rows = CLASS_META.map((m) =>
+    '<span class="tip-row"><i class="dot-' + m.key + '"></i>' + m.label +
+    '<b data-v="' + m.key + '">0</b></span>').join("");
+  return (
+    '<div class="chart-bar" data-hour="' + p.hour + '" tabindex="0" role="img">' +
+      '<div class="chart-stack">' + segs + "</div>" +
+      '<div class="chart-tip" role="tooltip">' +
+        '<div class="tip-head"><span class="tip-name"></span>' +
+          '<span class="tip-total"></span></div>' +
+        '<div class="tip-breakdown">' + rows + "</div>" +
+      "</div>" +
+    "</div>"
+  );
+}
+
+/* Heights and numbers are written onto the existing nodes, never rebuilt, so
+   the CSS height transition actually animates. A full innerHTML rebuild on
+   every poll would restart the animation from scratch each time. */
+function paintChart(points, peak) {
+  const bars = el.chart.querySelectorAll(".chart-bar");
+  const pct = (v) => (peak > 0 ? (v / peak) * 100 : 0);
+
+  points.forEach((p, i) => {
+    const bar = bars[i];
+    if (!bar) return;
+
+    /* The visually topmost non-empty segment carries the rounded cap. The
+       stack is column-reverse, so the last non-empty in DOM order is on top. */
+    let topKey = null;
+    SEG_ORDER.forEach((k) => { if (p[k] > 0) topKey = k; });
+
+    SEG_ORDER.forEach((k) => {
+      const seg = bar.querySelector('[data-cls="' + k + '"]');
+      if (!seg) return;
+      seg.style.height = pct(p[k]) + "%";
+      seg.classList.toggle("is-top", k === topKey);
+    });
+
+    bar.classList.toggle("is-peak", peak > 0 && p.total === peak);
+    bar.querySelector(".tip-name").textContent = p.hour + ":00 WIB";
+    bar.querySelector(".tip-total").textContent = fmtNum(p.total) + " Kendaraan";
+    CLASS_META.forEach((m) => {
+      bar.querySelector('[data-v="' + m.key + '"]').textContent = fmtNum(p[m.key]);
+    });
+    bar.setAttribute("aria-label",
+      p.hour + ":00, total " + fmtNum(p.total) + " kendaraan");
+  });
 }
 
 function renderChart(node) {
   const points = chartData(node);
-  const peak = points.length ? Math.max(...points.map((point) => point.value)) : 0;
+  const peak = points.length ? Math.max(...points.map((p) => p.total)) : 0;
+  const key = points.map((p) => p.hour).join(",");
 
-  el.chart.innerHTML = points.length ? points.map((point) => (
-    '<div class="chart-bar' + (point.value === peak && peak > 0 ? " is-peak" : "") +
-      '" title="' + point.hour + ':00: ' + point.value + ' kendaraan">' +
-      '<i style="height:' +
-        (peak > 0 ? Math.round((point.value / peak) * 100) : 0) + '%"></i>' +
-    "</div>"
-  )).join("") : '<span class="chart-empty">Belum ada data per jam.</span>';
+  if (key !== chartKey) {
+    chartKey = key;
+    el.chart.innerHTML = points.length
+      ? points.map(chartBarHtml).join("")
+      : '<span class="chart-empty">Belum ada data per jam.</span>';
+    el.chartAxis.innerHTML = points.map((p) => "<span>" + p.hour + "</span>").join("");
+  }
 
-  el.chartAxis.innerHTML = points.map((point) => (
-    "<span>" + point.hour + "</span>"
-  )).join("");
+  paintChart(points, peak);
 
   el.chart.setAttribute(
     "aria-label",
-    "Diagram batang jumlah kendaraan per jam. " +
+    "Diagram batang bertumpuk jumlah kendaraan per jam: motor, mobil, truk/bus. " +
     "Puncak " + peak + " kendaraan."
   );
 }

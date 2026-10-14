@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -14,14 +14,15 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="">
-  <link rel="stylesheet" href="css/style.css">
+  <!-- ?v= busts the browser cache on each edit; bump it when css/js changes -->
+  <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 
   <header class="topbar">
     <div class="brand">
       <div class="logo-3d-box">
-        <svg class="cctv-3d-icon" width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo CCTV Smart ATCS">
+        <svg class="cctv-3d-icon" width="30" height="30" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo CCTV Smart ATCS">
           <!-- Ceiling Mount Bracket -->
           <rect x="18" y="4" width="12" height="3" rx="1.5" fill="#94a3b8"/>
           <path d="M24 7V13" stroke="#64748b" stroke-width="3" stroke-linecap="round"/>
@@ -45,8 +46,11 @@
         </svg>
       </div>
       <div class="brand-text">
-        <h1>SMART ATCS BANYUMAS</h1>
-        <span class="live-badge"><span class="live-dot pulse-dot"></span>COMMAND CENTER - LIVE</span>
+        <div class="brand-title-row">
+          <h1>SMART ATCS BANYUMAS</h1>
+          <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <span class="brand-sub">DINAS PERHUBUNGAN KAB. BANYUMAS</span>
       </div>
     </div>
 
@@ -157,14 +161,14 @@
         <!-- Right 30%: vertically scrollable analytics sidebar -->
         <aside class="analytics" aria-label="Panel analitik">
           <div class="analytics-head">
-            <h2 class="analytics-place" id="panel-place">—</h2>
+            <h2 class="analytics-place" id="panel-place">â€”</h2>
             <span class="analytics-live"><span class="live-dot"></span>LIVE</span>
           </div>
 
           <section class="panel-block" aria-label="Hitungan kendaraan saat ini">
             <p class="eyebrow">Hitungan Saat Ini</p>
             <div class="count-cards">
-              <article class="count-card">
+              <article class="count-card cc-motor">
                 <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <circle cx="5" cy="16" r="4"/><circle cx="19" cy="16" r="4"/>
                   <path d="M5 16l3-7h5l2 7M9 9h7l3 3"/>
@@ -172,7 +176,7 @@
                 <strong id="count-motor">0</strong>
                 <span>Motor</span>
               </article>
-              <article class="count-card">
+              <article class="count-card cc-mobil">
                 <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M3 15l2-6h14l2 6v4h-3M3 15v4h3M3 15h18"/>
                   <circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
@@ -180,7 +184,7 @@
                 <strong id="count-mobil">0</strong>
                 <span>Mobil</span>
               </article>
-              <article class="count-card">
+              <article class="count-card cc-truk">
                 <svg class="count-icon" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M2 16V7h11v9M13 10h5l4 4v2h-9"/>
                   <circle cx="6" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>
@@ -207,9 +211,14 @@
           <section class="panel-block" aria-label="Statistik per jam">
             <p class="eyebrow">Statistik Per Jam</p>
             <p class="col-sub">6 jam terakhir</p>
-            <div class="chart" id="chart" role="img"
-                 aria-label="Diagram batang jumlah kendaraan per jam"></div>
+            <div class="chart" id="chart" role="group"
+                 aria-label="Diagram batang bertumpuk jumlah kendaraan per jam"></div>
             <p class="chart-axis" id="chart-axis" aria-hidden="true"></p>
+            <ul class="chart-legend" aria-label="Keterangan warna kelas kendaraan">
+              <li><i class="dot-motor"></i>Motor</li>
+              <li><i class="dot-mobil"></i>Mobil</li>
+              <li><i class="dot-truk"></i>Truk/Bus</li>
+            </ul>
           </section>
 
           <section class="panel-block" aria-label="Status okupansi simpang">
@@ -241,6 +250,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=6"></script>
 </body>
 </html>

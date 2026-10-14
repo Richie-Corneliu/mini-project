@@ -312,7 +312,13 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
         peak_occupancy = max(peak_occupancy, current_occupancy)
         if events:
             hour = datetime.now().strftime("%H")
-            hourly_counts[hour] = hourly_counts.get(hour, 0) + len(events)
+            bucket = hourly_counts.setdefault(
+                hour, {"motor": 0, "mobil": 0, "truk": 0})
+            for ev in events:
+                name = ev["class_name"]
+                key = "truk" if name.startswith("truk") else name
+                if key in bucket:   # unknown label: skip, never crash counting
+                    bucket[key] += 1
 
         if audit:
             for ev in events:
@@ -354,7 +360,7 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                 "fps": counter.n_frames / max(time.monotonic() - t_start, 1e-6),
                 "start_time": start_time,
                 "peak_occupancy": peak_occupancy,
-                "hourly_counts": dict(hourly_counts),
+                "hourly_counts": {h: dict(b) for h, b in hourly_counts.items()},
             })
 
         prof.tick_ai(len(dets), infer=t_infer, track=t_track, acquire=t_acquire)
