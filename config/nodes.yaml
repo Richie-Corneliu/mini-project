@@ -1,4 +1,7 @@
 nodes:
+# Per-node detector overrides (optional, fall back to config/settings.yaml):
+#   truck_min_area: 8000   # truck/bus boxes smaller -> car
+#   car_min_area: 3000     # car boxes smaller -> motorcycle (turning bike)
 - id: node_01
   nama: Simpang Omnia
   lat: -7.419797

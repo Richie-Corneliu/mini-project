@@ -1,5 +1,5 @@
 stream:
-  source: rtsp://{user}:{pass}@10.26.110.126/h264/ch1/main/av_stream
+  source: rtsp://admin:Marktel12345@10.26.110.126/h264/ch1/main/av_stream/
   reconnect: true
   max_retries: 5
   backoff_sec: 2.0
@@ -8,14 +8,14 @@ stream:
 zones:
 - name: underpass
   polygon:
-  - - 22
-    - 140
-  - - 47
-    - 391
-  - - 678
-    - 330
-  - - 605
-    - 161
+  - - 352
+    - 440
+  - - 342
+    - 543
+  - - 1045
+    - 538
+  - - 1036
+    - 451
 detector:
   conf: 0.2
   model: rtdetr-l.engine
@@ -29,9 +29,8 @@ detector:
   - 5
   - 7
   min_area: 20
-  # Truck boxes smaller than this (pixels, w*h) are demoted to car: small
-  # pickups/box cars that COCO groups under truck. Tune per camera; 0 disables.
   truck_min_area: 8000
+  car_min_area: 3000
   show_dims: true
   tracker_config:
     lost_track_buffer: 90
@@ -44,6 +43,8 @@ counter:
   dedup_radius_px: 10
   min_displacement_px: 50
   class_window: 15
+  motor_lock_frames: 3
+  motor_flip_frames: 4
   cabin_iou: 0.6
   cabin_area_ratio: 0.55
   still_count_frames: 30

@@ -16,6 +16,13 @@ Three class-accuracy filters run before a count is accepted:
      not the instantaneous frame prediction (fixes car/truck flicker).
   3. Cabin suppression: a car voted inside a truck/bus box is the truck cabin,
      not a vehicle, and is discarded.
+
+Post-count class drift is handled by atomic re-attribution: a counted id that
+stays inside the zone gets its class re-voted every frame, and a stabilized
+flip (truck -> car mid-zone on a pickup) shifts total_by_class without ever
+touching the total. Motorcycle inertia: once a track has >= motor_lock_frames
+motorcycle observations, a car run shorter than motor_flip_frames is treated
+as a turning bike's RT-DETR flicker and cannot flip the resolved class.
 """
 from __future__ import annotations
 
@@ -60,13 +67,18 @@ class ZoneCounter:
     STABLE_FRAMES = 5    # frames in view before a track id beats spatial dedup
     STABLE_CONF = 0.35   # current-frame conf floor for that trust
     CAR_CLS = 2          # COCO id for car
+    MOTOR_CLS = 3        # COCO id for motorcycle
     TRUCK_CLS = (5, 7)   # COCO bus + truck
+    MOTOR_LOCK_FRAMES = 3   # motor sightings that lock a track's class
+    MOTOR_FLIP_FRAMES = 4   # car run <= this stays a flicker under the lock
 
     def __init__(self, zones: List[sv.PolygonZone],
                  class_labels: Optional[Dict[int, str]] = None,
                  tracker_config: Optional[dict] = None,
                  dedup_cooldown_sec: float = 4.0, dedup_radius_px: float = 10.0,
                  min_displacement_px: float = 50.0, class_window: int = CLASS_WINDOW,
+                 motor_lock_frames: int = MOTOR_LOCK_FRAMES,
+                 motor_flip_frames: int = MOTOR_FLIP_FRAMES,
                  cabin_iou: float = 0.6, cabin_area_ratio: float = 0.55,
                  still_count_frames: int = 30, still_min_conf: float = 0.35,
                  debug: bool = False):
@@ -78,6 +90,8 @@ class ZoneCounter:
         self.dedup_r2 = float(dedup_radius_px) ** 2
         self.min_disp2 = float(min_displacement_px) ** 2
         self.class_window = int(class_window)
+        self.motor_lock_frames = int(motor_lock_frames)
+        self.motor_flip_frames = int(motor_flip_frames)
         self.cabin_iou = float(cabin_iou)
         self.cabin_area_ratio = float(cabin_area_ratio)
         self.still_count_frames = int(still_count_frames)
@@ -94,6 +108,11 @@ class ZoneCounter:
         self.total_by_class = defaultdict(int)
         self.n_frames = 0
         self.class_hist = {}   # tid -> deque of (class_id, confidence)
+        # counted_id_class[zi][tid] = label registered when this id first
+        # counted in zone zi. Drives atomic re-attribution: a counted id whose
+        # stabilized class drifts while still active in the zone moves its
+        # count from the old class bucket to the new one (total unchanged).
+        self.counted_id_class = [dict() for _ in zones]
         self.trails = {}       # tid -> deque of centroid pts (debug render)
         self._prev = {}        # tid -> last centroid, for jump-over-edge sweep
         self._start = {}       # tid -> first centroid, for the displacement gate
@@ -120,6 +139,56 @@ class ZoneCounter:
             votes[cls][0] += 1
             votes[cls][1] += conf
         return max(votes, key=lambda c: (votes[c][0], votes[c][1]))
+
+    def _resolved_class(self, tid: int, fallback: int) -> int:
+        """Vote with motorcycle turn inertia applied.
+
+        Once a track has >= motor_lock_frames motorcycle sightings, a
+        non-motor run of <= motor_flip_frames frames is a turning bike's
+        RT-DETR flicker and the resolved class stays motorcycle. The run is
+        the longest consecutive non-motor stretch in the history (not the
+        trailing run — the crossing frame itself often flickers back to
+        motorcycle, which would otherwise mask an 8-frame real car run). A
+        longer non-motor run means the vote wins: a genuine transition
+        (pickup entering as truck, later reading car) re-attributes.
+        """
+        h = self.class_hist.get(tid)
+        if not h:
+            return fallback
+        vote = self._voted_class(tid, fallback)
+        if vote == self.MOTOR_CLS:
+            return vote
+        motor_seen = sum(1 for cls, _ in h if cls == self.MOTOR_CLS)
+        if motor_seen < self.motor_lock_frames:
+            return vote
+        longest = run = 0
+        for cls, _ in h:
+            if cls == self.MOTOR_CLS:
+                run = 0
+            else:
+                run += 1
+                longest = max(longest, run)
+        return self.MOTOR_CLS if longest <= self.motor_flip_frames else vote
+
+    def _reattribute(self, zi: int, tid: int, vote: int, conf: float,
+                     cx: float, cy: float, now: float) -> Optional[dict]:
+        """Shift an already-counted id's class bucket when its stabilized
+        class changes while it is still inside the zone (pickup: truck on the
+        boundary, car mid-zone). One id = one count: `total` never moves, the
+        old bucket decrements (floored at 0), the new one increments, and a
+        re-attribute event is returned so hourly/delta reporting stays true.
+        A brief non-motor flicker that falls back to the registered class is
+        ignored entirely."""
+        old_label = self.counted_id_class[zi][tid]
+        new_label = self._label(vote)
+        if new_label == old_label:
+            return None
+        self.total_by_class[old_label] = max(0, self.total_by_class[old_label] - 1)
+        self.total_by_class[new_label] += 1
+        self.counted_id_class[zi][tid] = new_label
+        return {"zone": zi, "track_id": tid, "class_id": vote,
+                "class_name": new_label, "confidence": conf,
+                "cx": cx, "cy": cy, "t": now, "reattributed_from": old_label}
 
     @staticmethod
     def _inside_truck(car: np.ndarray, trucks: List[np.ndarray],
@@ -185,6 +254,12 @@ class ZoneCounter:
         flags = dets.data.get("reclassified") if dets.data else None
         if flags is None or len(flags) != len(dets):
             flags = None
+        # Rows the detector demoted car->motor by size (detector.py) keep
+        # their cabin candidacy: a small car box inside a truck box is the
+        # truck cabin even after the sweep relabels it a motorcycle.
+        car_demoted = dets.data.get("demoted_car") if dets.data else None
+        if car_demoted is None or len(car_demoted) != len(dets):
+            car_demoted = None
 
         for i in range(len(dets)):
             tid = int(tids[i])
@@ -209,6 +284,18 @@ class ZoneCounter:
                        and conf >= self.STABLE_CONF)
             for zi, contour in enumerate(contours):
                 if tid in self._counted[zi]:
+                    # Already counted here: re-vote the class while the id is
+                    # still active inside the zone. Pickup mid-zone flips
+                    # (truck -> car) re-attribute the count instead of being
+                    # lost; a one-frame flicker that votes back to the
+                    # registered class is a no-op.
+                    if (tid in self.counted_id_class[zi]
+                            and cv2.pointPolygonTest(contour, pt, False) >= 0):
+                        re = self._reattribute(zi, tid,
+                                               self._resolved_class(tid, cls),
+                                               conf, pt[0], pt[1], now)
+                        if re is not None:
+                            events.append(re)
                     continue
                 inside = cv2.pointPolygonTest(contour, pt, False) >= 0
                 if not inside and not (prev is not None
@@ -227,11 +314,16 @@ class ZoneCounter:
                         still.pop(zi)  # reset so re-entry after exit doesn't skip
                     else:
                         continue
-                vote = self._voted_class(tid, cls)
+                vote = self._resolved_class(tid, cls)
                 # Filter 3: a car inside a truck box is the truck cabin. A
                 # size-demoted truck (flags[i]) is exempt — it only reads as a
                 # car, so it must never be discarded as another truck's cabin.
-                if (vote == self.CAR_CLS and truck_boxes
+                # A car demoted to motor by the car_min_area sweep is still a
+                # cabin candidate when its box sits inside a truck box.
+                cabin_box = (vote == self.CAR_CLS
+                             or (car_demoted is not None
+                                 and bool(car_demoted[i])))
+                if (cabin_box and truck_boxes
                         and not (flags is not None and bool(flags[i]))
                         and self._inside_truck(dets.xyxy[i], truck_boxes,
                                                self.cabin_iou,
@@ -244,8 +336,9 @@ class ZoneCounter:
                     self.suppressed += 1
                     continue
                 self._counted[zi].add(tid)
-                self._recent[zi].append((now, pt[0], pt[1]))
                 label = self._label(vote)
+                self.counted_id_class[zi][tid] = label
+                self._recent[zi].append((now, pt[0], pt[1]))
                 self.total += 1
                 self.total_by_class[label] += 1
                 events.append({"zone": zi, "track_id": tid, "class_id": vote,
@@ -275,6 +368,7 @@ class ZoneCounter:
         self._age.clear()
         self._missing.clear()
         self._counted = [set() for _ in self.zones]
+        self.counted_id_class = [dict() for _ in self.zones]
         self._recent = [deque() for _ in self.zones]
 
     def update_polygon(self, normalized_points, frame_width: int,
@@ -292,4 +386,5 @@ class ZoneCounter:
         self.zones[zone_index] = sv.PolygonZone(
             polygon=pixel_pts.astype(np.float32))
         self._counted = [set() for _ in self.zones]
+        self.counted_id_class = [dict() for _ in self.zones]
         self._recent = [deque() for _ in self.zones]

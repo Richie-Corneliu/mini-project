@@ -11,19 +11,22 @@ from pathlib import Path
 CLASS_PRIORITY = {2: 2, 5: 2, 7: 2, 3: 1}
 
 
-# Size heuristic: COCO's `truck` head (7) swallows small pickups and box cars.
-# A truck box smaller than this many pixels is demoted to car (2). Pixels, not
-# a frame ratio, so it lines up with min_area and the pixel-space zones/nodes
-# config; operators tune it per camera perspective (detector.truck_min_area).
+# Size heuristic: COCO's `truck` (7) and `bus` (5) heads swallow small pickups
+# and box cars. A truck/bus box smaller than this many pixels is demoted to car
+# (2). Pixels, not a frame ratio, so it lines up with min_area and the
+# pixel-space zones/nodes config; operators tune it per camera perspective
+# (detector.truck_min_area, per-node override in nodes.yaml).
 CAR_CLS = 2
-TRUCK_CLS = (7,)
+MOTOR_CLS = 3
+TRUCK_CLS = (5, 7)
 DEFAULT_TRUCK_MIN_AREA = 8000
+DEFAULT_CAR_MIN_AREA = 3000
 
 
 def reclassify_small_trucks(dets: sv.Detections, truck_min_area: float,
                             truck_classes: Sequence[int] = TRUCK_CLS,
                             car_class: int = CAR_CLS) -> sv.Detections:
-    """Demote truck boxes with area < `truck_min_area` px to car, in place.
+    """Demote truck/bus boxes with area < `truck_min_area` px to car, in place.
 
     One vectorised pass over the final post-NMS boxes (no per-box Python loop),
     negligible beside inference. Returns `dets` untouched when disabled
@@ -49,6 +52,44 @@ def reclassify_small_trucks(dets: sv.Detections, truck_min_area: float,
         # cabin-suppression filter (a demoted truck is not a truck cabin).
         dets.data["reclassified"] = demote
     return dets
+
+
+def reclassify_small_cars(dets: sv.Detections, car_min_area: float,
+                          car_class: int = CAR_CLS,
+                          motor_class: int = MOTOR_CLS) -> sv.Detections:
+    """Demote car boxes with area < `car_min_area` px to motorcycle, in place.
+
+    A motorcycle turning sideways at an angle briefly widens its box into
+    car-sized territory AND RT-DETR's attention flips the label to car; the
+    flip is momentary but the resulting false car count is permanent. Small
+    `car` boxes are far more often a sideways bike than a distant car — and a
+    genuinely distant car will flicker between the two classes, which the
+    counter's temporal voting absorbs. Same per-camera ceiling as the truck
+    heuristic above.
+    """
+    if car_min_area <= 0 or dets.class_id is None or len(dets) == 0:
+        return dets
+    xyxy = dets.xyxy
+    areas = (xyxy[:, 2] - xyxy[:, 0]) * (xyxy[:, 3] - xyxy[:, 1])
+    demote = (dets.class_id == car_class) & (areas < car_min_area)
+    if demote.any():
+        cls = dets.class_id.copy()
+        cls[demote] = motor_class
+        dets.class_id = cls
+        # Tag the rows so ZoneCounter's cabin filter can still suppress a
+        # small car box that is really a truck cabin — otherwise this sweep
+        # would turn cabins into false motorcycle counts.
+        dets.data["demoted_car"] = demote
+    return dets
+
+
+def apply_size_heuristics(dets: sv.Detections, truck_min_area: float,
+                          car_min_area: float) -> sv.Detections:
+    """Both tier demotions in one call. Car sweep first so a truck demoted to
+    car by the second sweep lands on car (its final class) and is never
+    re-demoted to motorcycle by the car threshold."""
+    dets = reclassify_small_cars(dets, car_min_area)
+    return reclassify_small_trucks(dets, truck_min_area)
 
 
 def cross_class_nms(dets: sv.Detections,
@@ -89,7 +130,8 @@ class Detector:
                  classes: Optional[Sequence[int]] = None, min_area: int = 20,
                  imgsz: int = 640, device: str = "cuda:0", half: bool = True,
                  duplicate_iou: float = 0.65,
-                 truck_min_area: float = DEFAULT_TRUCK_MIN_AREA) -> None:
+                 truck_min_area: float = DEFAULT_TRUCK_MIN_AREA,
+                 car_min_area: float = DEFAULT_CAR_MIN_AREA) -> None:
         import torch
         from ultralytics import RTDETR
 
@@ -101,6 +143,7 @@ class Detector:
         self.half = bool(half)
         self.duplicate_iou = float(duplicate_iou)
         self.truck_min_area = float(truck_min_area)
+        self.car_min_area = float(car_min_area)
 
         path = str(model_size)
         if "." not in Path(path).name:
@@ -112,7 +155,9 @@ class Detector:
                 and str(device).startswith("cuda") and torch.cuda.is_available():
             self.model.model.half()
 
-    def detect(self, frame: np.ndarray) -> sv.Detections:
+    def detect(self, frame: np.ndarray,
+               truck_min_area: Optional[float] = None,
+               car_min_area: Optional[float] = None) -> sv.Detections:
         r = self.model.predict(
             frame, conf=self.conf, imgsz=self.imgsz,
             device=self.device, classes=self.classes,
@@ -135,4 +180,7 @@ class Detector:
             class_id=cls_ids[mask],
         )
         dets = cross_class_nms(dets, self.duplicate_iou)
-        return reclassify_small_trucks(dets, self.truck_min_area)
+        return apply_size_heuristics(
+            dets,
+            self.truck_min_area if truck_min_area is None else float(truck_min_area),
+            self.car_min_area if car_min_area is None else float(car_min_area))

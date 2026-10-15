@@ -68,7 +68,8 @@ def _build_detector(cfg):
                     min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
                     device=dc.get("device", "cuda:0"), half=dc.get("half", True),
                     duplicate_iou=dc.get("duplicate_iou", 0.65),
-                    truck_min_area=dc.get("truck_min_area", 8000))
+                    truck_min_area=dc.get("truck_min_area", 8000),
+                    car_min_area=dc.get("car_min_area", 3000))
 
 
 def _build_pipeline(cfg, zones, source, debug):
@@ -91,6 +92,8 @@ def _build_pipeline(cfg, zones, source, debug):
                           dedup_radius_px=counter_cfg.get("dedup_radius_px", 10),
                           min_displacement_px=counter_cfg.get("min_displacement_px", 50),
                           class_window=counter_cfg.get("class_window", 15),
+                          motor_lock_frames=counter_cfg.get("motor_lock_frames", 3),
+                          motor_flip_frames=counter_cfg.get("motor_flip_frames", 4),
                           cabin_iou=counter_cfg.get("cabin_iou", 0.6),
                           cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
                           still_count_frames=counter_cfg.get("still_count_frames", 30),
@@ -216,7 +219,7 @@ class StageProfiler:
 def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                stop_event, prof, reset_flag, t_start, audit=None, debug=False,
                publish_api=False, force_focus=False, record_dir=None,
-               record_desired=False):
+               record_desired=False, det_overrides=None):
     """Inference loop: consumes every raw frame the display thread delivers
     (acquire rate, no idle throttling — ByteTrack needs temporal density for
     accurate background counting), runs the model, and stores the overlay.
@@ -297,7 +300,7 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
             # for that lock, which is the GPU-contention signal.
             t = time.perf_counter()
             with gpu_lock:
-                raw_dets = det.detect(frame)
+                raw_dets = det.detect(frame, **(det_overrides or {}))
             t_infer = time.perf_counter() - t
             t = time.perf_counter()
             dets = counter.track(raw_dets, frame)
@@ -317,6 +320,11 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
             for ev in events:
                 name = ev["class_name"]
                 key = "truk" if name.startswith("truk") else name
+                old = ev.get("reattributed_from")
+                if old:   # class re-attribution: move the delta, don't add
+                    okey = "truk" if old.startswith("truk") else old
+                    if okey in bucket:
+                        bucket[okey] = max(0, bucket[okey] - 1)
                 if key in bucket:   # unknown label: skip, never crash counting
                     bucket[key] += 1
 
@@ -325,9 +333,15 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                 audit.write(ev)
         if debug and events:
             for ev in events:
-                log.info("COUNT %s id=%d conf=%.2f zone=%d (total=%d)",
-                         ev["class_name"], ev["track_id"], ev["confidence"],
-                         ev["zone"], counter.total)
+                old = ev.get("reattributed_from")
+                if old:
+                    log.info("REATTR %s -> %s id=%d zone=%d (total=%d)",
+                             old, ev["class_name"], ev["track_id"], ev["zone"],
+                             counter.total)
+                else:
+                    log.info("COUNT %s id=%d conf=%.2f zone=%d (total=%d)",
+                             ev["class_name"], ev["track_id"], ev["confidence"],
+                             ev["zone"], counter.total)
 
         snap = None
         if len(dets) and dets.tracker_id is not None:
@@ -569,6 +583,10 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         source = n.get("source") or sc["source"]
         zones = build_zones(n.get("zones") or zone_cfgs)
         streamer, counter, renderer = _build_pipeline(cfg, zones, source, debug)
+        # Optional per-node detector tuning from nodes.yaml (camera tilt /
+        # distance differ per intersection); settings.yaml is the fallback.
+        det_over = {k: float(n[k]) for k in ("truck_min_area", "car_min_area")
+                    if k in n}
         streamer.start()
         bus = FrameBus()
         prof = StageProfiler("node:" + node_id)
@@ -579,7 +597,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
             target=_ai_worker,
             args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                   stop, prof, reset_flag, t0, None, debug, True, False,
-                  "logs", False),
+                  "logs", False, det_over),
             daemon=True, name=f"ai-{node_id}")
         disp = threading.Thread(
             target=_display_worker,
