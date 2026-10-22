@@ -178,16 +178,31 @@ def test_freeze_blocks_counts():
 
 def test_static_bush_not_counted():
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]]))
-    zc = ZoneCounter([zone], class_labels={3: "motor"})  # default gate = 20px
+    zc = ZoneCounter([zone], class_labels={3: "motor"})  # default gate = 30px
     t = time.monotonic()
     for i in range(10):
         assert not zc.update(_dets([[90, 90, 110, 110]], [3], tid=[1]), now=t + i)
     assert zc.total == 0
 
 
+def test_static_planter_not_counted_as_car():
+    """Large roadside planter jittering < 5px as a car in the zone: the
+    displacement gate blocks it, even with conf and dwell time."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil"})
+    t = time.monotonic()
+    jitter = [(0, 0), (2, 1), (1, 3), (3, 2), (0, 4)]
+    for i in range(10):
+        dx, dy = jitter[i % len(jitter)]
+        box = [[90 + dx, 90 + dy, 130 + dx, 130 + dy]]
+        assert not zc.update(_dets(box, [2], conf=[0.9], tid=[1]), now=t + i)
+    assert zc.total == 0, zc.total
+    assert zc.total_by_class.get("mobil", 0) == 0, dict(zc.total_by_class)
+
+
 def test_moving_object_counted():
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
-    zc = ZoneCounter([zone], class_labels={3: "motor"})  # default gate = 20px
+    zc = ZoneCounter([zone], class_labels={3: "motor"})  # default gate = 30px
     t = time.monotonic()
     zc.update(_dets([[60, 60, 80, 80]], [3], tid=[1]), now=t)               # start (70,70)
     ev = zc.update(_dets([[140, 140, 160, 160]], [3], tid=[1]), now=t + 1)  # moved ~113px
@@ -423,6 +438,60 @@ def test_motorcycle_inertia_yields_to_long_car_run():
     assert zc.total_by_class.get("motor", 0) == 0, dict(zc.total_by_class)
     assert zc.total_by_class["mobil"] == 1, dict(zc.total_by_class)
     assert any(e.get("reattributed_from") == "motor" for e in evs), evs
+
+
+def test_approaching_car_does_not_upgrade_to_truck():
+    """Car for 4 frames entering the zone, then truck/bus for 5 frames as it
+    approaches (box inflates with perspective): the car lock holds the class,
+    no flip and no re-attribution to truck/bus."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 7: "truk/bus"},
+                     min_displacement_px=0)
+    t = time.monotonic()
+    evs = []
+    for i in range(4):
+        evs += zc.update(_dets([[90, 90, 130, 130]], [2], tid=[1]), now=t + i)
+    for i in range(5):
+        box = [[90 - i * 2, 90 - i * 2, 130 + i * 6, 130 + i * 6]]  # grows near cam
+        evs += zc.update(_dets(box, [7], tid=[1]), now=t + 4 + i)
+    assert zc.total == 1, zc.total
+    assert zc.total_by_class["mobil"] == 1, dict(zc.total_by_class)
+    assert zc.total_by_class.get("truk/bus", 0) == 0, dict(zc.total_by_class)
+    assert not any(e.get("reattributed_from") for e in evs), evs
+
+
+def test_turning_car_box_inflation_stays_car():
+    """Same lock from a diagonal turn: box area balloons past truck_min_area
+    while the tracker id stays a car."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus"},
+                     min_displacement_px=0)
+    t = time.monotonic()
+    for i in range(3):
+        zc.update(_dets([[100, 100, 140, 140]], [2], tid=[1]), now=t + i)
+    for i in range(4):
+        zc.update(_dets([[100, 100, 200, 200]], [5], tid=[1]), now=t + 3 + i)
+    assert zc.total == 1, zc.total
+    assert zc.total_by_class["mobil"] == 1, dict(zc.total_by_class)
+    assert zc.total_by_class.get("truk/bus", 0) == 0, dict(zc.total_by_class)
+
+
+def test_truck_opening_still_reattributes_to_car():
+    """Car lock must not block the pickup path: a track that opens as truck
+    still re-attributes to car once the vote stabilizes."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 7: "truk/bus"},
+                     min_displacement_px=0)
+    t = time.monotonic()
+    evs = []
+    for i in range(2):
+        evs += zc.update(_dets([[90, 90, 130, 130]], [7], tid=[1]), now=t + i)
+    for i in range(4):
+        evs += zc.update(_dets([[92, 92, 132, 132]], [2], tid=[1]), now=t + 2 + i)
+    assert zc.total == 1, zc.total
+    assert zc.total_by_class["mobil"] == 1, dict(zc.total_by_class)
+    assert zc.total_by_class.get("truk/bus", 0) == 0, dict(zc.total_by_class)
+    assert any(e.get("reattributed_from") == "truk/bus" for e in evs), evs
 
 
 def test_small_car_demoted_to_motorcycle():

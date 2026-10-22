@@ -23,6 +23,11 @@ flip (truck -> car mid-zone on a pickup) shifts total_by_class without ever
 touching the total. Motorcycle inertia: once a track has >= motor_lock_frames
 motorcycle observations, a car run shorter than motor_flip_frames is treated
 as a turning bike's RT-DETR flicker and cannot flip the resolved class.
+Car inertia mirrors it against truck/bus inflation: a track seen as car
+car_lock_frames times (and not opening as truck/bus in its first 2 frames)
+holds car through a truck/bus run of <= car_flip_frames — approaching
+perspective growth and diagonal turns inflate the box, not the vehicle — and
+an already-counted car id is never re-attributed to truck/bus.
 """
 from __future__ import annotations
 
@@ -71,14 +76,18 @@ class ZoneCounter:
     TRUCK_CLS = (5, 7)   # COCO bus + truck
     MOTOR_LOCK_FRAMES = 3   # motor sightings that lock a track's class
     MOTOR_FLIP_FRAMES = 4   # car run <= this stays a flicker under the lock
+    CAR_LOCK_FRAMES = 3     # car sightings that lock a track's class
+    CAR_FLIP_FRAMES = 6     # truck run <= this stays a flicker under the lock
 
     def __init__(self, zones: List[sv.PolygonZone],
                  class_labels: Optional[Dict[int, str]] = None,
                  tracker_config: Optional[dict] = None,
                  dedup_cooldown_sec: float = 4.0, dedup_radius_px: float = 10.0,
-                 min_displacement_px: float = 50.0, class_window: int = CLASS_WINDOW,
+                 min_displacement_px: float = 30.0, class_window: int = CLASS_WINDOW,
                  motor_lock_frames: int = MOTOR_LOCK_FRAMES,
                  motor_flip_frames: int = MOTOR_FLIP_FRAMES,
+                 car_lock_frames: int = CAR_LOCK_FRAMES,
+                 car_flip_frames: int = CAR_FLIP_FRAMES,
                  cabin_iou: float = 0.6, cabin_area_ratio: float = 0.55,
                  still_count_frames: int = 30, still_min_conf: float = 0.35,
                  debug: bool = False):
@@ -92,6 +101,9 @@ class ZoneCounter:
         self.class_window = int(class_window)
         self.motor_lock_frames = int(motor_lock_frames)
         self.motor_flip_frames = int(motor_flip_frames)
+        self.car_lock_frames = int(car_lock_frames)
+        self.car_flip_frames = int(car_flip_frames)
+        self.truck_labels = {self._label(c) for c in self.TRUCK_CLS}
         self.cabin_iou = float(cabin_iou)
         self.cabin_area_ratio = float(cabin_area_ratio)
         self.still_count_frames = int(still_count_frames)
@@ -114,6 +126,7 @@ class ZoneCounter:
         # count from the old class bucket to the new one (total unchanged).
         self.counted_id_class = [dict() for _ in zones]
         self.trails = {}       # tid -> deque of centroid pts (debug render)
+        self._first_cls = {}   # tid -> first 2 class ids, for the car lock
         self._prev = {}        # tid -> last centroid, for jump-over-edge sweep
         self._start = {}       # tid -> first centroid, for the displacement gate
         self._age = {}         # tid -> frames seen, for the stable-id trust rule
@@ -141,9 +154,9 @@ class ZoneCounter:
         return max(votes, key=lambda c: (votes[c][0], votes[c][1]))
 
     def _resolved_class(self, tid: int, fallback: int) -> int:
-        """Vote with motorcycle turn inertia applied.
+        """Vote with motorcycle/car turn inertia applied.
 
-        Once a track has >= motor_lock_frames motorcycle sightings, a
+        Motor: once a track has >= motor_lock_frames motorcycle sightings, a
         non-motor run of <= motor_flip_frames frames is a turning bike's
         RT-DETR flicker and the resolved class stays motorcycle. The run is
         the longest consecutive non-motor stretch in the history (not the
@@ -151,6 +164,12 @@ class ZoneCounter:
         motorcycle, which would otherwise mask an 8-frame real car run). A
         longer non-motor run means the vote wins: a genuine transition
         (pickup entering as truck, later reading car) re-attributes.
+
+        Car: same shape against truck/bus. A track that opened as car and has
+        car_lock_frames car sightings cannot upgrade to truck/bus on a run of
+        <= car_flip_frames — approaching the camera and diagonal turns inflate
+        the axis-aligned box, not the vehicle. A track whose first 2 frames
+        read truck/bus is a real truck and keeps the truck -> car path open.
         """
         h = self.class_hist.get(tid)
         if not h:
@@ -159,16 +178,30 @@ class ZoneCounter:
         if vote == self.MOTOR_CLS:
             return vote
         motor_seen = sum(1 for cls, _ in h if cls == self.MOTOR_CLS)
-        if motor_seen < self.motor_lock_frames:
-            return vote
+        if (motor_seen >= self.motor_lock_frames
+                and self._longest_non_run(h, self.MOTOR_CLS) <= self.motor_flip_frames):
+            return self.MOTOR_CLS
+        if (vote in self.TRUCK_CLS and self._car_locked(tid)
+                and self._longest_non_run(h, self.CAR_CLS) <= self.car_flip_frames):
+            return self.CAR_CLS
+        return vote
+
+    @staticmethod
+    def _longest_non_run(hist, cls: int) -> int:
+        """Longest consecutive stretch of classes other than `cls`."""
         longest = run = 0
-        for cls, _ in h:
-            if cls == self.MOTOR_CLS:
-                run = 0
-            else:
-                run += 1
-                longest = max(longest, run)
-        return self.MOTOR_CLS if longest <= self.motor_flip_frames else vote
+        for c, _ in hist:
+            run = 0 if c == cls else run + 1
+            longest = max(longest, run)
+        return longest
+
+    def _car_locked(self, tid: int) -> bool:
+        """True once a track opened as car (not truck/bus in its first 2
+        frames) and accumulated car_lock_frames car sightings."""
+        if any(c in self.TRUCK_CLS for c in self._first_cls.get(tid, ())):
+            return False
+        h = self.class_hist.get(tid)
+        return bool(h) and sum(1 for c, _ in h if c == self.CAR_CLS) >= self.car_lock_frames
 
     def _reattribute(self, zi: int, tid: int, vote: int, conf: float,
                      cx: float, cy: float, now: float) -> Optional[dict]:
@@ -182,6 +215,12 @@ class ZoneCounter:
         old_label = self.counted_id_class[zi][tid]
         new_label = self._label(vote)
         if new_label == old_label:
+            return None
+        # A counted car that accumulated car_lock_frames car sightings never
+        # becomes a truck: the flip is the box inflating near the camera or
+        # mid-turn, and moving the count would invent a truck that never came.
+        if (new_label in self.truck_labels and old_label == self._label(self.CAR_CLS)
+                and self._car_locked(tid)):
             return None
         self.total_by_class[old_label] = max(0, self.total_by_class[old_label] - 1)
         self.total_by_class[new_label] += 1
@@ -270,6 +309,9 @@ class ZoneCounter:
             self._prev[tid] = pt
             self._start.setdefault(tid, pt)
             self._age[tid] = self._age.get(tid, 0) + 1
+            fc = self._first_cls.setdefault(tid, [])
+            if len(fc) < 2:
+                fc.append(cls)
             self._missing.pop(tid, None)
             h = self.class_hist.setdefault(tid, deque(maxlen=self.class_window))
             h.append((cls, conf))
@@ -351,6 +393,7 @@ class ZoneCounter:
                 self.trails.pop(tid, None)
                 self._prev.pop(tid, None)
                 self._start.pop(tid, None)
+                self._first_cls.pop(tid, None)
                 self._zone_still.pop(tid, None)
                 self._age.pop(tid, None)
                 self._missing.pop(tid, None)
@@ -364,6 +407,7 @@ class ZoneCounter:
         self.total_by_class.clear()
         self._prev.clear()
         self._start.clear()
+        self._first_cls.clear()
         self._zone_still.clear()
         self._age.clear()
         self._missing.clear()

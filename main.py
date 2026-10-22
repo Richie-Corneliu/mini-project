@@ -68,7 +68,7 @@ def _build_detector(cfg):
                     min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
                     device=dc.get("device", "cuda:0"), half=dc.get("half", True),
                     duplicate_iou=dc.get("duplicate_iou", 0.65),
-                    truck_min_area=dc.get("truck_min_area", 8000),
+                    truck_min_area=dc.get("truck_min_area", 10500),
                     car_min_area=dc.get("car_min_area", 3000))
 
 
@@ -90,10 +90,12 @@ def _build_pipeline(cfg, zones, source, debug):
                           tracker_config=dc.get("tracker_config"),
                           dedup_cooldown_sec=counter_cfg.get("dedup_cooldown_sec", 4.0),
                           dedup_radius_px=counter_cfg.get("dedup_radius_px", 10),
-                          min_displacement_px=counter_cfg.get("min_displacement_px", 50),
+                          min_displacement_px=counter_cfg.get("min_displacement_px", 30),
                           class_window=counter_cfg.get("class_window", 15),
                           motor_lock_frames=counter_cfg.get("motor_lock_frames", 3),
                           motor_flip_frames=counter_cfg.get("motor_flip_frames", 4),
+                          car_lock_frames=counter_cfg.get("car_lock_frames", 3),
+                          car_flip_frames=counter_cfg.get("car_flip_frames", 6),
                           cabin_iou=counter_cfg.get("cabin_iou", 0.6),
                           cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
                           still_count_frames=counter_cfg.get("still_count_frames", 30),
@@ -582,7 +584,12 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         node_id = n["id"]
         source = n.get("source") or sc["source"]
         zones = build_zones(n.get("zones") or zone_cfgs)
-        streamer, counter, renderer = _build_pipeline(cfg, zones, source, debug)
+        # Per-node counter tuning (min_displacement_px, car lock) overrides
+        # settings.yaml; unknown node keys are ignored.
+        counter_cfg = {**cfg.get("counter", {}),
+                       **{k: n[k] for k in cfg.get("counter", {}) if k in n}}
+        streamer, counter, renderer = _build_pipeline(
+            {**cfg, "counter": counter_cfg}, zones, source, debug)
         # Optional per-node detector tuning from nodes.yaml (camera tilt /
         # distance differ per intersection); settings.yaml is the fallback.
         det_over = {k: float(n[k]) for k in ("truck_min_area", "car_min_area")

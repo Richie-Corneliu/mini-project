@@ -29,7 +29,7 @@ detector:
   - 5
   - 7
   min_area: 20
-  truck_min_area: 8000
+  truck_min_area: 10500
   car_min_area: 3000
   show_dims: true
   tracker_config:
@@ -41,10 +41,12 @@ detector:
 counter:
   dedup_cooldown_sec: 4.0
   dedup_radius_px: 10
-  min_displacement_px: 50
+  min_displacement_px: 30
   class_window: 15
   motor_lock_frames: 3
   motor_flip_frames: 4
+  car_lock_frames: 3
+  car_flip_frames: 6
   cabin_iou: 0.6
   cabin_area_ratio: 0.55
   still_count_frames: 30
