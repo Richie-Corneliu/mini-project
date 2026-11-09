@@ -7,13 +7,18 @@ import threading
 import time
 from pathlib import Path
 
+import csv
+import io
+
 import yaml
 from dotenv import load_dotenv
 from typing import Optional
 
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
+
+from src.utils.stats_store import today_wib
 import cv2
 
 # Credentials live in .env (gitignored), never in nodes.yaml. Loading here
@@ -78,7 +83,8 @@ def load_node_registry(path=None):
 def _blank_state():
     return {"motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
             "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
-            "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {}}
+            "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {},
+            "reconnecting": False}
 
 
 def _registry():
@@ -143,6 +149,63 @@ def update_node_data(node_id: str, data: dict):
             data.get("hourly_counts", st["hourly_counts"]))
         st["status"] = _status_for(st["occupancy"])
         st["last_seen"] = time.monotonic()
+        # A frame just arrived: the stream is healthy again.
+        st["reconnecting"] = False
+
+
+# mark_node_reconnecting may be called every poll/frame while a stream stalls;
+# remember the last write per node so it does not contend on _lock each time.
+RECONNECT_MARK_SEC = 1.0
+_last_reconnect_mark = {}
+
+
+def mark_node_reconnecting(node_id: str, min_interval=RECONNECT_MARK_SEC) -> bool:
+    """Flag a node's stream as stalled/reconnecting until the next frame.
+
+    Throttled per node: the caller can invoke this on every empty read without
+    taking the state lock more than once a second. Returns True when the flag
+    was actually written.
+    """
+    now = time.monotonic()
+    with _lock:
+        last = _last_reconnect_mark.get(node_id)
+        if last is not None and now - last < min_interval:
+            return False
+        _last_reconnect_mark[node_id] = now
+        st = nodes_state.setdefault(node_id, _blank_state())
+        st["reconnecting"] = True
+    return True
+
+
+def stream_health(st, now=None) -> tuple:
+    """(stream_status, stale_seconds) for one node state snapshot.
+
+    OFFLINE   never produced a frame (last_seen == 0)
+    RECONNECTING  no frame for > STALE_SEC, or the worker flagged a stall
+    LIVE      fresh frame within STALE_SEC
+    stale_seconds is None before the first frame.
+    """
+    if now is None:
+        now = time.monotonic()
+    last_seen = float(st.get("last_seen") or 0.0)
+    if last_seen <= 0.0:
+        return "OFFLINE", None
+    stale = max(0.0, now - last_seen)
+    if st.get("reconnecting") or stale > STALE_SEC:
+        return "RECONNECTING", round(stale, 1)
+    return "LIVE", round(stale, 1)
+
+
+def seed_node_data(node_id: str, data: dict):
+    """Isi state node dari snapshot harian sebelum frame pertama datang.
+
+    Dipakai saat startup: kamera bisa sedang offline / warming up, dashboard
+    tetap menampilkan total dan grafik jam yang dipulihkan. `last_seen`
+    dikosongkan supaya node jujur berstatus OFFLINE sampai worker melapor.
+    """
+    update_node_data(node_id, data)
+    with _lock:
+        nodes_state[node_id]["last_seen"] = 0.0
 
 
 def pop_command(node_id: str):
@@ -181,12 +244,16 @@ def get_active_focus():
 
 
 def _public_state(node_id, reg, st, now):
-    online = (now - st.get("last_seen", 0.0)) <= STALE_SEC
+    last_seen = st.get("last_seen", 0.0)
+    online = last_seen > 0 and (now - last_seen) <= STALE_SEC
+    stream_status, stale_seconds = stream_health(st, now)
     return {
         "nama": reg.get("nama", node_id),
         "lat": reg.get("lat"),
         "lng": reg.get("lng"),
         "status": st["status"] if online else "OFFLINE",
+        "stream_status": stream_status,
+        "stale_seconds": stale_seconds,
         "motor": st["motor"],
         "mobil": st["mobil"],
         "truk": st["truk"],
@@ -293,6 +360,57 @@ def generate_video_stream(node_id: str):
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + jpg + b'\r\n')
         time.sleep(0.04)  # ~25 FPS stream
+
+
+@app.get("/api/v1/nodes/{node_id}/export-csv")
+def export_node_csv(node_id: str):
+    """Laporan harian CSV per simpang: 24 baris jam + baris TOTAL HARIAN.
+
+    Snapshot nodes_state diambil di bawah _lock (deep-copy) supaya tidak
+    ada race dengan thread worker AI yang menulis state di frame berikutnya.
+    BOM UTF-8 disisipkan agar Excel Windows langsung menampilkan kolom rapi.
+    """
+    with _lock:
+        if node_id not in nodes_state:
+            raise HTTPException(status_code=404, detail="Node not found")
+        st = dict(nodes_state[node_id])
+        st["hourly_counts"] = {h: dict(b) for h, b in st["hourly_counts"].items()}
+
+    reg = _registry().get(node_id, {})
+    nama = reg.get("nama", node_id)
+    date_wib = today_wib()
+
+    buf = io.StringIO()
+    buf.write("\ufeff")
+    writer = csv.writer(buf, lineterminator="\n")
+    writer.writerow(["Tanggal", "ID Simpang", "Nama Simpang", "Rentang Jam",
+                     "Motor", "Mobil", "Truk/Bus", "Total Kendaraan",
+                     "Status Lalu Lintas"])
+
+    for hour in range(24):
+        key = f"{hour:02d}"
+        bucket = st["hourly_counts"].get(key, {})
+        motor = int(bucket.get("motor", 0))
+        mobil = int(bucket.get("mobil", 0))
+        truk = int(bucket.get("truk", 0))
+        total = max(int(bucket.get("total", 0)), motor + mobil + truk)
+        writer.writerow([date_wib, node_id, nama,
+                         f"{key}:00 - {key}:59",
+                         motor, mobil, truk, total, st["status"]])
+
+    motor = int(st.get("motor", 0))
+    mobil = int(st.get("mobil", 0))
+    truk = int(st.get("truk", 0))
+    total = motor + mobil + truk
+    writer.writerow([date_wib, node_id, nama, "00:00 - 23:59 (Total)",
+                     motor, mobil, truk, total, st["status"]])
+
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition":
+                 f'attachment; filename="laporan_lalin_{node_id}_{date_wib}.csv"'},
+    )
 
 
 @app.get("/api/v1/video-feed/{node_id}")

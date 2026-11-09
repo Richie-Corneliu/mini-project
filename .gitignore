@@ -18,6 +18,10 @@ runs/
 # Runtime logs & audit output (keep the folder)
 logs/*
 !logs/.gitkeep
+# daily count snapshots + archives are runtime state, never committed
+logs/*.json
+logs/*.tmp
+logs/archive/
 
 # Cache
 __pycache__/

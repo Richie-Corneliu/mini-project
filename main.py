@@ -22,7 +22,6 @@ import sys
 import threading
 import time
 from pathlib import Path
-from datetime import datetime
 
 import cv2
 import numpy as np
@@ -30,13 +29,15 @@ import supervision as sv
 import uvicorn
 import yaml
 
-from src.api.server import (app, clear_commands, get_active_focus, pop_command,
-                             set_latest_frame, update_node_data)
+from src.api.server import (app, clear_commands, get_active_focus,
+                             mark_node_reconnecting, pop_command,
+                             seed_node_data, set_latest_frame, update_node_data)
 from src.core.detector import Detector, centroids
 from src.core.zone_counter import ZoneCounter
 from src.stream.video_streamer import VideoStreamer
 from src.ui.renderer import Renderer, ZoneEditor
 from src.utils.logger import AuditLogger, get_logger, setup_logging
+from src.utils.stats_store import StatsStore, fold_hourly_counts, seed_counter
 from src.utils.zone_store import persist_zone
 
 log = get_logger(__name__)
@@ -59,6 +60,21 @@ def save_zones(config_path, zones, zone_cfgs):
     ]
     with open(config_path, "w", encoding="utf-8") as f:
         yaml.safe_dump(c, f, allow_unicode=True, sort_keys=False)
+
+
+def _seed_api_from_stats(stats):
+    """Publish the restored snapshot before the first frame arrives.
+
+    A camera still warming up (or offline) would otherwise show zeros on the
+    dashboard until its worker publishes, hiding counts already on disk.
+    """
+    for node_id, node in stats.snapshot()["nodes"].items():
+        seed_node_data(node_id, {
+            "motor": node["counts"]["motor"],
+            "mobil": node["counts"]["mobil"],
+            "truk": node["counts"]["truk"],
+            "hourly_counts": node["hourly_counts"],
+        })
 
 
 def _build_detector(cfg):
@@ -221,7 +237,7 @@ class StageProfiler:
 def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                stop_event, prof, reset_flag, t_start, audit=None, debug=False,
                publish_api=False, force_focus=False, record_dir=None,
-               record_desired=False, det_overrides=None):
+               record_desired=False, det_overrides=None, stats=None):
     """Inference loop: consumes every raw frame the display thread delivers
     (acquire rate, no idle throttling — ByteTrack needs temporal density for
     accurate background counting), runs the model, and stores the overlay.
@@ -238,7 +254,7 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
     last_seq = 0
     start_time = time.time()
     peak_occupancy = 0
-    hourly_counts = {}
+    hourly_counts = stats.node(node_id)["hourly_counts"] if stats else {}
     writer = None          # per-node cv2.VideoWriter, open while recording
     record_desired = bool(record_desired)
     if record_desired:
@@ -250,7 +266,23 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
         t = time.perf_counter()
         raw, last_seq = bus.wait_raw(last_seq, stop_event, timeout=1.0)
         t_acquire = time.perf_counter() - t
+
+        # Midnight (WIB): close yesterday's snapshot, then zero everything this
+        # node accumulated. Checked before the frame guard so a node whose
+        # stream is down still rolls over on time.
+        roll = stats.rollover() if stats is not None else None
+        if roll:
+            counter.reset()
+            hourly_counts.clear()
+            peak_occupancy = 0
+            start_time = time.time()
+            log.info("Midnight rollover completed for %s -> %s",
+                     roll["from"], roll["to"])
+
         if raw is None:
+            # No frame reached the AI loop (stalled HLS/RTSP / reconnecting):
+            # surface it so the dashboard can show RECONNECTING immediately.
+            mark_node_reconnecting(node_id)
             continue
         frame, arrival, wall = raw
         focused = force_focus or get_active_focus() == node_id
@@ -315,20 +347,12 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
 
         current_occupancy = len(dets)
         peak_occupancy = max(peak_occupancy, current_occupancy)
-        if events:
-            hour = datetime.now().strftime("%H")
-            bucket = hourly_counts.setdefault(
-                hour, {"motor": 0, "mobil": 0, "truk": 0})
-            for ev in events:
-                name = ev["class_name"]
-                key = "truk" if name.startswith("truk") else name
-                old = ev.get("reattributed_from")
-                if old:   # class re-attribution: move the delta, don't add
-                    okey = "truk" if old.startswith("truk") else old
-                    if okey in bucket:
-                        bucket[okey] = max(0, bucket[okey] - 1)
-                if key in bucket:   # unknown label: skip, never crash counting
-                    bucket[key] += 1
+        fold_hourly_counts(hourly_counts, events)
+        if stats is not None:
+            # Throttled: the in-memory snapshot follows every count, the file
+            # at most once per save_interval_sec.
+            stats.record(node_id, counter, hourly_counts)
+            stats.maybe_save()
 
         if audit:
             for ev in events:
@@ -482,6 +506,10 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     streamer, counter, renderer = _build_pipeline(cfg, zones, sc["source"], debug)
     det = _build_detector(cfg)
     editor = ZoneEditor(zones, zone_cfgs)
+    stats = StatsStore.from_config(cfg.get("persistence"))
+    stats.load()
+    _seed_api_from_stats(stats)
+    seed_counter(counter, stats.node(node_id))
 
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -529,6 +557,7 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
               stop, prof, reset_flag, t0, audit, debug, serve_api, True,
               None, bool(record)),
+        kwargs={"stats": stats},
         daemon=True, name="ai")
     ai.start()
 
@@ -542,6 +571,7 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         streamer.stop()
         if audit:
             audit.close()
+        stats.save()   # final flush: the throttled writer may be behind
         cv2.destroyAllWindows()
         elapsed = time.monotonic() - t0
         log.info("Final: total=%d %s", counter.total, dict(counter.total_by_class))
@@ -570,6 +600,9 @@ def run_multi(cfg, nodes, duration=None, debug=False):
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     t_run = time.monotonic()
+    stats = StatsStore.from_config(cfg.get("persistence"))
+    stats.load()
+    _seed_api_from_stats(stats)
 
     threading.Thread(
         target=uvicorn.run,
@@ -594,6 +627,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         # distance differ per intersection); settings.yaml is the fallback.
         det_over = {k: float(n[k]) for k in ("truck_min_area", "car_min_area")
                     if k in n}
+        seed_counter(counter, stats.node(node_id))
         streamer.start()
         bus = FrameBus()
         prof = StageProfiler("node:" + node_id)
@@ -605,6 +639,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
             args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                   stop, prof, reset_flag, t0, None, debug, True, False,
                   "logs", False, det_over),
+            kwargs={"stats": stats},
             daemon=True, name=f"ai-{node_id}")
         disp = threading.Thread(
             target=_display_worker,
@@ -634,6 +669,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         disp.join(timeout=5.0)
         streamer.stop()
         log.info("node %s done: counted=%d", node_id, counter.total)
+    stats.save()   # final flush: the throttled writer may be behind
     return 0
 
 

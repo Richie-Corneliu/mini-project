@@ -54,3 +54,7 @@ counter:
 logging:
   level: INFO
   file: logs/app.log
+persistence:
+  stats_file: logs/daily_stats.json
+  save_interval_sec: 5
+
