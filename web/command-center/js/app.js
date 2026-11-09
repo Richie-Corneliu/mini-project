@@ -96,6 +96,9 @@ const el = {
   feed: byId("stage-video"),
   backBtn: byId("back-btn"),
   camChip: byId("cam-chip"),
+  liveBadge: byId("live-badge"),
+  liveBadgeText: byId("live-badge-text"),
+  streamOverlay: byId("stream-overlay"),
 
   clockTime: byId("clock-time"),
   clockDate: byId("clock-date"),
@@ -116,6 +119,7 @@ const el = {
   drawZoneBtn: byId("draw-zone-btn"),
   saveZoneBtn: byId("save-zone-btn"),
   controlStatus: byId("control-status"),
+  exportCsvBtn: byId("btn-export-csv"),
   sumTotal: byId("sum-total"),
   sumMotor: byId("sum-motor"),
   sumMobil: byId("sum-mobil"),
@@ -146,6 +150,39 @@ let selectedId = null;
 let lastEscapeAt = 0;
 
 const total = (node) => node.motor + node.mobil + node.truk;
+
+/* Stream health mirrors the backend's `stream_status`. Unknown/missing values
+   fall back to `online` so an older backend still renders a sane badge. */
+const STREAM_BADGE = {
+  LIVE: { text: "COMMAND CENTER - LIVE", cls: "" },
+  RECONNECTING: { text: "STREAM RECONNECTING...", cls: "status-reconnecting" },
+  OFFLINE: { text: "STREAM OFFLINE", cls: "status-offline" },
+};
+
+function streamStatusOf(node) {
+  if (!node) return "OFFLINE";
+  if (node.streamStatus) return node.streamStatus;
+  return node.online ? "LIVE" : "OFFLINE";
+}
+
+/* Selected simpang wins; on the map, worst-case over every node. */
+function activeStreamStatus() {
+  if (selectedId && nodes.has(selectedId)) {
+    return streamStatusOf(nodes.get(selectedId));
+  }
+  const list = [...nodes.values()];
+  if (list.some((n) => streamStatusOf(n) === "RECONNECTING")) return "RECONNECTING";
+  if (list.some((n) => streamStatusOf(n) === "LIVE")) return "LIVE";
+  return "OFFLINE";
+}
+
+function renderStreamHealth() {
+  const status = activeStreamStatus();
+  const meta = STREAM_BADGE[status] || STREAM_BADGE.OFFLINE;
+  el.liveBadge.className = "live-badge" + (meta.cls ? " " + meta.cls : "");
+  el.liveBadgeText.textContent = meta.text;
+  el.streamOverlay.hidden = status !== "RECONNECTING";
+}
 
 /* Raw status for data-status attributes, CSS class for st-* selectors. */
 function rawStatus(node) {
@@ -526,6 +563,39 @@ function openCounting(id) {
 
 el.backBtn.addEventListener("click", () => showView("map"));
 
+/* ---- Export CSV laporan harian simpang aktif --------------------- */
+
+el.exportCsvBtn.addEventListener("click", async () => {
+  if (!selectedId || !nodes.has(selectedId)) {
+    el.controlStatus.textContent = "Pilih simpang terlebih dahulu.";
+    return;
+  }
+  const btn = el.exportCsvBtn;
+  btn.disabled = true;
+  btn.querySelector("span").textContent = "Mengunduh...";
+  try {
+    const res = await fetch(API_BASE + "/nodes/" +
+                            encodeURIComponent(selectedId) + "/export-csv");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "laporan_lalin_" + selectedId + "_" +
+      new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    el.controlStatus.textContent = "Laporan CSV berhasil diunduh.";
+  } catch (err) {
+    el.controlStatus.textContent = "Export CSV gagal: " + err.message;
+  } finally {
+    btn.disabled = false;
+    btn.querySelector("span").textContent = "Export CSV";
+  }
+});
+
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   lastEscapeAt = performance.now();
@@ -542,6 +612,8 @@ function renderAnalytics(node) {
   el.camChip.textContent = "CAM " +
     String([...nodes.keys()].indexOf(node.id) + 1).padStart(2, "0");
   el.camChip.className = "cam-chip " + cls;
+
+  renderStreamHealth();
 
   el.sumTotal.textContent = total(node);
   el.sumMotor.textContent = node.motor;
@@ -740,6 +812,8 @@ async function loadRegistry() {
       occupancy: (prev && prev.occupancy) || 0,
       online: prev ? prev.online : false,
       status: (prev && prev.status) || "OFFLINE",
+      streamStatus: (prev && prev.streamStatus) || null,
+      staleSeconds: (prev && prev.staleSeconds) || null,
       startTime: (prev && prev.startTime) || 0,
       peakOccupancy: (prev && prev.peakOccupancy) || 0,
       hourlyCounts: (prev && prev.hourlyCounts) || {},
@@ -766,6 +840,12 @@ function applyNodes(apiNodes) {
       online: incoming.online != null
         ? Boolean(incoming.online) : (prev && prev.online) || false,
       status: incoming.status || (prev && prev.status) || "OFFLINE",
+      streamStatus: incoming.stream_status ||
+        (prev && prev.streamStatus) ||
+        (incoming.online ? "LIVE" : "OFFLINE"),
+      staleSeconds: incoming.stale_seconds != null
+        ? Number(incoming.stale_seconds)
+        : (prev && prev.staleSeconds) || null,
       startTime: incoming.start_time != null
         ? Number(incoming.start_time) : (prev && prev.startTime) || 0,
       peakOccupancy: incoming.peak_occupancy != null
@@ -778,6 +858,7 @@ function applyNodes(apiNodes) {
   upsertMarkers();
   renderMenu();
   if (selectedId && nodes.has(selectedId)) renderAnalytics(nodes.get(selectedId));
+  renderStreamHealth();
 }
 
 async function poll() {
@@ -831,6 +912,7 @@ async function boot() {
   try {
     upsertMarkers();
     renderMenu();
+    renderStreamHealth();
   } catch (err) {
     console.warn("[ATCS] initial render failed:", err.message);
   }

@@ -190,6 +190,29 @@ h1, h2 { font-weight: 600; }
 .live-badge .live-dot { background: #10B981; color: #10B981; }
 .cam-chip .live-dot { background: #FBBF24; color: #FBBF24; }
 
+/* Stream health modifiers: amber while the worker is reconnecting, muted red
+   once the camera has produced no frame at all. */
+.live-badge.status-reconnecting {
+  border-color: rgba(250, 204, 21, 0.5);
+  background: rgba(250, 204, 21, 0.12);
+  color: #FDE68A;
+}
+.live-badge.status-reconnecting .live-dot {
+  background: var(--warn);
+  color: var(--warn);
+  animation: blink 0.9s steps(1, end) infinite;
+}
+.live-badge.status-offline {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: rgba(239, 68, 68, 0.1);
+  color: #FCA5A5;
+}
+.live-badge.status-offline .live-dot {
+  background: #F87171;
+  color: #F87171;
+  animation: none;
+}
+
 .topbar-right { display: flex; align-items: center; gap: 14px; }
 
 .clock-widget {
@@ -753,6 +776,47 @@ h1, h2 { font-weight: 600; }
     linear-gradient(0deg, rgba(15, 23, 42, 0.65) 0%, rgba(15, 23, 42, 0) 30%);
 }
 
+/* Reconnect banner: glass pill over the video, shown only while the backend
+   reports stream_status RECONNECTING. Never blocks the zone-drawing canvas. */
+.stream-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 22px;
+  transform: translateX(-50%);
+  z-index: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: calc(100% - 40px);
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(250, 204, 21, 0.45);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45),
+              0 0 18px rgba(250, 204, 21, 0.15);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #FDE68A;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  text-align: left;
+  pointer-events: none;
+}
+.stream-overlay[hidden] { display: none; }
+
+.stream-spinner {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(250, 204, 21, 0.28);
+  border-top-color: var(--warn);
+  animation: stream-spin 0.9s linear infinite;
+}
+@keyframes stream-spin { to { transform: rotate(360deg); } }
+
 .back-btn {
   position: absolute;
   top: 18px;
@@ -941,6 +1005,50 @@ h1, h2 { font-weight: 600; }
   border-radius: var(--radius-md);
   background: rgba(34, 48, 73, 0.66);
   border: 1px solid var(--border);
+}
+
+/* Header baris panel "Statistik Per Jam" + tombol Export CSV */
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+.panel-head .eyebrow { white-space: nowrap; }
+
+.btn-export-csv {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5eead4;
+  background: rgba(13, 148, 136, 0.14);
+  border: 1px solid rgba(45, 212, 191, 0.35);
+  cursor: pointer;
+  transition: box-shadow 0.18s ease, background 0.18s ease,
+              border-color 0.18s ease, transform 0.18s ease;
+}
+.btn-export-csv svg { display: block; }
+.btn-export-csv:hover:not(:disabled) {
+  background: rgba(13, 148, 136, 0.26);
+  border-color: rgba(45, 212, 191, 0.7);
+  box-shadow: 0 0 12px rgba(45, 212, 191, 0.35);
+  transform: translateY(-1px);
+}
+.btn-export-csv:active:not(:disabled) { transform: translateY(0); }
+.btn-export-csv:disabled {
+  opacity: 0.55;
+  cursor: wait;
+  box-shadow: 0 0 10px rgba(45, 212, 191, 0.25);
 }
 
 .col-sub { font-size: 11px; color: var(--ink-muted); margin-top: -6px; }

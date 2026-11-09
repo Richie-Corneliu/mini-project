@@ -15,7 +15,7 @@
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
         crossorigin="">
   <!-- ?v= busts the browser cache on each edit; bump it when css/js changes -->
-  <link rel="stylesheet" href="css/style.css?v=6">
+  <link rel="stylesheet" href="css/style.css?v=7">
 </head>
 <body>
 
@@ -48,7 +48,7 @@
       <div class="brand-text">
         <div class="brand-title-row">
           <h1>SMART ATCS BANYUMAS</h1>
-          <span class="live-badge"><span class="live-dot"></span>LIVE</span>
+          <span class="live-badge" id="live-badge"><span class="live-dot"></span><span id="live-badge-text">COMMAND CENTER - LIVE</span></span>
         </div>
         <span class="brand-sub">DINAS PERHUBUNGAN KAB. BANYUMAS</span>
       </div>
@@ -125,6 +125,12 @@
                  decoding="async">
             <canvas id="zone-canvas" aria-label="Area gambar zona penghitungan"></canvas>
             <div class="stage-scrim" aria-hidden="true"></div>
+
+            <div class="stream-overlay" id="stream-overlay" role="status"
+                 aria-live="polite" hidden>
+              <span class="stream-spinner" aria-hidden="true"></span>
+              <span>Aliran CCTV terputus sementara — Mencoba menyambungkan ulang...</span>
+            </div>
 
             <button type="button" class="back-btn" id="back-btn">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
@@ -209,7 +215,21 @@
           </section>
 
           <section class="panel-block" aria-label="Statistik per jam">
-            <p class="eyebrow">Statistik Per Jam</p>
+            <div class="panel-head">
+              <p class="eyebrow">Statistik Per Jam</p>
+              <button id="btn-export-csv" class="btn-export-csv" type="button"
+                      title="Unduh laporan lalu lintas harian (CSV)">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                     stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span>Export CSV</span>
+              </button>
+            </div>
             <p class="col-sub">6 jam terakhir</p>
             <div class="chart" id="chart" role="group"
                  aria-label="Diagram batang bertumpuk jumlah kendaraan per jam"></div>
@@ -250,6 +270,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
-  <script src="js/app.js?v=6"></script>
+  <script src="js/app.js?v=7"></script>
 </body>
 </html>
