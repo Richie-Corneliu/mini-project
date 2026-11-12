@@ -557,6 +557,118 @@ def test_demoted_car_outside_truck_counts_as_motor():
     assert len(ev) == 1 and ev[0]["class_name"] == "motor", ev
 
 
+def test_fast_vehicle_pre_zone_displacement_counted_in_single_zone_frame():
+    """The displacement anchor is taken on the first frame the id appears
+    ANYWHERE in the view, not on zone entry: a fast bike tracked for two frames
+    above the polygon already sits 120px from its anchor on the single frame it
+    lands inside, so it counts. A pot jittering on the boundary never does."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200],
+                                            [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     min_displacement_px=30)
+    t = time.monotonic()
+    assert not zc.update(_dets([[290, 110, 310, 130]], [3], tid=[1]), now=t)
+    assert not zc.update(_dets([[290, 150, 310, 170]], [3], tid=[1]), now=t + 1)
+    ev = zc.update(_dets([[290, 230, 310, 250]], [3], tid=[1]), now=t + 2)
+    assert len(ev) == 1 and ev[0]["class_name"] == "motor", ev
+    assert zc.total == 1 and zc.total_by_class["motor"] == 1
+    assert not zc.update(sv.Detections.empty(), now=t + 3)   # latch holds
+    assert zc.total == 1
+
+    # static roadside object on the boundary: jitter stays far below 30px
+    pot = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                      min_displacement_px=30)
+    for k, dy in enumerate((0, 3, -2, 4, -3, 2)):
+        assert not pot.update(_dets([[590, 240 + dy, 610, 260 + dy]], [2], tid=[9]),
+                              now=t + k)
+    assert pot.total == 0
+
+
+def test_in_zone_occlusion_id_switch_not_double_counted():
+    """tid=1 is counted inside the zone, occluded for 3 frames, then respawns
+    25px away as tid=2 and drives another 40px deeper. Ghost handover proves it
+    is the same vehicle: total stays 1 and the latch moves to tid=2."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200],
+                                            [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     min_displacement_px=30)
+    t = time.monotonic()
+    assert not zc.update(_dets([[290, 240, 310, 260]], [2], tid=[1]), now=t)
+    ev = zc.update(_dets([[290, 280, 310, 300]], [2], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and zc.total == 1, ev
+    assert not zc.update(_dets([[290, 320, 310, 340]], [2], tid=[1]), now=t + 2)
+    for k in (3, 4, 5):                                  # 3 frames occluded
+        assert not zc.update(sv.Detections.empty(), now=t + k)
+    # respawn 25px from the ghost: born f6, ghost last seen f3 -> gap 3
+    assert not zc.update(_dets([[310, 335, 330, 355]], [2], tid=[2]), now=t + 6)
+    ev = zc.update(_dets([[310, 375, 330, 395]], [2], tid=[2]), now=t + 7)
+    assert not ev and zc.total == 1, ev                  # handover, not a count
+    assert zc.ghost_handovers == 1
+    assert zc.total_by_class["mobil"] == 1
+    assert zc.counted_id_class[0][2] == "mobil" and 2 in zc._counted[0]
+    assert 1 not in zc._zone_ghost[0]                    # ghost retired
+
+
+def test_in_zone_ghost_handover_preserves_reattribution():
+    """A pickup counted as truck/bus is occluded for 2 frames and comes back as
+    tid=2 reading car. The handover carries the counted latch AND the class
+    history over, so atomic re-attribution still fires: total stays 1 while the
+    count moves from truk/bus to mobil."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200],
+                                            [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor",
+                                           5: "truk/bus", 7: "truk/bus"},
+                     min_displacement_px=0)
+    t = time.monotonic()
+    ev = zc.update(_dets([[280, 230, 320, 270]], [7], tid=[1]), now=t)
+    assert len(ev) == 1 and ev[0]["class_name"] == "truk/bus", ev
+    assert not zc.update(_dets([[280, 270, 320, 310]], [7], tid=[1]), now=t + 1)
+    for k in (2, 3):                                     # 2 frames occluded
+        assert not zc.update(sv.Detections.empty(), now=t + k)
+    later = []
+    for k, y in ((4, 280), (5, 320), (6, 360)):          # stabilizes as car
+        later += zc.update(_dets([[290, y, 330, y + 40]], [2],
+                                 conf=[0.95], tid=[2]), now=t + k)
+    assert zc.total == 1, later                          # never counted twice
+    assert zc.ghost_handovers == 1
+    assert zc.total_by_class["truk/bus"] == 0
+    assert zc.total_by_class["mobil"] == 1
+    flips = [e for e in later if e.get("reattributed_from")]
+    assert len(flips) == 1, flips
+    assert flips[0]["reattributed_from"] == "truk/bus"
+    assert flips[0]["class_name"] == "mobil" and flips[0]["track_id"] == 2
+
+
+def test_parallel_coexisting_vehicles_both_counted():
+    """Two bikes share frames 1-4, so tid=2 was visible while tid=1 was alive.
+    tid=1 is counted, arms a ghost, then vanishes; tid=2 rides in 27px from that
+    ghost. The non-coexistence invariant refuses the handover and tid=2 counts:
+    side-by-side riders never steal each other's latch."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200],
+                                            [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     min_displacement_px=30)
+    t = time.monotonic()
+    both = [([[290, 110, 310, 130], [330, 110, 350, 130]], [1, 2], t),
+            ([[290, 150, 310, 170], [333, 115, 353, 135]], [1, 2], t + 1)]
+    for xyxy, tid, now in both:                          # both born frame 1
+        assert not zc.update(_dets(xyxy, [3, 3], tid=tid), now=now)
+    ev = zc.update(_dets([[290, 220, 310, 240], [328, 112, 348, 132]],
+                         [3, 3], tid=[1, 2]), now=t + 2)  # tid=1 lands inside
+    assert len(ev) == 1 and ev[0]["track_id"] == 1, ev
+    ev = zc.update(_dets([[290, 260, 310, 280], [330, 120, 350, 140]],
+                         [3, 3], tid=[1, 2]), now=t + 3)  # ghost armed at f4
+    assert not ev and zc.total == 1
+    for k, xy in ((4, [332, 116, 352, 136]), (5, [328, 118, 348, 138])):
+        assert not zc.update(_dets([xy], [3], tid=[2]), now=t + k)  # tid=1 gone
+    ev = zc.update(_dets([[300, 235, 320, 255]], [3], tid=[2]), now=t + 6)
+    assert len(ev) == 1 and ev[0]["track_id"] == 2, ev
+    assert zc.total == 2 and zc.total_by_class["motor"] == 2
+    assert zc.ghost_handovers == 0
+    assert 1 in zc._zone_ghost[0]        # ghost was available and refused
+    assert {1, 2} <= zc._counted[0]
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

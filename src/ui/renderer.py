@@ -1,6 +1,7 @@
 """All OpenCV drawing: zones, boxes, trails, HUD. No detection/counting here."""
 from __future__ import annotations
 
+import os
 from typing import Dict, List, Optional, Tuple
 
 import cv2
@@ -13,6 +14,21 @@ CLASS_INFO = {
     5: ("truk/bus", (0, 255, 255)),  # kuning
     7: ("truk/bus", (0, 255, 255)),  # kuning
 }
+
+DIAG_ENV = "ATCS_DIAGNOSTICS"
+DIAG_ON = ("1", "true", "yes", "on")
+
+
+def resolve_diagnostics(cfg_value=None, env: Optional[Dict[str, str]] = None) -> bool:
+    """Diagnostic HUD is opt-in: `ui.show_diagnostics` in settings.yaml, or
+    `ATCS_DIAGNOSTICS=1` to flip it on for one live session without editing
+    config (the env var wins, so calibration never needs a redeploy)."""
+    e = (os.environ if env is None else env).get(DIAG_ENV, "")
+    if str(e).strip().lower() in DIAG_ON:
+        return True
+    if isinstance(cfg_value, str):
+        return cfg_value.strip().lower() in DIAG_ON
+    return bool(cfg_value)
 
 
 class ZoneEditor:
@@ -44,9 +60,17 @@ class ZoneEditor:
 
 class Renderer:
     def __init__(self, zones: List[sv.PolygonZone], show_dims: bool = True,
-                 debug: bool = False):
+                 debug: bool = False, show_diagnostics: Optional[bool] = None,
+                 counter=None, car_min_area: Optional[float] = None,
+                 truck_min_area: Optional[float] = None):
         self.show_dims = show_dims
         self.debug = debug
+        # Read-only telemetry source for the diagnostic HUD; None keeps the
+        # renderer usable standalone (production appearance unchanged).
+        self.counter = counter
+        self.car_min_area = car_min_area
+        self.truck_min_area = truck_min_area
+        self.show_diagnostics = resolve_diagnostics(show_diagnostics)
         self.zones = zones
         self.zone_anns = [sv.PolygonZoneAnnotator(
             zone=z, color=sv.Color(135, 206, 250), thickness=2,
@@ -84,13 +108,17 @@ class Renderer:
                 text = f"#{int(tids[i])} {lbl}"
                 if self.debug and confs is not None:
                     text += f" {confs[i]:.2f}"
-                if self.show_dims:
+                if self.show_diagnostics and self.counter is not None:
+                    text = self._diag_label(int(tids[i]), text, xyxy[i])
+                elif self.show_dims:
                     text += f" {x2-x1}x{y2-y1}"
                 cv2.putText(frame, text, (x1, max(0, y1 - 5)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, cv2.LINE_AA)
                 cv2.circle(frame, tuple(cents[i]), 3, (0, 255, 255), -1)
 
         self._draw_counts(frame, counts)
+        if self.show_diagnostics:
+            self._draw_diag_strip(frame)
         cv2.putText(frame, "drag zone | C=record | S=save | R=reset | Q=quit",
                     (10, frame.shape[0] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
@@ -115,3 +143,41 @@ class Renderer:
                 y += gap
             cv2.putText(frame, text, (x0, y),
                         cv2.FONT_HERSHEY_SIMPLEX, scale, color, th, cv2.LINE_AA)
+
+    def _diag_label(self, tid: int, prefix: str, box) -> str:
+        """`#12 mobil | 6420px2 | d:48px [LOCK,CNT]` for per-node calibration."""
+        d = self.counter.get_track_diagnostics(tid, box)
+        text = prefix
+        if d.get("area_px") is not None:
+            text += f" | {d['area_px']}px2"
+        if d.get("displacement_px") is not None:
+            text += f" | d:{d['displacement_px']:g}px"
+        flags = []
+        if d.get("car_locked") or d.get("motor_locked"):
+            flags.append("LOCK")
+        if d.get("counted_zones"):
+            flags.append("CNT")
+        return f"{text} [{','.join(flags)}]" if flags else text
+
+    def _draw_diag_strip(self, frame: np.ndarray) -> None:
+        """Semi-transparent counter-health strip, top-right (the counts panel
+        already owns the top-left corner)."""
+        if self.counter is None:
+            return
+        s = self.counter.diagnostics_summary()
+        text = (f"DIAG | Handovers: {s.get('handovers', 0)} | "
+                f"Suppressed: {s.get('suppressed', 0)}")
+        if self.truck_min_area:
+            text += f" | truck_min: {int(self.truck_min_area)}"
+        if self.car_min_area:
+            text += f" | car_min: {int(self.car_min_area)}"
+        scale, pad = 0.45, 6
+        (tw, t_h), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, scale, 1)
+        h, w = frame.shape[:2]
+        x1 = max(0, min(w - 1, w - tw - pad * 2))
+        y2 = min(h, t_h + pad * 2)
+        roi = frame[0:y2, x1:w]
+        dark = np.full(roi.shape, (20, 20, 20), dtype=np.uint8)
+        frame[0:y2, x1:w] = cv2.addWeighted(roi, 0.45, dark, 0.55, 0)
+        cv2.putText(frame, text, (x1 + pad, pad + t_h),
+                    cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 255, 255), 1, cv2.LINE_AA)

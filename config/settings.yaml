@@ -22,7 +22,7 @@ detector:
   device: cuda:0
   duplicate_iou: 0.65
   imgsz: 640
-  half: true
+  half: auto          # auto = FP16 only when device is CUDA and CUDA is live
   classes:
   - 2
   - 3
@@ -51,6 +51,10 @@ counter:
   cabin_area_ratio: 0.55
   still_count_frames: 30
   still_min_conf: 0.35
+  ghost_ttl_frames: 10
+  ghost_radius_px: 70
+ui:
+  show_diagnostics: false   # or ATCS_DIAGNOSTICS=1 to flip on without editing config
 logging:
   level: INFO
   file: logs/app.log

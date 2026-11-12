@@ -82,7 +82,7 @@ def _build_detector(cfg):
     return Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
                     model_size=dc.get("model", "rtdetr-l"),
                     min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
-                    device=dc.get("device", "cuda:0"), half=dc.get("half", True),
+                    device=dc.get("device", "cuda:0"), half=dc.get("half", None),
                     duplicate_iou=dc.get("duplicate_iou", 0.65),
                     truck_min_area=dc.get("truck_min_area", 10500),
                     car_min_area=dc.get("car_min_area", 3000))
@@ -116,8 +116,14 @@ def _build_pipeline(cfg, zones, source, debug):
                           cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
                           still_count_frames=counter_cfg.get("still_count_frames", 30),
                           still_min_conf=counter_cfg.get("still_min_conf", 0.35),
+                          ghost_ttl_frames=counter_cfg.get("ghost_ttl_frames", 10),
+                          ghost_radius_px=counter_cfg.get("ghost_radius_px", 70),
                           debug=debug)
-    renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug)
+    renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug,
+                        show_diagnostics=cfg.get("ui", {}).get("show_diagnostics"),
+                        counter=counter,
+                        car_min_area=dc.get("car_min_area"),
+                        truck_min_area=dc.get("truck_min_area"))
     return streamer, counter, renderer
 
 

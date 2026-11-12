@@ -122,13 +122,37 @@ def centroids(xyxy: np.ndarray) -> np.ndarray:
     return (xyxy[:, :2] + xyxy[:, 2:]) / 2.0
 
 
+_HALF_TRUE = ("1", "true", "yes", "on")
+_HALF_AUTO = ("", "auto", "none", "null")
+
+
+def resolve_half(half, device: str = "cuda:0") -> bool:
+    """Resolve the FP16 request into a real boolean.
+
+    `None` / "auto" enables FP16 only when the device is CUDA *and* CUDA is
+    genuinely available — half-precision weights on CPU or MPS either crash or
+    silently fall back, so auto must never opt in there. An explicit value
+    (bool or yaml string) always wins.
+    """
+    if isinstance(half, str):
+        s = half.strip().lower()
+        half = None if s in _HALF_AUTO else (s in _HALF_TRUE)
+    if half is not None:
+        return bool(half)
+    try:
+        import torch
+    except Exception:
+        return False
+    return str(device).startswith("cuda") and bool(torch.cuda.is_available())
+
+
 class Detector:
     """RT-DETR-L via ultralytics. Single conf floor for all classes so
     small/distant vehicles survive; higher imgsz preserves small-object detail."""
 
     def __init__(self, conf: float = 0.20, model_size: str = "rtdetr-l",
                  classes: Optional[Sequence[int]] = None, min_area: int = 20,
-                 imgsz: int = 640, device: str = "cuda:0", half: bool = True,
+                 imgsz: int = 640, device: str = "cuda:0", half: Optional[bool] = None,
                  duplicate_iou: float = 0.65,
                  truck_min_area: float = DEFAULT_TRUCK_MIN_AREA,
                  car_min_area: float = DEFAULT_CAR_MIN_AREA) -> None:
@@ -140,7 +164,7 @@ class Detector:
         self.min_area = int(min_area)
         self.imgsz = int(imgsz)
         self.device = device
-        self.half = bool(half)
+        self.half = resolve_half(half, device)
         self.duplicate_iou = float(duplicate_iou)
         self.truck_min_area = float(truck_min_area)
         self.car_min_area = float(car_min_area)

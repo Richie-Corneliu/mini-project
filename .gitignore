@@ -22,6 +22,8 @@ logs/*
 logs/*.json
 logs/*.tmp
 logs/archive/
+# live benchmark reports (manual_counter.py)
+logs/benchmarks/
 
 # Cache
 __pycache__/

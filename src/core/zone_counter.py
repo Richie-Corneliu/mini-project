@@ -28,6 +28,19 @@ car_lock_frames times (and not opening as truck/bus in its first 2 frames)
 holds car through a truck/bus run of <= car_flip_frames — approaching
 perspective growth and diagonal turns inflate the box, not the vehicle — and
 an already-counted car id is never re-attributed to truck/bus.
+
+Two RTSP-specific guards sit around those filters:
+  * Pre-zone anchor — the displacement gate's origin (_start) is recorded on
+    the first frame a tracker_id appears ANYWHERE in the view, not on zone
+    entry, so a fast vehicle tracked for a frame or two outside the polygon
+    still clears min_displacement_px on the single frame it lands inside,
+    while a jittering roadside object never drifts from its birth centroid.
+  * Ghost handover — an id counted inside a zone leaves a ghost (its last
+    in-zone centroid plus the frame it was last seen). A new id born strictly
+    after that frame (so the two never shared a frame), within
+    ghost_ttl_frames of it and born within ghost_radius_px of it, inherits the
+    counted latch and the class history instead of counting the same vehicle
+    twice when ByteTrack drops the id under occlusion or stream stutter.
 """
 from __future__ import annotations
 
@@ -78,6 +91,8 @@ class ZoneCounter:
     MOTOR_FLIP_FRAMES = 4   # car run <= this stays a flicker under the lock
     CAR_LOCK_FRAMES = 3     # car sightings that lock a track's class
     CAR_FLIP_FRAMES = 6     # truck run <= this stays a flicker under the lock
+    GHOST_TTL_FRAMES = 10   # frames a counted id stays claimable after vanishing
+    GHOST_RADIUS_PX = 70.0  # max birth-centroid distance for a ghost handover
 
     def __init__(self, zones: List[sv.PolygonZone],
                  class_labels: Optional[Dict[int, str]] = None,
@@ -90,6 +105,8 @@ class ZoneCounter:
                  car_flip_frames: int = CAR_FLIP_FRAMES,
                  cabin_iou: float = 0.6, cabin_area_ratio: float = 0.55,
                  still_count_frames: int = 30, still_min_conf: float = 0.35,
+                 ghost_ttl_frames: int = GHOST_TTL_FRAMES,
+                 ghost_radius_px: float = GHOST_RADIUS_PX,
                  debug: bool = False):
         from trackers import CBIoUTracker
 
@@ -108,6 +125,8 @@ class ZoneCounter:
         self.cabin_area_ratio = float(cabin_area_ratio)
         self.still_count_frames = int(still_count_frames)
         self.still_min_conf = float(still_min_conf)
+        self.ghost_ttl_frames = int(ghost_ttl_frames)
+        self.ghost_r2 = float(ghost_radius_px) ** 2
         self.debug = bool(debug)
         self.tracker = CBIoUTracker(**(tracker_config or {
             "lost_track_buffer": 90,
@@ -134,6 +153,21 @@ class ZoneCounter:
         self._zone_still = {}  # tid -> {zi: frames blocked by displacement gate}
         self._counted = [set() for _ in zones]   # permanent per-zone id latch
         self._recent = [deque() for _ in zones]  # (t, x, y) accepted count events
+        # ---- ghost handover bookkeeping --------------------------------
+        # A counted id that vanishes inside a zone leaves a "ghost": its last
+        # in-zone centroid plus the frame it was last seen. A tracker_id born
+        # AFTER that (never coexisting) within ghost_ttl_frames and born within
+        # ghost_radius_px of the ghost inherits the counted latch instead of
+        # counting the same vehicle twice (occlusion / RTSP micro-stutter).
+        self._frame_idx = 0            # monotonic frame clock, gaps included
+        self._born_frame = {}          # tid -> _frame_idx first seen anywhere
+        self._birth_centroid = {}      # tid -> centroid on that first frame
+        self._last_seen_frame = {}     # tid -> _frame_idx last seen
+        self._last_centroid = {}       # tid -> last known centroid
+        self._zone_ghost = [dict() for _ in zones]    # zi -> {old_tid: centroid}
+        self.ghost_handovers = 0
+        # no separate _last_centroid: self._prev already is the last centroid,
+        # and a ghost keeps the last IN-ZONE one in _zone_ghost.
 
     def track(self, dets: sv.Detections, frame: np.ndarray) -> sv.Detections:
         return self.tracker.update(dets)
@@ -203,6 +237,48 @@ class ZoneCounter:
         h = self.class_hist.get(tid)
         return bool(h) and sum(1 for c, _ in h if c == self.CAR_CLS) >= self.car_lock_frames
 
+    def _motor_locked(self, tid: int) -> bool:
+        """Read-only mirror of the motor-inertia branch in `_resolved_class`."""
+        h = self.class_hist.get(tid)
+        if not h:
+            return False
+        return (sum(1 for c, _ in h if c == self.MOTOR_CLS) >= self.motor_lock_frames
+                and self._longest_non_run(h, self.MOTOR_CLS) <= self.motor_flip_frames)
+
+    def get_track_diagnostics(self, tid: int,
+                              bbox: Optional[Tuple] = None) -> dict:
+        """Per-track telemetry for the diagnostic HUD (`ui.show_diagnostics`).
+
+        Pure read: touches no counting state, so it is safe to call from the
+        display thread while the AI thread runs `update()`. `bbox` is the live
+        (x1, y1, x2, y2) row; without it `area_px` is None.
+        """
+        area = None
+        if bbox is not None:
+            b = np.asarray(bbox, dtype=float).ravel()
+            if b.size == 4:
+                area = int(max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1]))
+        start, last = self._start.get(tid), self._prev.get(tid)
+        disp = None
+        if start is not None and last is not None:
+            disp = round(float(((last[0] - start[0]) ** 2
+                                + (last[1] - start[1]) ** 2) ** 0.5), 1)
+        return {"tid": int(tid),
+                "area_px": area,
+                "displacement_px": disp,
+                "car_locked": self._car_locked(tid),
+                "motor_locked": self._motor_locked(tid),
+                "counted_zones": [zi for zi in range(len(self.zones))
+                                  if tid in self._counted[zi]]}
+
+    def diagnostics_summary(self) -> dict:
+        """Counter health for the diagnostic strip. Pure read as well."""
+        return {"handovers": self.ghost_handovers,
+                "suppressed": self.suppressed,
+                "suppressed_cabin": self.suppressed_cabin,
+                "total": self.total,
+                "frames": self.n_frames}
+
     def _reattribute(self, zi: int, tid: int, vote: int, conf: float,
                      cx: float, cy: float, now: float) -> Optional[dict]:
         """Shift an already-counted id's class bucket when its stabilized
@@ -263,6 +339,61 @@ class ZoneCounter:
         return any((ex - pt[0]) ** 2 + (ey - pt[1]) ** 2 <= self.dedup_r2
                    for _, ex, ey in events)
 
+    def _match_ghost(self, zi: int, tid: int, live: set) -> Optional[int]:
+        """Nearest unclaimed ghost in zone `zi` that `tid` may inherit.
+
+        Three invariants, all required:
+          a) non-coexistence — `tid` was born strictly after the ghost was last
+             seen, so the two ids never shared a frame. Two bikes riding
+             side by side can therefore never steal each other's latch.
+          b) temporal proximity — the birth is within ghost_ttl_frames of the
+             ghost's last frame (an occlusion gap, not a new vehicle minutes on).
+          c) spatial proximity — the BIRTH centroid is within ghost_radius_px of
+             the ghost's last in-zone centroid. Birth, not current position: a
+             real second rider is tracked from far away and only arrives at the
+             spot later, while an occluded vehicle respawns on top of itself.
+        """
+        ghosts = self._zone_ghost[zi]
+        born = self._born_frame.get(tid)
+        birth = self._birth_centroid.get(tid)
+        if not ghosts or born is None or birth is None:
+            return None
+        best, best_d2 = None, self.ghost_r2
+        for old, (ox, oy) in ghosts.items():
+            if old == tid or old in live:
+                continue
+            gap = born - self._last_seen_frame.get(old, born)
+            if not 1 <= gap <= self.ghost_ttl_frames:   # (a) and (b)
+                continue
+            d2 = (birth[0] - ox) ** 2 + (birth[1] - oy) ** 2
+            if d2 <= best_d2:                           # (c), nearest wins
+                best, best_d2 = old, d2
+        return best
+
+    def _handover(self, zi: int, old: int, new: int) -> None:
+        """Move `old`'s counted latch and class state onto `new`, then retire
+        the ghost. Same physical vehicle, so `total` and the class buckets do
+        not move — only the id that owns the existing count changes."""
+        label = self.counted_id_class[zi].pop(old, None)
+        self._zone_ghost[zi].pop(old, None)   # consume: never claimed twice
+        self._counted[zi].add(new)
+        if label is not None:
+            self.counted_id_class[zi][new] = label
+        # Class history carries over (oldest entries drop first) so the vote,
+        # motor/car inertia and _reattribute keep working on the new id.
+        oh = self.class_hist.get(old)
+        if oh:
+            own = list(self.class_hist.get(new) or ())
+            nh = self.class_hist.setdefault(new, deque(maxlen=self.class_window))
+            nh.clear()
+            nh.extend(list(oh) + own)
+        if old in self._first_cls:      # keeps _car_locked truthful
+            self._first_cls[new] = list(self._first_cls[old])
+        if old in self._start:          # keeps the displacement anchor
+            self._start[new] = self._start[old]
+        self._age[new] = self._age.get(new, 0) + self._age.get(old, 0)
+        self.ghost_handovers += 1
+
     def update(self, dets: sv.Detections, now: Optional[float] = None,
                freeze: bool = False) -> List[dict]:
         """Return count events registered this frame:
@@ -272,6 +403,7 @@ class ZoneCounter:
         if now is None:
             now = time.monotonic()
         self.n_frames += 1
+        self._frame_idx += 1   # counts empty frames too: occlusion gaps are frames
         events = []
         if len(dets) == 0 or dets.tracker_id is None:
             return events
@@ -307,7 +439,16 @@ class ZoneCounter:
             conf = float(dets.confidence[i]) if dets.confidence is not None else -1.0
             prev = self._prev.get(tid)
             self._prev[tid] = pt
+            # Displacement anchor on the FIRST frame the id appears anywhere in
+            # the view, not on zone entry: a fast bike tracked for a frame or
+            # two outside the polygon still clears min_displacement_px on the
+            # single frame it lands inside, while a roadside pot jittering on
+            # the boundary never drifts from its birth centroid.
             self._start.setdefault(tid, pt)
+            if tid not in self._born_frame:
+                self._born_frame[tid] = self._frame_idx
+                self._birth_centroid[tid] = pt
+            self._last_seen_frame[tid] = self._frame_idx
             self._age[tid] = self._age.get(tid, 0) + 1
             fc = self._first_cls.setdefault(tid, [])
             if len(fc) < 2:
@@ -333,6 +474,10 @@ class ZoneCounter:
                     # registered class is a no-op.
                     if (tid in self.counted_id_class[zi]
                             and cv2.pointPolygonTest(contour, pt, False) >= 0):
+                        # Refresh this id's ghost every frame it is counted and
+                        # inside: if it vanishes next frame (occlusion, RTSP
+                        # micro-stutter) its respawned id inherits the latch.
+                        self._zone_ghost[zi][tid] = pt
                         re = self._reattribute(zi, tid,
                                                self._resolved_class(tid, cls),
                                                conf, pt[0], pt[1], now)
@@ -376,6 +521,23 @@ class ZoneCounter:
                 if not trusted and self._is_jitter_duplicate(zi, pt, now):
                     self._counted[zi].add(tid)
                     self.suppressed += 1
+                    # The jitter filter just aliased this id to the counted
+                    # vehicle at that spot, so retire that vehicle's ghost: the
+                    # handover is spent. A later id near the same spot is then
+                    # a genuinely different vehicle and counts normally.
+                    for old in [o for o, (ox, oy) in self._zone_ghost[zi].items()
+                                if (ox - pt[0]) ** 2 + (oy - pt[1]) ** 2 <= self.dedup_r2]:
+                        self._zone_ghost[zi].pop(old, None)
+                    continue
+                # Ghost handover: a vehicle already counted in this zone that
+                # vanished (occlusion / RTSP micro-stutter) and respawned under
+                # a new tracker_id is the same vehicle — inherit its latch and
+                # class state instead of counting it a second time. Checked
+                # after the cabin and jitter filters so their counters, and the
+                # one-frame re-ID suppression they own, keep their meaning.
+                ghost = self._match_ghost(zi, tid, live)
+                if ghost is not None:
+                    self._handover(zi, ghost, tid)
                     continue
                 self._counted[zi].add(tid)
                 label = self._label(vote)
@@ -397,6 +559,15 @@ class ZoneCounter:
                 self._zone_still.pop(tid, None)
                 self._age.pop(tid, None)
                 self._missing.pop(tid, None)
+                self._born_frame.pop(tid, None)
+                self._birth_centroid.pop(tid, None)
+                self._last_seen_frame.pop(tid, None)
+        # Ghost TTL prune: a latch nobody can claim any more is dropped, so
+        # _zone_ghost stays bounded on a 24/7 stream.
+        cutoff = self._frame_idx - self.ghost_ttl_frames
+        for ghosts in self._zone_ghost:
+            for old in [o for o in ghosts if self._last_seen_frame.get(o, 0) < cutoff]:
+                ghosts.pop(old, None)
         return events
 
     def reset(self) -> None:
@@ -411,6 +582,12 @@ class ZoneCounter:
         self._zone_still.clear()
         self._age.clear()
         self._missing.clear()
+        self._born_frame.clear()
+        self._birth_centroid.clear()
+        self._last_seen_frame.clear()
+        self._zone_ghost = [dict() for _ in self.zones]
+        self._frame_idx = 0
+        self.ghost_handovers = 0
         self._counted = [set() for _ in self.zones]
         self.counted_id_class = [dict() for _ in self.zones]
         self._recent = [deque() for _ in self.zones]
@@ -432,3 +609,4 @@ class ZoneCounter:
         self._counted = [set() for _ in self.zones]
         self.counted_id_class = [dict() for _ in self.zones]
         self._recent = [deque() for _ in self.zones]
+        self._zone_ghost = [dict() for _ in self.zones]   # latches are gone
