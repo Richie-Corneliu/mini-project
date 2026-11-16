@@ -10,3 +10,7 @@ trackers
 opencv-python
 pyyaml
 python-dotenv
+fastapi
+uvicorn
+pytest
+httpx

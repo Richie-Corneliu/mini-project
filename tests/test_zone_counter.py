@@ -669,6 +669,242 @@ def test_parallel_coexisting_vehicles_both_counted():
     assert {1, 2} <= zc._counted[0]
 
 
+def test_stale_tracker_id_pruning_preserves_counts_and_ghost_handover():
+    """Stale track state is pruned every 100 frames without altering total
+    counts or breaking active Ghost ID Handover, and max_stale_frames > ghost_ttl_frames."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
+    clamped = ZoneCounter([zone], ghost_ttl_frames=20, max_stale_frames=10)
+    assert clamped.max_stale_frames > clamped.ghost_ttl_frames
+
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     ghost_ttl_frames=10, max_stale_frames=150,
+                     min_displacement_px=0, debug=True)
+    t = time.monotonic()
+
+    # Frame 1: tid=1 counted inside zone
+    ev = zc.update(_dets([[90, 90, 130, 130]], [2], tid=[1]), now=t)
+    assert len(ev) == 1 and zc.total == 1 and zc.total_by_class["mobil"] == 1
+
+    # Frames 2..100: empty frames; at frame 100 tid=1 is < max_stale_frames so retained
+    for k in range(2, 101):
+        zc.update(sv.Detections.empty(), now=t + k)
+    assert zc._frame_idx == 100
+    for store in (zc._start, zc.class_hist, zc._first_cls, zc._last_seen_frame,
+                  zc._born_frame, zc._birth_centroid, zc._last_centroid,
+                  zc._prev, zc._age, zc.trails, zc._counted[0], zc.counted_id_class[0]):
+        assert 1 in store
+
+    # Frames 101..195: empty frames
+    for k in range(101, 196):
+        zc.update(sv.Detections.empty(), now=t + k)
+
+    # Frames 196..197: active tid=2 enters and arms ghost inside zone
+    ev = zc.update(_dets([[200, 200, 240, 240]], [2], tid=[2]), now=t + 196)
+    assert len(ev) == 1 and zc.total == 2 and zc.total_by_class["mobil"] == 2
+    zc.update(_dets([[200, 200, 240, 240]], [2], tid=[2]), now=t + 197)
+
+    # Frames 198..200: empty frames; frame 200 prunes tid=1 (last_seen=1 < 200-150)
+    for k in range(198, 201):
+        zc.update(sv.Detections.empty(), now=t + k)
+    assert zc._frame_idx == 200
+    for store in (zc._start, zc.class_hist, zc._first_cls, zc._last_seen_frame,
+                  zc._born_frame, zc._birth_centroid, zc._last_centroid,
+                  zc._prev, zc._age, zc._missing, zc._zone_still, zc.trails,
+                  zc._counted[0], zc.counted_id_class[0], zc._zone_ghost[0]):
+        assert 1 not in store
+    assert zc.total == 2 and zc.total_by_class["mobil"] == 2
+    assert 2 in zc._last_seen_frame and 2 in zc._zone_ghost[0]
+
+    # Frame 201: tid=3 respawns near tid=2's ghost -> Ghost ID Handover without double count
+    ev = zc.update(_dets([[210, 210, 250, 250]], [2], tid=[3]), now=t + 201)
+    assert not ev
+    assert zc.ghost_handovers == 1
+    assert zc.total == 2 and zc.total_by_class["mobil"] == 2
+    assert 3 in zc._counted[0] and zc.counted_id_class[0][3] == "mobil"
+
+
+def test_flow_gate_default_none_counts_all_directions():
+    """allowed_directions=None preserves legacy counting for every direction."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 100], [500, 100], [500, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=30,
+                     dedup_cooldown_sec=0.0, allowed_directions=None)
+    t = time.monotonic()
+    moves = [
+        (1, (300, 50), (300, 200)),   # down
+        (2, (300, 550), (300, 400)),  # up
+        (3, (550, 300), (400, 300)),  # left
+        (4, (50, 300), (200, 300)),   # right
+    ]
+    for idx, (tid, (x0, y0), (x1, y1)) in enumerate(moves):
+        zc.update(_dets([[x0 - 10, y0 - 10, x0 + 10, y0 + 10]], [2], tid=[tid]), now=t + idx * 2)
+        ev = zc.update(_dets([[x1 - 10, y1 - 10, x1 + 10, y1 + 10]], [2], tid=[tid]), now=t + idx * 2 + 1)
+        assert len(ev) == 1
+    assert zc.total == 4
+    assert zc.suppressed_direction == 0
+
+
+def test_flow_gate_bidirectional_underpass():
+    """Underpass ['up', 'down'] counts both vertical flows and suppresses sideways grazers."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 100], [500, 100], [500, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"}, min_displacement_px=30,
+                     dedup_cooldown_sec=0.0, allowed_directions=["up", "down"])
+    t = time.monotonic()
+
+    # Approaching (down)
+    zc.update(_dets([[240, 40, 260, 60]], [2], tid=[1]), now=t)
+    ev1 = zc.update(_dets([[240, 190, 260, 210]], [2], tid=[1]), now=t + 1)
+    # Receding (up)
+    zc.update(_dets([[340, 540, 360, 560]], [3], tid=[2]), now=t + 2)
+    ev2 = zc.update(_dets([[340, 390, 360, 410]], [3], tid=[2]), now=t + 3)
+    # Sideways left & right edge-grazers -> suppressed
+    zc.update(_dets([[540, 290, 560, 310]], [2], tid=[3]), now=t + 4)
+    ev3 = zc.update(_dets([[390, 290, 410, 310]], [2], tid=[3]), now=t + 5)
+    zc.update(_dets([[40, 240, 60, 260]], [2], tid=[4]), now=t + 6)
+    ev4 = zc.update(_dets([[190, 240, 210, 260]], [2], tid=[4]), now=t + 7)
+
+    assert len(ev1) == 1 and len(ev2) == 1
+    assert not ev3 and not ev4
+    assert zc.total == 2
+    assert zc.suppressed_direction == 2
+
+
+def test_flow_gate_combination_turns_and_per_zone_override():
+    """['down', 'left'] @ 75deg accepts down and down-left turns, rejects up; supports vectors and zone overrides."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 100], [500, 100], [500, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=30,
+                     dedup_cooldown_sec=0.0, allowed_directions=["down", "left"],
+                     flow_max_angle_deg=75.0)
+    t = time.monotonic()
+
+    # Straight down
+    zc.update(_dets([[290, 40, 310, 60]], [2], tid=[1]), now=t)
+    ev_down = zc.update(_dets([[290, 190, 310, 210]], [2], tid=[1]), now=t + 1)
+    # Down-left diagonal turn
+    zc.update(_dets([[440, 140, 460, 160]], [2], tid=[2]), now=t + 2)
+    ev_turn = zc.update(_dets([[340, 240, 360, 260]], [2], tid=[2]), now=t + 3)
+    # Opposite (up) -> rejected
+    zc.update(_dets([[290, 540, 310, 560]], [2], tid=[3]), now=t + 4)
+    ev_up = zc.update(_dets([[290, 390, 310, 410]], [2], tid=[3]), now=t + 5)
+
+    assert len(ev_down) == 1 and len(ev_turn) == 1 and not ev_up
+    assert zc.total == 2 and zc.suppressed_direction == 1
+
+    # Numeric vector + zero-length vector ignored + per-zone override
+    z_dicts = [
+        {"polygon": [[100, 100], [300, 100], [300, 300], [100, 300]],
+         "allowed_directions": ["down-right", [0.0, 0.0]]},
+        {"polygon": [[320, 100], [520, 100], [520, 300], [320, 300]],
+         "allowed_directions": [[0.0, -5.0]]},
+    ]
+    zc2 = ZoneCounter(z_dicts, class_labels={2: "mobil"}, min_displacement_px=30,
+                      dedup_cooldown_sec=0.0, allowed_directions=["up"],
+                      flow_max_angle_deg=45.0)
+    # Moving down-right in zone 0 passes zone 0 override despite global ["up"]
+    zc2.update(_dets([[90, 90, 110, 110]], [2], tid=[10]), now=t)
+    ev_z0 = zc2.update(_dets([[190, 190, 210, 210]], [2], tid=[10]), now=t + 1)
+    # Moving down in zone 1 (which allows only [0, -5] == up) is rejected
+    zc2.update(_dets([[410, 40, 430, 60]], [2], tid=[11]), now=t + 2)
+    ev_z1 = zc2.update(_dets([[410, 190, 430, 210]], [2], tid=[11]), now=t + 3)
+    assert len(ev_z0) == 1 and not ev_z1
+    assert zc2.total == 1 and zc2.suppressed_direction == 1
+
+
+def test_flow_gate_ghost_handover_preserves_start_anchor():
+    """Ghost ID Handover inherits _start so respawned tracks keep true flow direction."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200], [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=30,
+                     dedup_cooldown_sec=4.0, allowed_directions=["down"],
+                     flow_max_angle_deg=75.0)
+    t = time.monotonic()
+    zc.update(_dets([[290, 90, 310, 110]], [2], tid=[1]), now=t)     # _start=(300, 100)
+    ev = zc.update(_dets([[290, 250, 310, 270]], [2], tid=[1]), now=t + 1)  # down -> counted
+    assert len(ev) == 1 and zc.total == 1
+    zc.update(_dets([[290, 290, 310, 310]], [2], tid=[1]), now=t + 2)  # ghost at (300, 300)
+    for k in (3, 4, 5):
+        zc.update(sv.Detections.empty(), now=t + k)
+    # Respawn near ghost with slight lateral offset; inherited _start=(300,100) gives dy=+215 (down)
+    ev_ho = zc.update(_dets([[300, 305, 320, 325]], [2], tid=[2]), now=t + 6)
+    assert not ev_ho
+    assert zc.ghost_handovers == 1
+    assert zc.total == 1
+    assert zc.suppressed_direction == 0
+    assert 2 in zc._counted[0]
+
+
+def test_bottom_center_polygon_trigger_counts_edge_vehicle():
+    """Vehicle whose centroid is outside the polygon top edge but whose
+    bottom-center (cx, y2) lands inside is counted immediately."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200], [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil"})
+    t = time.monotonic()
+    # Frame 1: centroid (300, 150), bottom_center (300, 170) -> both above y=200
+    assert not zc.update(_dets([[280, 130, 320, 170]], [2], tid=[1]), now=t)
+    # Frame 2: centroid (300, 180) still < 200, but bottom_center (300, 210) >= 200; disp=30px >= 12px
+    ev = zc.update(_dets([[280, 150, 320, 210]], [2], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and ev[0]["class_name"] == "mobil"
+    assert zc.total == 1
+
+
+def test_dense_following_motorcycles_not_swallowed_by_ghost_handover():
+    """Closely following motorcycles (~45px apart) in dense traffic both count,
+    and motor vs non-motor class mismatch never hands over."""
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [600, 200], [600, 500], [100, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"}, dedup_cooldown_sec=0.0)
+    t = time.monotonic()
+    # Bike 1 enters, moves 20px (>= 12px default), counts, arms ghost at (300, 270), then vanishes
+    zc.update(_dets([[290, 240, 310, 260]], [3], tid=[1]), now=t)
+    ev1 = zc.update(_dets([[290, 260, 310, 280]], [3], tid=[1]), now=t + 1)
+    assert len(ev1) == 1 and zc.total == 1
+    # Bike 2 spawns 45px behind ghost at (300, 225) on next frame and moves 20px
+    zc.update(_dets([[290, 215, 310, 235]], [3], tid=[2]), now=t + 2)
+    ev2 = zc.update(_dets([[290, 235, 310, 255]], [3], tid=[2]), now=t + 3)
+    assert len(ev2) == 1
+    assert zc.total == 2 and zc.total_by_class["motor"] == 2
+    assert zc.ghost_handovers == 0
+
+    # Class mismatch guard: a car ghost at (450, 300) cannot be claimed by a motorcycle born 10px away
+    zc.update(_dets([[430, 260, 470, 300]], [2], tid=[10]), now=t + 4)
+    ev_car = zc.update(_dets([[430, 280, 470, 320]], [2], tid=[10]), now=t + 5)
+    assert len(ev_car) == 1 and zc.total_by_class["mobil"] == 1
+    zc.update(_dets([[445, 295, 465, 315]], [3], tid=[11]), now=t + 6)
+    ev_moto = zc.update(_dets([[445, 315, 465, 335]], [3], tid=[11]), now=t + 7)
+    assert len(ev_moto) == 1 and ev_moto[0]["class_name"] == "motor"
+    assert zc.ghost_handovers == 0
+    assert zc.total_by_class["motor"] == 3 and zc.total_by_class["mobil"] == 1
+
+
+def test_mobil_strict_lock_prevents_late_upgrade_or_reattribution_to_truk():
+    """A track first seen or counted as mobil never upgrades or reattributes to
+    truk/bus even after 15+ consecutive inflated truck predictions near the bottom."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [500, 0], [500, 500], [0, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"})
+    t = time.monotonic()
+
+    # Case 1: Counted as mobil after 2 frames, then 16 frames of raw class 7 (box inflation)
+    zc.update(_dets([[100, 100, 140, 140]], [2], tid=[1]), now=t)
+    ev = zc.update(_dets([[100, 120, 145, 165]], [2], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and ev[0]["class_name"] == "mobil"
+    later = []
+    for k in range(16):
+        later += zc.update(_dets([[90, 140 + k * 10, 210, 260 + k * 10]], [7],
+                                 conf=[0.95], tid=[1]), now=t + 2 + k)
+    assert not any(e.get("reattributed_from") for e in later), later
+    assert zc.total == 1
+    assert zc.total_by_class["mobil"] == 1
+    assert zc.total_by_class.get("truk/bus", 0) == 0
+
+    # Case 2: Seen once as mobil before zone, then 10 frames of raw class 7 entering zone
+    zc.update(_dets([[300, 10, 340, 50]], [2], tid=[2]), now=t + 20)
+    ev2 = []
+    for k in range(10):
+        ev2 += zc.update(_dets([[300, 30 + k * 15, 410, 130 + k * 15]], [7],
+                               conf=[0.95], tid=[2]), now=t + 21 + k)
+    assert len(ev2) == 1 and ev2[0]["class_name"] == "mobil"
+    assert zc.total == 2
+    assert zc.total_by_class["mobil"] == 2
+    assert zc.total_by_class.get("truk/bus", 0) == 0
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

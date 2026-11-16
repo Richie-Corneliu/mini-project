@@ -263,3 +263,122 @@ def test_diag_label_carries_telemetry():
 
     # uncounted, untracked id: telemetry still renders, no flags
     assert r._diag_label(42, "#42 motor", [10, 10, 30, 50]) == "#42 motor | 800px2"
+
+
+# --------------------------------------------------------- perspective scaling
+
+def test_perspective_scale_unconfigured_disabled_and_thin_guard(monkeypatch):
+    det_unconf, _ = _detector(monkeypatch, cuda=False, device="cpu", model_size="rtdetr-l")
+    assert det_unconf._compute_perspective_scale(100.0) == 1.0
+    assert det_unconf._compute_perspective_scale(500.0) == 1.0
+
+    det_disabled, _ = _detector(monkeypatch, cuda=False, device="cpu", model_size="rtdetr-l",
+                                perspective_scaling=False, y_ref_far=100.0, y_ref_near=500.0)
+    assert det_disabled._compute_perspective_scale(100.0) == 1.0
+    assert det_disabled._compute_perspective_scale(500.0) == 1.0
+
+    det_thin, _ = _detector(monkeypatch, cuda=False, device="cpu", model_size="rtdetr-l",
+                            y_ref_far=200.0, y_ref_near=239.0)
+    assert det_thin._compute_perspective_scale(200.0) == 1.0
+    assert det_thin._compute_perspective_scale(239.0) == 1.0
+
+
+def test_perspective_scale_center_anchored_interpolation(monkeypatch):
+    det, _ = _detector(monkeypatch, cuda=False, device="cpu", model_size="rtdetr-l",
+                       y_ref_far=100.0, y_ref_near=500.0, scale_far=0.65, scale_near=1.25)
+    assert det.y_ref_mid == pytest.approx(300.0)
+    assert det._compute_perspective_scale(50.0) == pytest.approx(0.65)
+    assert det._compute_perspective_scale(100.0) == pytest.approx(0.65)
+    assert det._compute_perspective_scale(200.0) == pytest.approx(0.825)
+    assert det._compute_perspective_scale(300.0) == pytest.approx(1.0)
+    assert det._compute_perspective_scale(400.0) == pytest.approx(1.125)
+    assert det._compute_perspective_scale(500.0) == pytest.approx(1.25)
+    assert det._compute_perspective_scale(700.0) == pytest.approx(1.25)
+
+    # y_ref_mid outside bounds is clamped inside (y_ref_far + 1, y_ref_near - 1)
+    det_clamped, _ = _detector(monkeypatch, cuda=False, device="cpu", model_size="rtdetr-l",
+                               y_ref_far=100.0, y_ref_mid=10.0, y_ref_near=500.0)
+    assert det_clamped._compute_perspective_scale(101.0) == pytest.approx(1.0)
+
+
+def test_configure_perspective_from_polygons(monkeypatch):
+    poly_a = sv.PolygonZone(polygon=np.array([[100, 120], [300, 120], [300, 320], [100, 320]], dtype=np.float32))
+    poly_b = sv.PolygonZone(polygon=np.array([[200, 250], [500, 250], [500, 620], [200, 620]], dtype=np.float32))
+
+    det, _ = _detector(monkeypatch, cuda=False, device="cpu", model_size="rtdetr-l",
+                       polygons=[poly_a, poly_b])
+    assert det.y_ref_far == pytest.approx(120.0)
+    assert det.y_ref_near == pytest.approx(620.0)
+    assert det.y_ref_mid == pytest.approx(370.0)
+
+    # Explicit override beats polygon min/max
+    det.configure_perspective_from_polygons([poly_a], y_ref_far=80.0)
+    assert det.y_ref_far == pytest.approx(80.0)
+    assert det.y_ref_near == pytest.approx(320.0)
+    assert det.y_ref_mid == pytest.approx(200.0)
+
+
+class _StubBoxes:
+    def __init__(self, xyxy, conf, cls_id):
+        import torch
+        self.xyxy = torch.tensor(xyxy, dtype=torch.float32)
+        self.conf = torch.tensor(conf, dtype=torch.float32)
+        self.cls = torch.tensor(cls_id, dtype=torch.int64)
+
+    def __len__(self):
+        return len(self.xyxy)
+
+
+def test_perspective_area_refinement_far_vs_near(monkeypatch):
+    # Box 0 (far, y2=100): 44x50 = 2200 px2, raw cls=2 (car)
+    #   car_min_area=3000 * 0.65 = 1950 -> stays car (2) with scaling, motor (3) without
+    # Box 1 (near, y2=500): 120x100 = 12000 px2, raw cls=7 (truck)
+    #   truck_min_area=10500 * 1.25 = 13125 -> demoted to car (2) with scaling, stays truck (7) without
+    boxes = _StubBoxes(
+        xyxy=[[100.0, 50.0, 144.0, 100.0], [200.0, 400.0, 320.0, 500.0]],
+        conf=[0.9, 0.9],
+        cls_id=[2, 7],
+    )
+
+    class _BoxModel(_FakeRTDETR):
+        def predict(self, frame, **kw):
+            self.predict_kwargs.append(kw)
+
+            class _R:
+                pass
+            r = _R()
+            r.boxes = boxes
+            return [r]
+
+    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+    monkeypatch.setattr("ultralytics.RTDETR", _BoxModel)
+
+    frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+    det_scaled = Detector(device="cpu", model_size="rtdetr-l",
+                          car_min_area=3000, truck_min_area=10500,
+                          y_ref_far=100.0, y_ref_near=500.0,
+                          scale_far=0.65, scale_near=1.25,
+                          perspective_scaling=True)
+    out_scaled = det_scaled.detect(frame)
+    assert list(out_scaled.class_id) == [2, 2]
+
+    det_flat = Detector(device="cpu", model_size="rtdetr-l",
+                        car_min_area=3000, truck_min_area=10500,
+                        perspective_scaling=False)
+    out_flat = det_flat.detect(frame)
+    assert list(out_flat.class_id) == [3, 7]
+
+    # Default Detector (truck_min_area=15000, scale_near=1.85 -> 27750 at y_ref_near)
+    # demotes a large near-camera SUV / horizontal car (160x150 = 24000 px2) from truck (7) to car (2)
+    suv_boxes = _StubBoxes(
+        xyxy=[[300.0, 450.0, 460.0, 600.0]],
+        conf=[0.92],
+        cls_id=[7],
+    )
+    boxes.xyxy, boxes.conf, boxes.cls = suv_boxes.xyxy, suv_boxes.conf, suv_boxes.cls
+    det_default = Detector(device="cpu", model_size="rtdetr-l",
+                           y_ref_far=150.0, y_ref_near=600.0)
+    assert det_default.scale_near == pytest.approx(1.85)
+    assert det_default.truck_min_area == pytest.approx(15000.0)
+    out_suv = det_default.detect(frame)
+    assert list(out_suv.class_id) == [2]

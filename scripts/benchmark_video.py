@@ -34,7 +34,11 @@ NODE_COUNTER_KEYS = ("dedup_cooldown_sec", "dedup_radius_px", "min_displacement_
                      "class_window", "motor_lock_frames", "motor_flip_frames",
                      "car_lock_frames", "car_flip_frames", "cabin_iou",
                      "cabin_area_ratio", "still_count_frames", "still_min_conf",
-                     "ghost_ttl_frames", "ghost_radius_px")
+                     "ghost_ttl_frames", "ghost_radius_px", "max_stale_frames",
+                     "allowed_directions", "flow_max_angle_deg")
+NODE_DETECTOR_KEYS = ("car_min_area", "truck_min_area", "perspective_scaling",
+                      "y_ref_far", "y_ref_mid", "y_ref_near",
+                      "scale_far", "scale_near")
 
 
 def resolve_node_config(node_id=None, *, settings_path="config/settings.yaml",
@@ -57,7 +61,7 @@ def resolve_node_config(node_id=None, *, settings_path="config/settings.yaml",
         cfg["counter"] = {**cfg.get("counter", {}),
                            **{k: node[k] for k in NODE_COUNTER_KEYS if k in node}}
         cfg["detector"] = {**cfg.get("detector", {}),
-                            **{k: node[k] for k in ("car_min_area", "truck_min_area")
+                            **{k: node[k] for k in NODE_DETECTOR_KEYS
                                if k in node}}
     for key, value in (overrides or {}).items():
         if value is None:
@@ -235,7 +239,14 @@ def main(argv=None):
                         imgsz=dc.get("imgsz", 640), device=dc.get("device", "cuda:0"),
                         half=dc.get("half"), duplicate_iou=dc.get("duplicate_iou", .65),
                         truck_min_area=dc.get("truck_min_area", 10500),
-                        car_min_area=dc.get("car_min_area", 3000))
+                        car_min_area=dc.get("car_min_area", 3000),
+                        perspective_scaling=dc.get("perspective_scaling", True),
+                        y_ref_far=dc.get("y_ref_far"),
+                        y_ref_mid=dc.get("y_ref_mid"),
+                        y_ref_near=dc.get("y_ref_near"),
+                        scale_far=dc.get("scale_far", 0.65),
+                        scale_near=dc.get("scale_near", 1.25),
+                        polygons=zones)
     counter = ZoneCounter(zones, class_labels=COUNTER_LABELS,
                           tracker_config=dc.get("tracker_config"), **cc)
     gt = load_counts(a.gt) if a.gt else parse_cli_counts(a.gt_counts) if a.gt_counts else None

@@ -29,8 +29,11 @@ detector:
   - 5
   - 7
   min_area: 20
-  truck_min_area: 10500
+  truck_min_area: 15000
   car_min_area: 3000
+  perspective_scaling: true
+  scale_far: 0.65
+  scale_near: 1.85
   show_dims: true
   tracker_config:
     lost_track_buffer: 90
@@ -41,7 +44,7 @@ detector:
 counter:
   dedup_cooldown_sec: 4.0
   dedup_radius_px: 10
-  min_displacement_px: 30
+  min_displacement_px: 12
   class_window: 15
   motor_lock_frames: 3
   motor_flip_frames: 4
@@ -51,8 +54,8 @@ counter:
   cabin_area_ratio: 0.55
   still_count_frames: 30
   still_min_conf: 0.35
-  ghost_ttl_frames: 10
-  ghost_radius_px: 70
+  ghost_ttl_frames: 6
+  ghost_radius_px: 35
 ui:
   show_diagnostics: false   # or ATCS_DIAGNOSTICS=1 to flip on without editing config
 logging:
@@ -61,4 +64,5 @@ logging:
 persistence:
   stats_file: logs/daily_stats.json
   save_interval_sec: 5
+  min_persist_uptime_seconds: 1800
 

@@ -201,3 +201,175 @@ def test_api_state_seeded_before_first_frame(tmp_path):
     assert st["hourly_counts"]["08"] == {"motor": 4, "mobil": 2, "truk": 1,
                                          "total": 7}
     assert st["last_seen"] == 0.0   # offline until the worker reports
+
+
+def test_min_persist_uptime_gate_preserves_baseline_until_threshold(tmp_path, monkeypatch):
+    """Short test sessions (< 1800s) update in-memory get_all() but leave
+    daily_stats.json untouched at _baseline_state until uptime >= 1800s."""
+    path = tmp_path / "daily_stats.json"
+    baseline_store = StatsStore(path)
+    baseline_hourly = {"08": {"motor": 20, "mobil": 8, "truk": 2}}
+    baseline_store.record("node_01",
+                          _FakeCounter({"motor": 20, "mobil": 8, "truk/bus": 2}, 30),
+                          baseline_hourly)
+    baseline_store.save(force=True)
+
+    clock = [1000.0]
+    monkeypatch.setattr("src.utils.stats_store.time.monotonic", lambda: clock[0])
+
+    store = StatsStore.from_config({
+        "stats_file": str(path),
+        "save_interval_sec": 5.0,
+        "min_persist_uptime_seconds": 1800.0,
+    })
+    store.load()
+    assert store._baseline_state["nodes"]["node_01"]["total"] == 30
+
+    # At t = 120s (2 minutes), 5 test vehicles are counted in hour 13
+    clock[0] = 1120.0
+    session_hourly = {
+        "08": {"motor": 20, "mobil": 8, "truk": 2},
+        "13": {"motor": 3, "mobil": 2, "truk": 0},
+    }
+    store.record("node_01",
+                 _FakeCounter({"motor": 23, "mobil": 10, "truk/bus": 2}, 35),
+                 session_hourly)
+
+    # In-memory state (get_all) reflects real-time counts immediately
+    mem = store.get_all()["nodes"]["node_01"]
+    assert mem["total"] == 35
+    assert mem["hourly_counts"]["13"] == {"motor": 3, "mobil": 2, "truk": 0}
+
+    # Periodic maybe_save() and early shutdown save() before 1800s do NOT overwrite disk
+    assert store.maybe_save() is False
+    assert store.save() is False
+    on_disk_early = json.loads(path.read_text(encoding="utf-8"))["nodes"]["node_01"]
+    assert on_disk_early["total"] == 30
+    assert "13" not in on_disk_early["hourly_counts"]
+
+    # Once session uptime reaches 1800s, maybe_save() persists increments to disk
+    clock[0] = 2800.0
+    assert store.maybe_save() is True
+    on_disk_late = json.loads(path.read_text(encoding="utf-8"))["nodes"]["node_01"]
+    assert on_disk_late["total"] == 35
+    assert on_disk_late["hourly_counts"]["13"] == {"motor": 3, "mobil": 2, "truk": 0}
+
+
+def test_prune_hourly_below_and_clear(tmp_path):
+    """prune_hourly_below(20) removes tiny hourly buckets (< 20 vehicles) and
+    recomputes node daily totals; clear() resets persisted state."""
+    path = tmp_path / "daily_stats.json"
+    store = StatsStore(path)
+    hourly = {
+        "08": {"motor": 20, "mobil": 10, "truk": 5},   # 35 >= 20 -> keep
+        "13": {"motor": 3, "mobil": 2, "truk": 0},     # 5 < 20 -> prune
+    }
+    store.record("node_01",
+                 _FakeCounter({"motor": 23, "mobil": 12, "truk/bus": 5}, 40),
+                 hourly)
+    store.save(force=True)
+
+    pruned = store.prune_hourly_below(20)
+    assert pruned == 1
+    store.save(force=True)
+
+    reread = StatsStore(path)
+    reread.load()
+    node = reread.node("node_01")
+    assert "13" not in node["hourly_counts"]
+    assert node["hourly_counts"] == {"08": {"motor": 20, "mobil": 10, "truk": 5}}
+    assert node["counts"] == {"motor": 20, "mobil": 10, "truk": 5}
+    assert node["total"] == 35
+
+    reread.clear(save_to_disk=True)
+    assert reread.get_all()["nodes"] == {}
+    assert json.loads(path.read_text(encoding="utf-8"))["nodes"] == {}
+
+
+def test_midnight_rollover_with_uptime_gate_persists_reset_and_gates_new_day(tmp_path, monkeypatch):
+    """Session started 10 min before midnight (min_persist_uptime_seconds=1800):
+    midnight rollover archives yesterday, force-saves reset day to disk, updates
+    _baseline_state, and keeps post-midnight counts in memory until 30 min uptime."""
+    day1 = "2026-11-15"
+    day2 = "2026-11-16"
+    day3 = "2026-11-17"
+    current_day = [day1]
+    clock = [1000.0]
+
+    monkeypatch.setattr("src.utils.stats_store.today_wib", lambda: current_day[0])
+    monkeypatch.setattr("src.utils.stats_store.time.monotonic", lambda: clock[0])
+
+    path = tmp_path / "daily_stats.json"
+    path.write_text(
+        json.dumps(_snapshot_doc(
+            day1, 40, {"motor": 30, "mobil": 8, "truk": 2},
+            {"22": {"motor": 30, "mobil": 8, "truk": 2}},
+        )),
+        encoding="utf-8",
+    )
+
+    # Start session 10 minutes before midnight (23:50 WIB)
+    store = StatsStore.from_config({
+        "stats_file": str(path),
+        "save_interval_sec": 5.0,
+        "min_persist_uptime_seconds": 1800.0,
+    })
+    store.load()
+
+    # Pre-midnight activity at +5 min (uptime 300s < 1800s): visible in memory, gated on disk
+    clock[0] = 1300.0
+    store.record(
+        "node_01",
+        _FakeCounter({"motor": 33, "mobil": 9, "truk/bus": 2}, 44),
+        {"22": {"motor": 30, "mobil": 8, "truk": 2},
+         "23": {"motor": 3, "mobil": 1, "truk": 0}},
+    )
+    assert store.maybe_save() is False
+
+    # Cross 00:00 WIB at +10 min (uptime 600s < 1800s)
+    clock[0] = 1600.0
+    current_day[0] = day2
+    roll = store.rollover()
+    assert roll is not None and roll["from"] == day1 and roll["to"] == day2
+
+    # Yesterday's snapshot archived (with session state at rollover) and disk reset immediately
+    archive = tmp_path / "archive" / f"daily_stats_{day1}.json"
+    assert archive.exists()
+    assert json.loads(archive.read_text(encoding="utf-8"))["nodes"]["node_01"]["total"] == 44
+
+    on_disk_midnight = json.loads(path.read_text(encoding="utf-8"))
+    assert on_disk_midnight["date"] == day2
+    assert on_disk_midnight["nodes"] == {}
+    assert store._baseline_state["date"] == day2
+    assert store._baseline_state["nodes"] == {}
+
+    # Post-midnight counts at +15 min (uptime 900s < 1800s): held in memory, NOT on disk
+    clock[0] = 1900.0
+    store.record(
+        "node_01",
+        _FakeCounter({"motor": 4, "mobil": 2, "truk/bus": 0}, 6),
+        {"00": {"motor": 4, "mobil": 2, "truk": 0}},
+    )
+    assert store.get_all()["nodes"]["node_01"]["total"] == 6
+    assert store.maybe_save() is False
+    assert store.save() is False
+    assert json.loads(path.read_text(encoding="utf-8"))["nodes"] == {}
+
+    # Once 30 min uptime is reached (+30 min = 2800s), post-midnight counts persist
+    clock[0] = 2800.0
+    assert store.maybe_save() is True
+    on_disk_after = json.loads(path.read_text(encoding="utf-8"))
+    assert on_disk_after["date"] == day2
+    assert on_disk_after["nodes"]["node_01"]["total"] == 6
+
+    # Also verify load() rollover when file on disk is older than today under uptime gate
+    current_day[0] = day3
+    clock[0] = 3000.0
+    store_restart = StatsStore(path, save_interval_sec=5.0, min_persist_uptime_seconds=1800.0)
+    store_restart.load()
+    assert (tmp_path / "archive" / f"daily_stats_{day2}.json").exists()
+    on_disk_day3 = json.loads(path.read_text(encoding="utf-8"))
+    assert on_disk_day3["date"] == day3
+    assert on_disk_day3["nodes"] == {}
+    assert store_restart._baseline_state["date"] == day3
+    assert store_restart._baseline_state["nodes"] == {}

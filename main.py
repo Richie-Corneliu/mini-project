@@ -46,7 +46,12 @@ log = get_logger(__name__)
 def build_zones(zone_cfgs):
     zones = []
     for zc in zone_cfgs:
-        zones.append(sv.PolygonZone(polygon=np.array(zc["polygon"], dtype=np.float32)))
+        z = sv.PolygonZone(polygon=np.array(zc["polygon"], dtype=np.float32))
+        if "allowed_directions" in zc:
+            z.allowed_directions = zc["allowed_directions"]
+        if "flow_max_angle_deg" in zc:
+            z.flow_max_angle_deg = zc["flow_max_angle_deg"]
+        zones.append(z)
     return zones
 
 
@@ -77,7 +82,7 @@ def _seed_api_from_stats(stats):
         })
 
 
-def _build_detector(cfg):
+def _build_detector(cfg, polygons=None):
     dc = cfg["detector"]
     return Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
                     model_size=dc.get("model", "rtdetr-l"),
@@ -85,7 +90,14 @@ def _build_detector(cfg):
                     device=dc.get("device", "cuda:0"), half=dc.get("half", None),
                     duplicate_iou=dc.get("duplicate_iou", 0.65),
                     truck_min_area=dc.get("truck_min_area", 10500),
-                    car_min_area=dc.get("car_min_area", 3000))
+                    car_min_area=dc.get("car_min_area", 3000),
+                    perspective_scaling=dc.get("perspective_scaling", True),
+                    y_ref_far=dc.get("y_ref_far"),
+                    y_ref_mid=dc.get("y_ref_mid"),
+                    y_ref_near=dc.get("y_ref_near"),
+                    scale_far=dc.get("scale_far", 0.65),
+                    scale_near=dc.get("scale_near", 1.25),
+                    polygons=polygons)
 
 
 def _build_pipeline(cfg, zones, source, debug):
@@ -118,6 +130,9 @@ def _build_pipeline(cfg, zones, source, debug):
                           still_min_conf=counter_cfg.get("still_min_conf", 0.35),
                           ghost_ttl_frames=counter_cfg.get("ghost_ttl_frames", 10),
                           ghost_radius_px=counter_cfg.get("ghost_radius_px", 70),
+                          max_stale_frames=counter_cfg.get("max_stale_frames", 300),
+                          allowed_directions=counter_cfg.get("allowed_directions"),
+                          flow_max_angle_deg=counter_cfg.get("flow_max_angle_deg", 75.0),
                           debug=debug)
     renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug,
                         show_diagnostics=cfg.get("ui", {}).get("show_diagnostics"),
@@ -304,6 +319,10 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                 pixel_pts = [[int(x * frame_w), int(y * frame_h)]
                              for x, y in command["points"]]
                 counter.update_polygon(command["points"], frame_w, frame_h)
+                if det_overrides is not None:
+                    det_overrides["polygons"] = counter.zones
+                else:
+                    det.configure_perspective_from_polygons(counter.zones)
                 persist_zone(node_id, pixel_pts)
                 log.info("Node %s zone updated + saved: %d pts on frame %dx%d",
                          node_id, len(command["points"]), frame_w, frame_h)
@@ -510,7 +529,7 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     audit = AuditLogger("logs/count_audit.csv") if debug else None
 
     streamer, counter, renderer = _build_pipeline(cfg, zones, sc["source"], debug)
-    det = _build_detector(cfg)
+    det = _build_detector(cfg, polygons=zones)
     editor = ZoneEditor(zones, zone_cfgs)
     stats = StatsStore.from_config(cfg.get("persistence"))
     stats.load()
@@ -601,7 +620,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
     sc = cfg["stream"]
     zone_cfgs = cfg.get("zones", [])
 
-    det = _build_detector(cfg)
+    det = _build_detector(cfg, polygons=zone_cfgs)
     gpu_lock = threading.Lock()
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
@@ -623,16 +642,26 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         node_id = n["id"]
         source = n.get("source") or sc["source"]
         zones = build_zones(n.get("zones") or zone_cfgs)
-        # Per-node counter tuning (min_displacement_px, car lock) overrides
-        # settings.yaml; unknown node keys are ignored.
+        # Per-node counter tuning (min_displacement_px, car lock, flow gate)
+        # overrides settings.yaml; unknown node keys are ignored.
+        counter_keys = set(cfg.get("counter", {})) | {
+            "max_stale_frames", "allowed_directions", "flow_max_angle_deg"
+        }
         counter_cfg = {**cfg.get("counter", {}),
-                       **{k: n[k] for k in cfg.get("counter", {}) if k in n}}
+                       **{k: n[k] for k in counter_keys if k in n}}
         streamer, counter, renderer = _build_pipeline(
             {**cfg, "counter": counter_cfg}, zones, source, debug)
         # Optional per-node detector tuning from nodes.yaml (camera tilt /
         # distance differ per intersection); settings.yaml is the fallback.
-        det_over = {k: float(n[k]) for k in ("truck_min_area", "car_min_area")
-                    if k in n}
+        det_over = {
+            k: (bool(n[k]) if k == "perspective_scaling" else float(n[k]))
+            for k in ("truck_min_area", "car_min_area", "perspective_scaling",
+                      "y_ref_far", "y_ref_mid", "y_ref_near",
+                      "scale_far", "scale_near")
+            if k in n and n[k] is not None
+        }
+        det.configure_perspective_from_polygons(zones)
+        det_over["polygons"] = zones
         seed_counter(counter, stats.node(node_id))
         streamer.start()
         bus = FrameBus()
@@ -697,10 +726,34 @@ if __name__ == "__main__":
     a.add_argument("--nodes", default=None,
                    help="comma-separated node ids to run in --multi "
                         "(default: all nodes)")
+    a.add_argument("--clear-stats", action="store_true",
+                   help="reset logs/daily_stats.json for today and exit (or start fresh)")
+    a.add_argument("--prune-min-hourly", type=int, default=None,
+                   help="remove hourly buckets below <int> total vehicles and save immediately")
+    a.add_argument("--min-uptime-minutes", type=float, default=None,
+                   help="override minimum session uptime in minutes before persisting stats (default: 30.0)")
     args = a.parse_args()
     cfg = yaml.safe_load(open(args.config, encoding="utf-8"))
     setup_logging(level=cfg.get("logging", {}).get("level", "INFO"),
                   log_file=cfg.get("logging", {}).get("file", "logs/app.log"))
+    if args.min_uptime_minutes is not None:
+        cfg.setdefault("persistence", {})["min_persist_uptime_seconds"] = max(
+            0.0, float(args.min_uptime_minutes) * 60.0
+        )
+    if args.clear_stats or args.prune_min_hourly is not None:
+        stats = StatsStore.from_config(cfg.get("persistence"))
+        if args.clear_stats:
+            stats.clear(save_to_disk=True)
+            log.info("Cleared daily stats in %s", stats.path)
+        else:
+            stats.load()
+        if args.prune_min_hourly is not None:
+            pruned = stats.prune_hourly_below(args.prune_min_hourly)
+            stats.save(force=True)
+            log.info("Pruned %d hourly bucket(s) below %d vehicles in %s",
+                     pruned, args.prune_min_hourly, stats.path)
+        if not (args.multi or args.api or args.duration or args.record or args.no_display):
+            sys.exit(0)
     if args.multi:
         from src.api.server import load_node_registry
         reg = load_node_registry()

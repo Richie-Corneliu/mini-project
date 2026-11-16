@@ -4,42 +4,45 @@ nodes:
   lat: -7.419797
   lng: 109.229791
   source: rtsp://{user}:{pass}@10.26.110.128/h264/ch1/main/av_stream/
+  truck_min_area: 15000
+  # allowed_directions: ["down", "left"]
+  # flow_max_angle_deg: 75.0
   zones:
   - name: zone
     polygon:
-    - - 330
-      - 306
-    - - 1578
-      - 267
-    - - 1911
-      - 373
-    - - 1879
-      - 1059
-    - - 10
-      - 1061
-    - - 44
-      - 360
+    - - 881
+      - 627
+    - - 35
+      - 217
+    - - 629
+      - 26
+    - - 1274
+      - 222
 - id: node_02
   nama: Underpass
   lat: -7.4238
   lng: 109.223655
   source: rtsp://{user}:{pass}@10.26.110.139/h264/ch1/main/av_stream
+  truck_min_area: 15000
+  allowed_directions: ["up", "down"]
   zones:
   - name: zone
     polygon:
-    - - 138
-      - 692
-    - - 195
-      - 236
-    - - 629
-      - 236
-    - - 873
-      - 600
+    - - 426
+      - 640
+    - - 1111
+      - 646
+    - - 844
+      - 171
+    - - 680
+      - 159
 - id: node_03
   nama: Simpang Kebon Dalem Timur
   lat: -7.423112
   lng: 109.243761
   source: rtsp://{user}:{pass}@10.26.110.127/h264/ch1/main/av_stream
+  truck_min_area: 15000
+  # allowed_directions: ["down"]
   zones:
   - name: zone
     polygon:
@@ -56,6 +59,8 @@ nodes:
   lat: -7.427808
   lng: 109.243676
   source: rtsp://{user}:{pass}@10.26.110.126/h264/ch1/main/av_stream
+  truck_min_area: 15000
+  # allowed_directions: ["down", "right"]
   zones:
   - name: zone
     polygon:

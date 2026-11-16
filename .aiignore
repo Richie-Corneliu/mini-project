@@ -1,0 +1,14 @@
+logs/
+*.log
+*.json
+*.csv
+*.mp4
+*.avi
+*.mkv
+*.pt
+*.onnx
+*.engine
+__pycache__/
+.pytest_cache/
+.venv/
+venv/

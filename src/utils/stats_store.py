@@ -12,12 +12,14 @@ serializes the same dict from another thread.
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 from .logger import get_logger
 
@@ -26,6 +28,7 @@ log = get_logger(__name__)
 WIB = timezone(timedelta(hours=7))
 DEFAULT_STATS_FILE = "logs/daily_stats.json"
 DEFAULT_SAVE_INTERVAL_SEC = 5.0
+DEFAULT_MIN_PERSIST_UPTIME_SEC = 1800.0
 
 # ZoneCounter bucket label -> stored/API key. The counter calls it "truk/bus"
 # while the snapshot schema (main.py, server.py) calls it "truk".
@@ -124,22 +127,34 @@ class StatsStore:
     """Thread-safe daily snapshot: in-memory state + atomic JSON on disk."""
 
     def __init__(self, path=None, archive_dir=None,
-                 save_interval_sec=DEFAULT_SAVE_INTERVAL_SEC):
+                 save_interval_sec=DEFAULT_SAVE_INTERVAL_SEC,
+                 min_persist_uptime_seconds: float = 0.0):
         self.path = Path(path or DEFAULT_STATS_FILE)
         self.archive_dir = (Path(archive_dir) if archive_dir
                             else self.path.parent / "archive")
         self.save_interval = max(0.0, float(save_interval_sec))
+        self.min_persist_uptime_seconds = max(0.0, float(min_persist_uptime_seconds))
         self._lock = threading.RLock()
+        self._started_at = time.monotonic()
         self._last_save = 0.0
         self._dirty = False
         self.state = self._empty()
+        self._baseline_state = copy.deepcopy(self.state)
+        self._had_baseline_file = self.path.exists()
 
     @classmethod
     def from_config(cls, cfg) -> "StatsStore":
         cfg = cfg or {}
+        if "min_persist_uptime_seconds" in cfg and cfg["min_persist_uptime_seconds"] is not None:
+            min_uptime = float(cfg["min_persist_uptime_seconds"])
+        elif "min_uptime_minutes" in cfg and cfg["min_uptime_minutes"] is not None:
+            min_uptime = float(cfg["min_uptime_minutes"]) * 60.0
+        else:
+            min_uptime = DEFAULT_MIN_PERSIST_UPTIME_SEC
         return cls(cfg.get("stats_file") or DEFAULT_STATS_FILE,
                    cfg.get("archive_dir"),
-                   cfg.get("save_interval_sec", DEFAULT_SAVE_INTERVAL_SEC))
+                   cfg.get("save_interval_sec", DEFAULT_SAVE_INTERVAL_SEC),
+                   min_persist_uptime_seconds=min_uptime)
 
     @staticmethod
     def _empty(date=None) -> dict:
@@ -162,8 +177,11 @@ class StatsStore:
                         self.path, e)
         with self._lock:
             self._dirty = False
+            self._started_at = time.monotonic()
+            self._had_baseline_file = self.path.exists()
             if not isinstance(data, dict) or not data.get("date"):
                 self.state = self._empty()
+                self._baseline_state = copy.deepcopy(self.state)
                 return self.snapshot()
             date = str(data["date"])
             nodes = data.get("nodes") if isinstance(data.get("nodes"), dict) else {}
@@ -174,12 +192,15 @@ class StatsStore:
                                       or datetime.now(WIB).isoformat(timespec="seconds")),
                     "nodes": {str(nid): normalize_node(n) for nid, n in nodes.items()},
                 }
+                self._baseline_state = copy.deepcopy(self.state)
                 log.info("daily stats restored for %s: %d node(s)",
                          date, len(self.state["nodes"]))
                 return self.snapshot()
             # A finished day: keep its snapshot, start today at zero.
             self._archive_document(data, date)
             self.state = self._empty()
+            self._baseline_state = copy.deepcopy(self.state)
+            self.save(force=True)
             log.info("daily stats for %s archived; %s starts at zero",
                      date, self.state["date"])
             return self.snapshot()
@@ -195,6 +216,61 @@ class StatsStore:
                                     "hourly_counts": {h: dict(b) for h, b in
                                                       n["hourly_counts"].items()}}
                               for nid, n in self.state["nodes"].items()}}
+
+    def get_all(self) -> dict:
+        """Alias of snapshot() returning a deep copy of in-memory state."""
+        return self.snapshot()
+
+    def session_uptime(self, now: Optional[float] = None) -> float:
+        current = time.monotonic() if now is None else float(now)
+        return max(0.0, current - self._started_at)
+
+    def _uptime_reached(self, now: Optional[float] = None) -> bool:
+        if self.min_persist_uptime_seconds <= 0.0:
+            return True
+        return self.session_uptime(now) >= self.min_persist_uptime_seconds
+
+    def clear(self, save_to_disk: bool = True) -> dict:
+        """Reset today's state to zero and optionally persist immediately."""
+        with self._lock:
+            self.state = self._empty()
+            self._baseline_state = copy.deepcopy(self.state)
+            self._dirty = False
+            if save_to_disk:
+                self._write()
+            return self.snapshot()
+
+    def prune_hourly_below(self, min_total: int = 20) -> int:
+        """Remove hourly buckets with total vehicles < min_total and recompute node daily totals."""
+        threshold = int(min_total)
+        pruned = 0
+        with self._lock:
+            for node in self.state["nodes"].values():
+                hourly = node.get("hourly_counts")
+                if not isinstance(hourly, dict):
+                    continue
+                kept = {}
+                for hour, bucket in list(hourly.items()):
+                    if not isinstance(bucket, dict):
+                        continue
+                    motor = max(0, int(bucket.get("motor", 0)))
+                    mobil = max(0, int(bucket.get("mobil", 0)))
+                    truk = max(0, int(bucket.get("truk", bucket.get("truk/bus", 0))))
+                    if motor + mobil + truk < threshold:
+                        pruned += 1
+                    else:
+                        kept[str(hour)] = {"motor": motor, "mobil": mobil, "truk": truk}
+                node["hourly_counts"] = kept
+                recomputed = {
+                    key: sum(int(b.get(key, 0)) for b in kept.values())
+                    for _, key in LABEL_KEYS
+                }
+                node["counts"] = recomputed
+                node["total"] = sum(recomputed.values())
+            if pruned > 0:
+                self._dirty = True
+            self._baseline_state = copy.deepcopy(self.state)
+            return pruned
 
     def node(self, node_id) -> dict:
         with self._lock:
@@ -222,24 +298,36 @@ class StatsStore:
     def archive_path(self, date: str) -> Path:
         return self.archive_dir / f"daily_stats_{date}.json"
 
-    def maybe_save(self, force: bool = False) -> bool:
-        """Write at most once per save_interval; `force` ignores the throttle."""
+    def maybe_save(self, force: bool = False, now: Optional[float] = None) -> bool:
+        """Write at most once per save_interval after min_persist_uptime_seconds; `force` ignores both."""
         with self._lock:
-            if not self._dirty:
+            if not self._dirty and not force:
                 return False
-            if not force and time.monotonic() - self._last_save < self.save_interval:
-                return False
-            self._write()
+            if not force:
+                if not self._uptime_reached(now):
+                    return False
+                current = time.monotonic() if now is None else float(now)
+                if current - self._last_save < self.save_interval:
+                    return False
+            self._write(now=now)
             return True
 
-    def save(self) -> None:
+    def save(self, force: bool = False, now: Optional[float] = None) -> bool:
         with self._lock:
-            self._write()
+            if not force and not self._uptime_reached(now):
+                log.info(
+                    "skipping daily stats save: session uptime %.1fs < %.1fs",
+                    self.session_uptime(now),
+                    self.min_persist_uptime_seconds,
+                )
+                return False
+            self._write(now=now)
+            return True
 
-    def _write(self) -> None:
+    def _write(self, now: Optional[float] = None) -> None:
         self.state["updated_at"] = datetime.now(WIB).isoformat(timespec="seconds")
         self._write_document(self.state, self.path)
-        self._last_save = time.monotonic()
+        self._last_save = time.monotonic() if now is None else float(now)
         self._dirty = False
 
     @staticmethod
@@ -277,5 +365,6 @@ class StatsStore:
                 return None
             path = self._archive_document(self.snapshot(), prev)
             self.state = self._empty(today)
-            self._write()
+            self._baseline_state = copy.deepcopy(self.state)
+            self.save(force=True)
             return {"from": prev, "to": today, "archive": path}
