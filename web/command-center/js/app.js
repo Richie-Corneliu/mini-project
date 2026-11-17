@@ -1,4 +1,4 @@
-﻿/* Smart ATCS Banyumas - Command Center
+/* Smart ATCS Banyumas - Command Center
    Node identity (markers + sidebar) comes from /api/v1/nodes, which reads
    nodes.yaml fresh per request, so a new simpang appears without a redeploy.
    /api/v1/traffic-data then overlays live counts on a 1.5s poll; markers and
@@ -503,8 +503,10 @@ async function saveZone() {
       body: JSON.stringify({ points: zoneDraw.points.map((p) => [p[0], p[1]]) }),
     });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    el.controlStatus.textContent = "Zona baru diterima backend.";
     cancelZoneDraw();
+    await loadRegistry().catch(() => {});
+    await poll();
+    el.controlStatus.textContent = "Zona baru disimpan & aktif.";
   } catch (err) {
     el.saveZoneBtn.disabled = false;
     el.controlStatus.textContent = "Zona gagal dikirim.";
@@ -806,6 +808,7 @@ async function loadRegistry() {
       nama: incoming.nama || (prev && prev.nama) || incoming.id,
       lat: incoming.lat != null ? incoming.lat : (prev && prev.lat),
       lng: incoming.lng != null ? incoming.lng : (prev && prev.lng),
+      zones: incoming.zones || (prev && prev.zones) || [],
       motor: (prev && prev.motor) || 0,
       mobil: (prev && prev.mobil) || 0,
       truk: (prev && prev.truk) || 0,
@@ -833,6 +836,7 @@ function applyNodes(apiNodes) {
       nama: incoming.nama || (prev && prev.nama) || id,
       lat: incoming.lat != null ? incoming.lat : (prev && prev.lat),
       lng: incoming.lng != null ? incoming.lng : (prev && prev.lng),
+      zones: incoming.zones || (prev && prev.zones) || [],
       motor: incoming.motor || 0,
       mobil: incoming.mobil || 0,
       truk: incoming.truk || 0,

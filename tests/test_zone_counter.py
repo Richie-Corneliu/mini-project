@@ -905,6 +905,238 @@ def test_mobil_strict_lock_prevents_late_upgrade_or_reattribution_to_truk():
     assert zc.total_by_class.get("truk/bus", 0) == 0
 
 
+def test_receding_medium_truck_locked_against_shrink_demotion():
+    """Medium truck starts near/mid as truk/bus, moves up (dy < 0) into upper
+    polygon where raw class drops to mobil as box shrinks: stays truk/bus via
+    _truck_lock_latched (and across Ghost ID Handover)."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [500, 0], [500, 500], [0, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"},
+                     dedup_cooldown_sec=0.0)
+    t = time.monotonic()
+
+    # Frames 1..2: starts near/mid as truck (dy < 0)
+    zc.update(_dets([[200, 320, 320, 440]], [7], tid=[1]), now=t)
+    ev = zc.update(_dets([[205, 270, 315, 380]], [7], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and ev[0]["class_name"] == "truk/bus"
+    assert 1 in zc._truck_lock_latched
+
+    # Frames 3..10: moves away upward into upper polygon; box shrinks & drops to mobil (2)
+    later = []
+    for k in range(8):
+        y1 = 230 - k * 20
+        w = max(55, 100 - k * 6)
+        h = max(50, 95 - k * 6)
+        later += zc.update(_dets([[250 - w / 2, y1, 250 + w / 2, y1 + h]],
+                                 [2], conf=[0.95], tid=[1]), now=t + 2 + k)
+    assert not any(e.get("reattributed_from") for e in later), later
+    assert zc.total == 1
+    assert zc.total_by_class["truk/bus"] == 1
+    assert zc.total_by_class.get("mobil", 0) == 0
+
+    # Brief occlusion + Ghost ID Handover preserves _truck_lock_latched on tid=2
+    zc.update(sv.Detections.empty(), now=t + 10)
+    ev_ho = zc.update(_dets([[220, 65, 280, 115]], [2], conf=[0.95], tid=[2]), now=t + 11)
+    assert not ev_ho and zc.ghost_handovers == 1
+    assert 2 in zc._truck_lock_latched
+    assert zc.total == 1 and zc.total_by_class["truk/bus"] == 1
+
+
+def test_approaching_medium_truck_promotes_after_consecutive_validated_frames():
+    """Track starting far away as demoted mobil promotes to truk/bus once it
+    receives >= 2 consecutive perspective-validated truk/bus frames."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [600, 0], [600, 600], [0, 600]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"},
+                     truck_min_area=12000.0)
+    t = time.monotonic()
+
+    # Case A: Detector perspective_truck flag on >=2 consecutive frames promotes mobil -> truk/bus
+    zc.update(_dets([[270, 80, 330, 140]], [2], tid=[1]), now=t)
+    ev = zc.update(_dets([[268, 100, 332, 165]], [2], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and ev[0]["class_name"] == "mobil"
+    assert 1 in zc._car_lock_latched
+
+    d3 = _dets([[250, 150, 350, 255]], [7], conf=[0.85], tid=[1])
+    d3.data["perspective_truck"] = np.array([True], dtype=bool)
+    ev3 = zc.update(d3, now=t + 2)
+    assert not ev3  # 1st validated frame: not promoted yet
+
+    d4 = _dets([[245, 190, 355, 310]], [7], conf=[0.85], tid=[1])
+    d4.data["perspective_truck"] = np.array([True], dtype=bool)
+    ev4 = zc.update(d4, now=t + 3)
+    assert len(ev4) == 1 and ev4[0]["reattributed_from"] == "mobil"
+    assert ev4[0]["class_name"] == "truk/bus"
+    assert 1 not in zc._car_lock_latched and 1 in zc._truck_lock_latched
+    assert zc.total == 1 and zc.total_by_class["truk/bus"] == 1
+    assert zc.total_by_class.get("mobil", 0) == 0
+
+    # Case B: Standalone area >= 1.25 * truck_min_area (15000) with truck aspect ratio also promotes
+    zc.update(_dets([[420, 60, 480, 120]], [2], tid=[2]), now=t + 10)
+    ev_b = zc.update(_dets([[418, 80, 482, 145]], [2], tid=[2]), now=t + 11)
+    assert len(ev_b) == 1 and ev_b[0]["class_name"] == "mobil"
+    zc.update(_dets([[390, 200, 510, 330]], [7], conf=[0.9], tid=[2]), now=t + 12)   # 120x130=15600
+    ev_b2 = zc.update(_dets([[385, 240, 515, 380]], [7], conf=[0.9], tid=[2]), now=t + 13)  # 130x140=18200
+    assert len(ev_b2) == 1 and ev_b2[0]["reattributed_from"] == "mobil"
+    assert zc.total == 2 and zc.total_by_class["truk/bus"] == 2
+    assert zc.total_by_class.get("mobil", 0) == 0
+
+
+def test_approaching_car_suv_single_frame_truck_glitch_stays_mobil():
+    """Approaching car/SUV with single-frame truk/bus glitches (or wide
+    horizontal car crop) stays locked as mobil."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [600, 0], [600, 600], [0, 600]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"},
+                     truck_min_area=12000.0)
+    t = time.monotonic()
+
+    zc.update(_dets([[200, 160, 310, 270]], [2], tid=[1]), now=t)
+    ev = zc.update(_dets([[200, 200, 320, 320]], [2], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and ev[0]["class_name"] == "mobil"
+
+    # Single-frame truck glitch near bottom (even large & flagged), then back to car
+    glitch = _dets([[180, 310, 340, 470]], [7], conf=[0.95], tid=[1])
+    glitch.data["perspective_truck"] = np.array([True], dtype=bool)
+    assert not zc.update(glitch, now=t + 2)
+    assert not zc.update(_dets([[180, 340, 340, 500]], [2], conf=[0.9], tid=[1]), now=t + 3)
+    # Another isolated single-frame glitch stays blocked
+    glitch2 = _dets([[175, 370, 345, 540]], [7], conf=[0.95], tid=[1])
+    glitch2.data["perspective_truck"] = np.array([True], dtype=bool)
+    assert not zc.update(glitch2, now=t + 4)
+
+    # Wide horizontal car crop (w/h = 280/100 = 2.8 > 2.0) across multiple frames stays mobil
+    zc.update(_dets([[100, 200, 220, 280]], [2], tid=[2]), now=t + 10)
+    zc.update(_dets([[110, 220, 230, 300]], [2], tid=[2]), now=t + 11)
+    for k in range(4):
+        zc.update(_dets([[100, 250 + k * 20, 380, 350 + k * 20]], [7], conf=[0.95], tid=[2]),
+                  now=t + 12 + k)
+
+    assert zc.total == 2
+    assert zc.total_by_class["mobil"] == 2
+    assert zc.total_by_class.get("truk/bus", 0) == 0
+
+
+def test_live_zone_polygon_update_hook_and_hot_reload_preserve_counts(monkeypatch, tmp_path):
+    """Web UI update_zone hook and ConfigHotReloader polygon edits update
+    ZoneCounter, Renderer, and Detector Y-bounds in-place without resetting counts."""
+    from fastapi.testclient import TestClient
+
+    import main as main_mod
+    from src.api import server as srv
+    from src.core.detector import Detector
+    from src.ui.renderer import Renderer
+
+    settings_file = tmp_path / "settings.yaml"
+    nodes_file = tmp_path / "nodes.yaml"
+    settings_file.write_text(
+        "detector:\n  conf: 0.2\n  car_min_area: 3000\n  truck_min_area: 12000\n"
+        "counter:\n  min_displacement_px: 12\n",
+        encoding="utf-8",
+    )
+    nodes_file.write_text(
+        "nodes:\n"
+        "- id: node_live_zone\n"
+        "  nama: Test Node\n"
+        "  lat: -7.42\n"
+        "  lng: 109.22\n"
+        "  zones:\n"
+        "  - name: zone\n"
+        "    polygon:\n"
+        "    - [100, 200]\n"
+        "    - [500, 200]\n"
+        "    - [500, 500]\n"
+        "    - [100, 500]\n",
+        encoding="utf-8",
+    )
+
+    class _FakeModel:
+        def half(self):
+            pass
+
+    class _FakeRTDETR:
+        def __init__(self, path):
+            self.model = _FakeModel()
+
+    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+    monkeypatch.setattr("ultralytics.RTDETR", _FakeRTDETR)
+
+    zone = sv.PolygonZone(polygon=np.array([[100, 200], [500, 200], [500, 500], [100, 500]], dtype=np.float32))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"}, min_displacement_px=12)
+    renderer = Renderer([zone], counter=zc)
+    det = Detector(device="cpu", model_size="rtdetr-l", polygons=[zone])
+    det_over = {"polygons": [zone]}
+
+    # Count 1 vehicle and keep an active track outside zone before live polygon edit
+    t = time.monotonic()
+    zc.update(_dets([[280, 220, 320, 260]], [2], tid=[1]), now=t)
+    ev = zc.update(_dets([[280, 260, 320, 300]], [2], tid=[1]), now=t + 1)
+    assert len(ev) == 1 and zc.total == 1 and zc.total_by_class["mobil"] == 1
+    zc.update(_dets([[280, 40, 320, 80]], [2], tid=[2]), now=t + 2)  # active track above zone
+
+    reloader = main_mod.ConfigHotReloader(
+        settings_path=settings_file,
+        nodes_path=nodes_file,
+        det=det,
+        check_interval_sec=2.0,
+    )
+    reloader.register_node("node_live_zone", zc, renderer, det_over)
+    srv.set_node_frame_size("node_live_zone", 1000, 800)
+    srv.register_zone_update_hook(reloader.apply_node_zones, nodes_path=nodes_file)
+
+    try:
+        client = TestClient(srv.app)
+        # Web UI saves normalized polygon covering y=[120, 680] on 1000x800 frame
+        res = client.post(
+            "/api/v1/control/node_live_zone/update_zone",
+            json={"points": [[0.2, 0.15], [0.8, 0.15], [0.8, 0.85], [0.2, 0.85]]},
+        )
+        assert res.status_code == 200 and res.json()["applied"] is True
+
+        # Counts and active tracks preserved; ZoneCounter, Renderer, and Detector updated immediately
+        assert zc.total == 1 and zc.total_by_class["mobil"] == 1
+        assert 2 in zc._start
+        assert zc.zones[0].polygon.tolist() == [[200.0, 120.0], [800.0, 120.0],
+                                                [800.0, 680.0], [200.0, 680.0]]
+        assert renderer.zones[0].polygon.tolist() == zc.zones[0].polygon.tolist()
+        assert renderer.zone_anns[0].zone is zc.zones[0]
+        assert det.y_ref_far == 120.0 and det.y_ref_near == 680.0
+        assert det_over["polygons"][0] is zc.zones[0]
+
+        # Renderer draws onto frame without error with updated polygon
+        frame = np.zeros((800, 1000, 3), dtype=np.uint8)
+        renderer.draw(frame, None, dict(zc.total_by_class))
+        assert frame.sum() > 0
+
+        # Manual nodes.yaml edit triggers ConfigHotReloader to apply new polygon within 2s
+        nodes_file.write_text(
+            "nodes:\n"
+            "- id: node_live_zone\n"
+            "  nama: Test Node\n"
+            "  lat: -7.42\n"
+            "  lng: 109.22\n"
+            "  zones:\n"
+            "  - name: zone\n"
+            "    polygon:\n"
+            "    - [150, 240]\n"
+            "    - [850, 240]\n"
+            "    - [850, 720]\n"
+            "    - [150, 720]\n",
+            encoding="utf-8",
+        )
+        future = os.path.getmtime(nodes_file) + 5.0
+        os.utime(nodes_file, (future, future))
+
+        assert reloader.check_and_reload(now=100.0) is True
+        assert zc.total == 1 and zc.total_by_class["mobil"] == 1
+        assert zc.zones[0].polygon.tolist() == [[150.0, 240.0], [850.0, 240.0],
+                                                [850.0, 720.0], [150.0, 720.0]]
+        assert renderer.zone_anns[0].zone is zc.zones[0]
+        assert det.y_ref_far == 240.0 and det.y_ref_near == 720.0
+    finally:
+        srv.register_zone_update_hook(None)
+        srv.clear_commands("node_live_zone")
+        with srv._lock:
+            srv._node_frame_sizes.pop("node_live_zone", None)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

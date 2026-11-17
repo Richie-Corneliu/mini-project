@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from typing import Dict, List, Optional, Tuple
 
 import cv2
@@ -71,20 +72,36 @@ class Renderer:
         self.car_min_area = car_min_area
         self.truck_min_area = truck_min_area
         self.show_diagnostics = resolve_diagnostics(show_diagnostics)
-        self.zones = zones
+        self._zone_lock = threading.Lock()
+        self.zones = list(zones)
         self.zone_anns = [sv.PolygonZoneAnnotator(
             zone=z, color=sv.Color(135, 206, 250), thickness=2,
             text_color=sv.Color.WHITE, text_scale=0.5, text_thickness=1,
             display_in_zone_count=False,
-        ) for z in zones]
+        ) for z in self.zones]
+
+    def update_zones(self, zones: List[sv.PolygonZone]) -> None:
+        """Replace displayed polygon zones atomically across AI/display threads."""
+        new_zones = list(zones)
+        new_anns = [sv.PolygonZoneAnnotator(
+            zone=z, color=sv.Color(135, 206, 250), thickness=2,
+            text_color=sv.Color.WHITE, text_scale=0.5, text_thickness=1,
+            display_in_zone_count=False,
+        ) for z in new_zones]
+        with self._zone_lock:
+            self.zones = new_zones
+            self.zone_anns = new_anns
 
     def draw(self, frame: np.ndarray,
              snap: Optional[Tuple], counts: Dict[str, int],
              trails: Optional[dict] = None) -> None:
         """Mutates frame in place."""
-        for ann in self.zone_anns:
+        with self._zone_lock:
+            zone_anns = list(self.zone_anns)
+            zones = list(self.zones)
+        for ann in zone_anns:
             ann.annotate(scene=frame)
-        for zone in self.zones:
+        for zone in zones:
             pts = np.asarray(zone.polygon, dtype=np.int32)
             for p in pts:
                 cv2.circle(frame, tuple(p), 6, (255, 255, 255), 2)

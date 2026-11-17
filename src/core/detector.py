@@ -19,10 +19,10 @@ CLASS_PRIORITY = {2: 2, 5: 2, 7: 2, 3: 1}
 CAR_CLS = 2
 MOTOR_CLS = 3
 TRUCK_CLS = (5, 7)
-DEFAULT_TRUCK_MIN_AREA = 15000
+DEFAULT_TRUCK_MIN_AREA = 12000
 DEFAULT_CAR_MIN_AREA = 3000
-DEFAULT_SCALE_FAR = 0.65
-DEFAULT_SCALE_NEAR = 1.85
+DEFAULT_SCALE_FAR = 0.42
+DEFAULT_SCALE_NEAR = 1.95
 MIN_PERSPECTIVE_SPAN_PX = 40.0
 
 
@@ -343,7 +343,10 @@ class Detector:
             )
             for y2 in dets.xyxy[:, 3]
         ], dtype=float)
-        return apply_size_heuristics(dets, base_truck * scales, base_car * scales)
+        out = apply_size_heuristics(dets, base_truck * scales, base_car * scales)
+        if out.class_id is not None and len(out):
+            out.data["perspective_truck"] = np.isin(out.class_id, TRUCK_CLS)
+        return out
 
     def detect(self, frame: np.ndarray,
                truck_min_area: Optional[float] = None,

@@ -332,3 +332,97 @@ def test_parse_args_defaults_and_overrides():
                     "--scenario", "S", "--output-dir", "out"])
     assert (b.api_url, b.node, b.scenario, b.output_dir) == \
         ("http://x:1", "n1", "S", "out")
+
+
+def test_node_02_exact_payload_parsing_and_nodes_fallback(monkeypatch):
+    """Exact /api/v1/traffic-data parsing for node_02 across motor/mobil/truk
+    and slash aliases (truk/bus, bis/truk), plus /api/v1/nodes fallback and badge."""
+    assert mc.POLL_SEC == pytest.approx(0.2)
+
+    s, _ = make_session(node_id="node_02")
+    assert s.apply_payload({
+        "nodes": {
+            "node_01": {"nama": "Simpang Omnia", "motor": 5, "mobil": 2, "truk": 1},
+            "node_02": {"nama": "Underpass", "motor": 1200, "mobil": 500, "truk": 137},
+        }
+    })
+    assert s.node_id == "node_02"
+    assert s.node_name == "Underpass"
+    assert s.ai_latest == {"motor": 1200, "mobil": 500, "truk_bus": 137}
+    assert s.api_badge_text() == "API: ONLINE | NODE: 1837"
+
+    # Also supports explicit truk/bus or bis/truk keys
+    s2, _ = make_session(node_id="node_02")
+    assert s2.apply_payload({
+        "nodes": {"node_02": {"nama": "Underpass", "motor": 10, "mobil": 4, "truk/bus": 3}}
+    })
+    assert s2.ai_latest == {"motor": 10, "mobil": 4, "truk_bus": 3}
+
+    s3, _ = make_session(node_id="node_02")
+    assert s3.apply_payload({
+        "nodes": {"node_02": {"nama": "Underpass", "motor": 11, "mobil": 5, "bis/truk": 2}}
+    })
+    assert s3.ai_latest == {"motor": 11, "mobil": 5, "truk_bus": 2}
+
+    # /api/v1/nodes fallback when /traffic-data returns empty nodes
+    monkeypatch.setattr(mc, "fetch_traffic_data", lambda *a, **k: {"nodes": {}})
+    monkeypatch.setattr(mc, "fetch_nodes_registry", lambda *a, **k: {
+        "nodes": {"node_02": {"nama": "Underpass", "motor": 0, "mobil": 0, "truk": 0}}
+    })
+    s4, _ = make_session(node_id="node_02")
+    assert s4.poll_once() is True
+    assert s4.node_id == "node_02" and s4.node_name == "Underpass"
+    assert s4.api_connected is True
+
+
+def test_space_and_reset_lock_immediate_backend_baseline(monkeypatch, tmp_path):
+    """Pressing SPACE performs an immediate synchronous GET fetch (<=0.3s timeout)
+    and locks ai_baseline to that exact snapshot without mutating backend state."""
+    backend_state = {
+        "nodes": {
+            "node_02": {"nama": "Underpass", "motor": 1000, "mobil": 600, "truk": 237}
+        }
+    }
+    calls = []
+
+    def fake_fetch(api_url, timeout=mc.HTTP_TIMEOUT):
+        calls.append((api_url, timeout))
+        return {
+            "nodes": {
+                k: dict(v) for k, v in backend_state["nodes"].items()
+            }
+        }
+
+    monkeypatch.setattr(mc, "fetch_traffic_data", fake_fetch)
+
+    s, _ = make_session(api_url="http://127.0.0.1:8000", node_id="node_02")
+    # Cached poll had older numbers before backend incremented
+    s.apply_payload({
+        "nodes": {"node_02": {"nama": "Underpass", "motor": 995, "mobil": 598, "truk": 236}}
+    })
+    assert s.ai_latest == {"motor": 995, "mobil": 598, "truk_bus": 236}
+
+    # Pressing SPACE triggers immediate synchronous fetch with 0.3s timeout
+    assert handle_key(s, 32, tmp_path) is True
+    assert len(calls) == 1 and calls[0][1] == pytest.approx(0.3)
+    assert s.state == "RUNNING"
+    assert s.ai_baseline == {"motor": 1000, "mobil": 600, "truk_bus": 237}
+    assert s.ai_delta() == {"motor": 0, "mobil": 0, "truk_bus": 0}
+    assert s.api_badge_text() == "API: ONLINE | NODE: 1837"
+    # Backend state untouched (GET-only)
+    assert backend_state["nodes"]["node_02"] == {
+        "nama": "Underpass", "motor": 1000, "mobil": 600, "truk": 237
+    }
+
+    # Subsequent backend increments show up cleanly as AI delta from 0
+    backend_state["nodes"]["node_02"]["motor"] += 3
+    backend_state["nodes"]["node_02"]["mobil"] += 2
+    backend_state["nodes"]["node_02"]["truk"] += 1
+    assert s.poll_once() is True
+    assert s.ai_delta() == {"motor": 3, "mobil": 2, "truk_bus": 1}
+
+    # Pressing 'r' resets local session and syncs fresh latest snapshot
+    assert handle_key(s, ord("r"), tmp_path) is True
+    assert s.state == "IDLE"
+    assert s.ai_baseline is None and s.ai_delta() == mc.zeros()
+    assert s.ai_latest == {"motor": 1003, "mobil": 602, "truk_bus": 238}

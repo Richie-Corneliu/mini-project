@@ -17,6 +17,7 @@ its target rate."""
 from __future__ import annotations
 
 import argparse
+import os
 import signal
 import sys
 import threading
@@ -31,7 +32,9 @@ import yaml
 
 from src.api.server import (app, clear_commands, get_active_focus,
                              mark_node_reconnecting, pop_command,
-                             seed_node_data, set_latest_frame, update_node_data)
+                             register_zone_update_hook, seed_node_data,
+                             set_latest_frame, set_node_frame_size,
+                             update_node_data)
 from src.core.detector import Detector, centroids
 from src.core.zone_counter import ZoneCounter
 from src.stream.video_streamer import VideoStreamer
@@ -84,19 +87,20 @@ def _seed_api_from_stats(stats):
 
 def _build_detector(cfg, polygons=None):
     dc = cfg["detector"]
-    return Detector(conf=dc.get("conf", 0.20), classes=dc.get("classes"),
+    return Detector(conf=dc.get("conf_threshold", dc.get("conf", 0.20)),
+                    classes=dc.get("classes"),
                     model_size=dc.get("model", "rtdetr-l"),
                     min_area=dc.get("min_area", 0), imgsz=dc.get("imgsz", 640),
                     device=dc.get("device", "cuda:0"), half=dc.get("half", None),
                     duplicate_iou=dc.get("duplicate_iou", 0.65),
-                    truck_min_area=dc.get("truck_min_area", 10500),
+                    truck_min_area=dc.get("truck_min_area", 12000),
                     car_min_area=dc.get("car_min_area", 3000),
                     perspective_scaling=dc.get("perspective_scaling", True),
                     y_ref_far=dc.get("y_ref_far"),
                     y_ref_mid=dc.get("y_ref_mid"),
                     y_ref_near=dc.get("y_ref_near"),
-                    scale_far=dc.get("scale_far", 0.65),
-                    scale_near=dc.get("scale_near", 1.25),
+                    scale_far=dc.get("scale_far", 0.42),
+                    scale_near=dc.get("scale_near", 1.95),
                     polygons=polygons)
 
 
@@ -118,7 +122,7 @@ def _build_pipeline(cfg, zones, source, debug):
                           tracker_config=dc.get("tracker_config"),
                           dedup_cooldown_sec=counter_cfg.get("dedup_cooldown_sec", 4.0),
                           dedup_radius_px=counter_cfg.get("dedup_radius_px", 10),
-                          min_displacement_px=counter_cfg.get("min_displacement_px", 30),
+                          min_displacement_px=counter_cfg.get("min_displacement_px", 12),
                           class_window=counter_cfg.get("class_window", 15),
                           motor_lock_frames=counter_cfg.get("motor_lock_frames", 3),
                           motor_flip_frames=counter_cfg.get("motor_flip_frames", 4),
@@ -128,18 +132,291 @@ def _build_pipeline(cfg, zones, source, debug):
                           cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
                           still_count_frames=counter_cfg.get("still_count_frames", 30),
                           still_min_conf=counter_cfg.get("still_min_conf", 0.35),
-                          ghost_ttl_frames=counter_cfg.get("ghost_ttl_frames", 10),
-                          ghost_radius_px=counter_cfg.get("ghost_radius_px", 70),
+                          ghost_ttl_frames=counter_cfg.get("ghost_ttl_frames", 6),
+                          ghost_radius_px=counter_cfg.get("ghost_radius_px", 35),
                           max_stale_frames=counter_cfg.get("max_stale_frames", 300),
                           allowed_directions=counter_cfg.get("allowed_directions"),
                           flow_max_angle_deg=counter_cfg.get("flow_max_angle_deg", 75.0),
+                          truck_min_area=counter_cfg.get("truck_min_area", dc.get("truck_min_area", 12000)),
                           debug=debug)
     renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug,
                         show_diagnostics=cfg.get("ui", {}).get("show_diagnostics"),
                         counter=counter,
                         car_min_area=dc.get("car_min_area"),
-                        truck_min_area=dc.get("truck_min_area"))
+                        truck_min_area=counter_cfg.get("truck_min_area", dc.get("truck_min_area")))
     return streamer, counter, renderer
+
+
+def _polygon_signature(zones_cfg):
+    """Canonical tuple of polygon vertices across zones for change detection."""
+    sig = []
+    for z in zones_cfg or []:
+        if hasattr(z, "polygon"):
+            pts = np.asarray(z.polygon, dtype=float).reshape(-1, 2).tolist()
+        elif isinstance(z, dict):
+            pts = [[float(p[0]), float(p[1])] for p in (z.get("polygon") or [])]
+        else:
+            pts = [[float(p[0]), float(p[1])] for p in z]
+        sig.append(tuple((round(x, 3), round(y, 3)) for x, y in pts))
+    return tuple(sig)
+
+
+_ACTIVE_RELOADER_LOCK = threading.Lock()
+_ACTIVE_RELOADER: ConfigHotReloader | None = None
+
+
+def apply_node_zones(node_id: str, zones,
+                     frame_width: int | None = None,
+                     frame_height: int | None = None) -> bool:
+    """Thread-safe callback to update a live node's ZoneCounter, Renderer, and Detector polygons."""
+    with _ACTIVE_RELOADER_LOCK:
+        reloader = _ACTIVE_RELOADER
+    if reloader is None:
+        return False
+    return reloader.apply_node_zones(
+        node_id, zones, frame_width=frame_width, frame_height=frame_height
+    )
+
+
+class ConfigHotReloader:
+    """Poll settings.yaml and nodes.yaml mtimes and reload thresholds live."""
+
+    def __init__(self, settings_path="config/settings.yaml",
+                 nodes_path="config/nodes.yaml",
+                 det=None, gpu_lock=None,
+                 check_interval_sec: float = 2.0):
+        self.settings_path = Path(settings_path) if settings_path else None
+        self.nodes_path = Path(nodes_path) if nodes_path else None
+        self.det = det
+        self.gpu_lock = gpu_lock
+        self.check_interval_sec = max(0.0, float(check_interval_sec))
+        self._lock = threading.Lock()
+        self._last_check = -self.check_interval_sec
+        self._mtimes = self._read_mtimes()
+        self._version = 0
+        self._latest_settings = None
+        self._latest_nodes = {}
+        self._nodes = {}
+        self._last_node_polygons = {}
+
+    def register_node(self, node_id, counter, renderer=None, det_overrides=None):
+        with self._lock:
+            key = str(node_id)
+            self._nodes[key] = [counter, renderer, det_overrides, self._version]
+            self._last_node_polygons[key] = _polygon_signature(
+                counter.zones if counter is not None else []
+            )
+
+    def apply_node_zones(self, node_id: str, zones,
+                         frame_width: int | None = None,
+                         frame_height: int | None = None) -> bool:
+        """Update ZoneCounter, Renderer, and Detector polygons in-place for node_id."""
+        key = str(node_id)
+        with self._lock:
+            entry = self._nodes.get(key)
+            if entry is None:
+                return False
+            counter, renderer, det_overrides, _ = entry
+
+        if counter is None:
+            return False
+
+        if (zones and isinstance(zones[0], (list, tuple, np.ndarray))
+                and not isinstance(zones[0], dict)
+                and np.asarray(zones[0], dtype=float).ndim == 1):
+            fw = int(frame_width or 1)
+            fh = int(frame_height or 1)
+            counter.update_polygon(zones, fw, fh, zone_index=0)
+        else:
+            zone_list = list(zones or [])
+            if not zone_list:
+                return False
+            if len(zone_list) == len(counter.zones) == 1:
+                z0 = zone_list[0]
+                pts0 = z0.polygon if hasattr(z0, "polygon") else z0["polygon"]
+                fw = int(frame_width or 1)
+                fh = int(frame_height or 1)
+                counter.update_polygon(pts0, fw, fh, zone_index=0)
+                if isinstance(z0, dict):
+                    if "allowed_directions" in z0:
+                        counter.zones[0].allowed_directions = z0["allowed_directions"]
+                    if "flow_max_angle_deg" in z0:
+                        counter.zones[0].flow_max_angle_deg = z0["flow_max_angle_deg"]
+            else:
+                counter.set_zones(zone_list)
+
+        if renderer is not None:
+            renderer.update_zones(counter.zones)
+
+        def _update_det():
+            if det_overrides is not None:
+                det_overrides["polygons"] = list(counter.zones)
+            if self.det is not None:
+                self.det.configure_perspective_from_polygons(counter.zones)
+
+        if self.gpu_lock is not None:
+            with self.gpu_lock:
+                _update_det()
+        else:
+            _update_det()
+
+        with self._lock:
+            self._last_node_polygons[key] = _polygon_signature(counter.zones)
+        log.info("Applied live zone polygon update for node %s", key)
+        return True
+
+    @staticmethod
+    def _safe_mtime(path: Path | None):
+        if path is None:
+            return None
+        try:
+            return os.path.getmtime(path)
+        except OSError:
+            return None
+
+    def _read_mtimes(self):
+        return (self._safe_mtime(self.settings_path),
+                self._safe_mtime(self.nodes_path))
+
+    @staticmethod
+    def _safe_load_yaml(path: Path | None):
+        if path is None or not path.exists():
+            return None
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = yaml.safe_load(f)
+            return data if isinstance(data, dict) else {}
+        except Exception as e:
+            log.warning("hot-reload failed reading %s (%s)", path, e)
+            return None
+
+    def _apply_detector(self, dc: dict) -> None:
+        if self.det is None:
+            return
+
+        def _do():
+            if "car_min_area" in dc:
+                self.det.car_min_area = float(dc["car_min_area"])
+            if "truck_min_area" in dc:
+                self.det.truck_min_area = float(dc["truck_min_area"])
+            if "scale_far" in dc:
+                self.det.scale_far = float(dc["scale_far"])
+            if "scale_near" in dc:
+                self.det.scale_near = float(dc["scale_near"])
+            if "perspective_scaling" in dc:
+                self.det.perspective_scaling = bool(dc["perspective_scaling"])
+            conf_val = dc.get("conf_threshold", dc.get("conf"))
+            if conf_val is not None:
+                self.det.conf = float(conf_val)
+
+        if self.gpu_lock is not None:
+            with self.gpu_lock:
+                _do()
+        else:
+            _do()
+
+    @staticmethod
+    def _apply_node_cfg(node_id, counter, renderer, det_overrides,
+                        settings_cfg, nodes_map) -> None:
+        dc = settings_cfg.get("detector", {}) if settings_cfg else {}
+        cc = settings_cfg.get("counter", {}) if settings_cfg else {}
+        node_cfg = nodes_map.get(str(node_id), {})
+
+        if det_overrides is not None:
+            for key in ("car_min_area", "truck_min_area", "scale_far", "scale_near",
+                        "perspective_scaling", "y_ref_far", "y_ref_mid", "y_ref_near"):
+                if key in node_cfg and node_cfg[key] is not None:
+                    det_overrides[key] = (
+                        bool(node_cfg[key]) if key == "perspective_scaling"
+                        else float(node_cfg[key])
+                    )
+                else:
+                    det_overrides.pop(key, None)
+
+        merged_cc = {**cc}
+        for key in ("min_displacement_px", "allowed_directions", "flow_max_angle_deg",
+                    "ghost_ttl_frames", "ghost_radius_px"):
+            if key in node_cfg:
+                merged_cc[key] = node_cfg[key]
+
+        effective_truck = node_cfg.get("truck_min_area", dc.get("truck_min_area"))
+        effective_car = node_cfg.get("car_min_area", dc.get("car_min_area"))
+
+        if counter is not None:
+            try:
+                counter.update_thresholds(
+                    min_displacement_px=merged_cc.get("min_displacement_px"),
+                    allowed_directions=merged_cc.get("allowed_directions"),
+                    flow_max_angle_deg=merged_cc.get("flow_max_angle_deg"),
+                    ghost_ttl_frames=merged_cc.get("ghost_ttl_frames"),
+                    ghost_radius_px=merged_cc.get("ghost_radius_px"),
+                    truck_min_area=effective_truck,
+                )
+            except ValueError as e:
+                log.warning("hot-reload rejected counter config for %s (%s)", node_id, e)
+
+        if renderer is not None:
+            if effective_car is not None:
+                renderer.car_min_area = float(effective_car)
+            if effective_truck is not None:
+                renderer.truck_min_area = float(effective_truck)
+
+    def check_and_reload(self, now: float | None = None,
+                         target_node_id: str | None = None,
+                         apply_all: bool | None = None) -> bool:
+        if apply_all is None:
+            apply_all = (target_node_id is None)
+        current = time.monotonic() if now is None else float(now)
+        reloaded_file = False
+        with self._lock:
+            if current - self._last_check >= self.check_interval_sec:
+                self._last_check = current
+                mtimes = self._read_mtimes()
+                if mtimes != self._mtimes:
+                    settings_cfg = self._safe_load_yaml(self.settings_path)
+                    nodes_raw = self._safe_load_yaml(self.nodes_path)
+                    if settings_cfg is not None or nodes_raw is not None:
+                        if settings_cfg is not None:
+                            self._latest_settings = settings_cfg
+                            self._apply_detector(settings_cfg.get("detector", {}))
+                        if nodes_raw is not None:
+                            entries = nodes_raw.get("nodes") or []
+                            self._latest_nodes = {
+                                str(n["id"]): n for n in entries
+                                if isinstance(n, dict) and "id" in n
+                            }
+                        self._mtimes = mtimes
+                        self._version += 1
+                        reloaded_file = True
+                        log.info("Hot-reloaded config thresholds (v%d)", self._version)
+
+            version = self._version
+            settings_cfg = self._latest_settings
+            nodes_map = self._latest_nodes
+            targets = []
+            if apply_all:
+                for nid, entry in self._nodes.items():
+                    if entry[3] < version:
+                        entry[3] = version
+                        targets.append((nid, entry[0], entry[1], entry[2]))
+            else:
+                key = str(target_node_id)
+                if key in self._nodes:
+                    entry = self._nodes[key]
+                    if entry[3] < version:
+                        entry[3] = version
+                        targets.append((key, entry[0], entry[1], entry[2]))
+
+        for nid, counter, renderer, det_over in targets:
+            self._apply_node_cfg(nid, counter, renderer, det_over, settings_cfg, nodes_map)
+            node_cfg = nodes_map.get(str(nid), {})
+            zones_cfg = node_cfg.get("zones")
+            if zones_cfg:
+                with self._lock:
+                    prev_sig = self._last_node_polygons.get(str(nid))
+                if _polygon_signature(zones_cfg) != prev_sig:
+                    self.apply_node_zones(str(nid), zones_cfg)
+        return reloaded_file or bool(targets)
 
 
 class FrameBus:
@@ -258,7 +535,8 @@ class StageProfiler:
 def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                stop_event, prof, reset_flag, t_start, audit=None, debug=False,
                publish_api=False, force_focus=False, record_dir=None,
-               record_desired=False, det_overrides=None, stats=None):
+               record_desired=False, det_overrides=None, stats=None,
+               hot_reloader=None):
     """Inference loop: consumes every raw frame the display thread delivers
     (acquire rate, no idle throttling — ByteTrack needs temporal density for
     accurate background counting), runs the model, and stores the overlay.
@@ -300,12 +578,16 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
             log.info("Midnight rollover completed for %s -> %s",
                      roll["from"], roll["to"])
 
+        if hot_reloader is not None:
+            hot_reloader.check_and_reload(target_node_id=node_id)
+
         if raw is None:
             # No frame reached the AI loop (stalled HLS/RTSP / reconnecting):
             # surface it so the dashboard can show RECONNECTING immediately.
             mark_node_reconnecting(node_id)
             continue
         frame, arrival, wall = raw
+        set_node_frame_size(node_id, frame.shape[1], frame.shape[0])
         focused = force_focus or get_active_focus() == node_id
 
         command = pop_command(node_id)
@@ -314,20 +596,30 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
         # land on the right pixels whatever the stream resolution is; on
         # failure the zone config from settings.yaml stays active.
         if isinstance(command, dict) and command.get("action") == "update_zone":
-            try:
-                frame_h, frame_w = frame.shape[:2]
-                pixel_pts = [[int(x * frame_w), int(y * frame_h)]
-                             for x, y in command["points"]]
-                counter.update_polygon(command["points"], frame_w, frame_h)
-                if det_overrides is not None:
-                    det_overrides["polygons"] = counter.zones
-                else:
-                    det.configure_perspective_from_polygons(counter.zones)
-                persist_zone(node_id, pixel_pts)
-                log.info("Node %s zone updated + saved: %d pts on frame %dx%d",
-                         node_id, len(command["points"]), frame_w, frame_h)
-            except (KeyError, TypeError, ValueError) as e:
-                log.warning("Node %s rejected update_zone (%s)", node_id, e)
+            if not command.get("applied"):
+                try:
+                    frame_h, frame_w = frame.shape[:2]
+                    pixel_pts = [[int(x * frame_w), int(y * frame_h)]
+                                 for x, y in command["points"]]
+                    if hot_reloader is not None:
+                        hot_reloader.apply_node_zones(
+                            node_id,
+                            command["points"],
+                            frame_width=frame_w,
+                            frame_height=frame_h,
+                        )
+                    else:
+                        counter.update_polygon(command["points"], frame_w, frame_h)
+                        if renderer is not None:
+                            renderer.update_zones(counter.zones)
+                        if det_overrides is not None:
+                            det_overrides["polygons"] = list(counter.zones)
+                        det.configure_perspective_from_polygons(counter.zones)
+                    persist_zone(node_id, pixel_pts)
+                    log.info("Node %s zone updated + saved: %d pts on frame %dx%d",
+                             node_id, len(command["points"]), frame_w, frame_h)
+                except (KeyError, TypeError, ValueError) as e:
+                    log.warning("Node %s rejected update_zone (%s)", node_id, e)
             command = None
         if command == "record":
             record_desired = not record_desired
@@ -539,6 +831,17 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     gpu_lock = threading.Lock()
+    reloader = ConfigHotReloader(
+        settings_path=config_path or "config/settings.yaml",
+        nodes_path="config/nodes.yaml",
+        det=det,
+        gpu_lock=gpu_lock,
+    )
+    reloader.register_node(node_id, counter, renderer)
+    global _ACTIVE_RELOADER
+    with _ACTIVE_RELOADER_LOCK:
+        _ACTIVE_RELOADER = reloader
+    register_zone_update_hook(apply_node_zones)
     bus = FrameBus()
     prof = StageProfiler("single:" + str(node_id))
     reset_flag = {"v": False}
@@ -573,6 +876,7 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
             log.info("Counts reset")
         elif k in (ord("s"), ord("S")) and editor.dirty and config_path:
             save_zones(config_path, zones, zone_cfgs)
+            reloader.apply_node_zones(node_id, zones)
             editor.dirty = False
             log.info("Zones saved")
 
@@ -582,7 +886,7 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
               stop, prof, reset_flag, t0, audit, debug, serve_api, True,
               None, bool(record)),
-        kwargs={"stats": stats},
+        kwargs={"stats": stats, "hot_reloader": reloader},
         daemon=True, name="ai")
     ai.start()
 
@@ -591,6 +895,10 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         _display_worker(node_id, streamer, bus, renderer, stop, prof, sink,
                         focused=lambda _nid: True, deadline=deadline)
     finally:
+        register_zone_update_hook(None)
+        with _ACTIVE_RELOADER_LOCK:
+            if _ACTIVE_RELOADER is reloader:
+                _ACTIVE_RELOADER = None
         stop.set()
         ai.join(timeout=5.0)
         streamer.stop()
@@ -608,7 +916,8 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     return 0
 
 
-def run_multi(cfg, nodes, duration=None, debug=False):
+def run_multi(cfg, nodes, duration=None, debug=False,
+              config_path="config/settings.yaml", nodes_path="config/nodes.yaml"):
     """Async pipeline per CCTV node, headless.
 
     Shared: a single Detector behind gpu_lock (one TensorRT engine in memory,
@@ -622,6 +931,16 @@ def run_multi(cfg, nodes, duration=None, debug=False):
 
     det = _build_detector(cfg, polygons=zone_cfgs)
     gpu_lock = threading.Lock()
+    reloader = ConfigHotReloader(
+        settings_path=config_path,
+        nodes_path=nodes_path,
+        det=det,
+        gpu_lock=gpu_lock,
+    )
+    global _ACTIVE_RELOADER
+    with _ACTIVE_RELOADER_LOCK:
+        _ACTIVE_RELOADER = reloader
+    register_zone_update_hook(apply_node_zones, nodes_path=nodes_path)
     stop = threading.Event()
     signal.signal(signal.SIGINT, lambda *_: stop.set())
     t_run = time.monotonic()
@@ -645,7 +964,8 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         # Per-node counter tuning (min_displacement_px, car lock, flow gate)
         # overrides settings.yaml; unknown node keys are ignored.
         counter_keys = set(cfg.get("counter", {})) | {
-            "max_stale_frames", "allowed_directions", "flow_max_angle_deg"
+            "max_stale_frames", "allowed_directions", "flow_max_angle_deg",
+            "truck_min_area",
         }
         counter_cfg = {**cfg.get("counter", {}),
                        **{k: n[k] for k in counter_keys if k in n}}
@@ -662,6 +982,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         }
         det.configure_perspective_from_polygons(zones)
         det_over["polygons"] = zones
+        reloader.register_node(node_id, counter, renderer, det_over)
         seed_counter(counter, stats.node(node_id))
         streamer.start()
         bus = FrameBus()
@@ -674,7 +995,7 @@ def run_multi(cfg, nodes, duration=None, debug=False):
             args=(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                   stop, prof, reset_flag, t0, None, debug, True, False,
                   "logs", False, det_over),
-            kwargs={"stats": stats},
+            kwargs={"stats": stats, "hot_reloader": reloader},
             daemon=True, name=f"ai-{node_id}")
         disp = threading.Thread(
             target=_display_worker,
@@ -704,6 +1025,10 @@ def run_multi(cfg, nodes, duration=None, debug=False):
         disp.join(timeout=5.0)
         streamer.stop()
         log.info("node %s done: counted=%d", node_id, counter.total)
+    register_zone_update_hook(None)
+    with _ACTIVE_RELOADER_LOCK:
+        if _ACTIVE_RELOADER is reloader:
+            _ACTIVE_RELOADER = None
     stats.save()   # final flush: the throttled writer may be behind
     return 0
 
@@ -762,7 +1087,8 @@ if __name__ == "__main__":
             reg = [n for n in reg if n["id"] in keep]
         if not reg:
             raise SystemExit("no nodes selected (check config/nodes.yaml / --nodes)")
-        sys.exit(run_multi(cfg, reg, duration=args.duration, debug=args.debug))
+        sys.exit(run_multi(cfg, reg, duration=args.duration, debug=args.debug,
+                           config_path=args.config))
     sys.exit(run(cfg, show=not args.no_display, config_path=args.config,
                  duration=args.duration, debug=args.debug, record=args.record,
                  serve_api=args.api))

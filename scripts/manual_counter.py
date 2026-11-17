@@ -57,8 +57,9 @@ GREEN = (110, 220, 140)
 AMBER = (60, 200, 250)
 RED = (90, 90, 240)
 
-POLL_SEC = 1.0
-HTTP_TIMEOUT = 1.5
+POLL_SEC = 0.2
+HTTP_TIMEOUT = 1.0
+SYNC_TIMEOUT = 0.3
 
 # Filled by render(); consumed by the mouse callback in main().
 UI_REGIONS: list = []
@@ -66,6 +67,27 @@ UI_REGIONS: list = []
 
 def zeros() -> dict:
     return {key: 0 for key in CANON}
+
+
+def _extract_node_counts(raw: dict) -> dict:
+    """Normalize backend node counts into canonical {motor, mobil, truk_bus} ints."""
+    if not isinstance(raw, dict):
+        return zeros()
+    norm = normalize_counts(raw)
+    truk_val = norm.get("truk_bus", 0)
+    if truk_val == 0:
+        for alias in ("truk/bus", "bis/truk", "truk", "truk_bus"):
+            if alias in raw and raw[alias] is not None:
+                try:
+                    truk_val = max(0, int(raw[alias]))
+                except (TypeError, ValueError):
+                    truk_val = 0
+                break
+    return {
+        "motor": max(0, int(norm.get("motor", 0) or 0)),
+        "mobil": max(0, int(norm.get("mobil", 0) or 0)),
+        "truk_bus": max(0, int(truk_val)),
+    }
 
 
 def fmt_mmss(seconds: float) -> str:
@@ -78,6 +100,28 @@ def fetch_traffic_data(api_url: str, timeout: float = HTTP_TIMEOUT) -> dict:
     url = api_url.rstrip("/") + "/api/v1/traffic-data"
     with urllib.request.urlopen(url, timeout=timeout) as resp:
         return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_nodes_registry(api_url: str, timeout: float = HTTP_TIMEOUT) -> dict:
+    """GET {api_url}/api/v1/nodes -> normalized {"nodes": {id: {...}}} fallback."""
+    url = api_url.rstrip("/") + "/api/v1/nodes"
+    with urllib.request.urlopen(url, timeout=timeout) as resp:
+        raw = json.loads(resp.read().decode("utf-8"))
+    nodes_list = (raw or {}).get("nodes")
+    if not isinstance(nodes_list, list):
+        return {"nodes": {}}
+    return {
+        "nodes": {
+            str(item["id"]): {
+                "nama": item.get("nama") or item["id"],
+                "motor": 0,
+                "mobil": 0,
+                "truk": 0,
+            }
+            for item in nodes_list
+            if isinstance(item, dict) and item.get("id")
+        }
+    }
 
 
 class BenchmarkSession:
@@ -115,6 +159,7 @@ class BenchmarkSession:
         self._stop = threading.Event()
         self._poller = None
         self._lock = threading.Lock()
+        self._http_enabled = False
 
     # ---- counts ---------------------------------------------------
 
@@ -134,7 +179,10 @@ class BenchmarkSession:
     def manual_total(self) -> int:
         return sum(self.counts.values())
 
-    def reset(self):
+    def reset(self, sync: bool | None = None):
+        do_sync = self._http_enabled if sync is None else bool(sync)
+        if do_sync:
+            self.sync_snapshot(timeout=SYNC_TIMEOUT)
         with self._lock:
             self.counts = {name: 0 for name in CLASS_NAMES}
             self.state = "IDLE"
@@ -146,7 +194,34 @@ class BenchmarkSession:
 
     # ---- session --------------------------------------------------
 
-    def start_session(self):
+    def sync_snapshot(self, timeout: float = SYNC_TIMEOUT) -> bool:
+        """Immediate synchronous backend fetch; falls back to cached ai_latest if offline."""
+        try:
+            payload = fetch_traffic_data(self.api_url, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                try:
+                    fallback = fetch_nodes_registry(self.api_url, timeout=timeout)
+                    return self.apply_payload(fallback)
+                except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+                    return False
+            return False
+        except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+            return False
+        if isinstance(payload, dict) and "nodes" in payload:
+            if self.apply_payload(payload):
+                return True
+            try:
+                fallback = fetch_nodes_registry(self.api_url, timeout=timeout)
+                return self.apply_payload(fallback)
+            except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+                return False
+        return False
+
+    def start_session(self, sync: bool | None = None):
+        do_sync = self._http_enabled if sync is None else bool(sync)
+        if do_sync:
+            self.sync_snapshot(timeout=SYNC_TIMEOUT)
         with self._lock:
             self.state = "RUNNING"
             self.started_at = self._clock()
@@ -165,11 +240,11 @@ class BenchmarkSession:
             self.ai_stop_snapshot = dict(self.ai_latest)
         self.set_toast("Benchmark stopped - press S to save")
 
-    def toggle_session(self):
+    def toggle_session(self, sync: bool | None = None):
         if self.state == "RUNNING":
             self.stop_session()
         else:
-            self.start_session()
+            self.start_session(sync=sync)
 
     def elapsed_seconds(self, now=None) -> float:
         if self.started_at is None:
@@ -181,8 +256,16 @@ class BenchmarkSession:
     # ---- nodes / API ----------------------------------------------
 
     def apply_payload(self, payload: dict) -> bool:
-        """Consume one /traffic-data response. Returns True on success."""
-        nodes = (payload or {}).get("nodes") or {}
+        """Consume one /traffic-data (or /nodes) response. Returns True on success."""
+        raw_nodes = (payload or {}).get("nodes")
+        if isinstance(raw_nodes, list):
+            nodes = {
+                str(item["id"]): item
+                for item in raw_nodes
+                if isinstance(item, dict) and item.get("id")
+            }
+        else:
+            nodes = raw_nodes or {}
         if not isinstance(nodes, dict) or not nodes:
             return False          # nothing to sync against
         with self._lock:
@@ -197,21 +280,42 @@ class BenchmarkSession:
             if self.node_id:
                 raw = nodes.get(self.node_id) or {}
                 self.node_name = raw.get("nama") or self.node_id
-                self.ai_latest = normalize_counts(raw)
+                self.ai_latest = _extract_node_counts(raw)
             self.api_connected = True
             self.api_error = ""
         return True
 
     def poll_once(self, timeout: float = HTTP_TIMEOUT) -> bool:
         """One blocking fetch; never raises, so the poller thread cannot die."""
+        self._http_enabled = True
         try:
             payload = fetch_traffic_data(self.api_url, timeout=timeout)
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                try:
+                    fallback = fetch_nodes_registry(self.api_url, timeout=timeout)
+                    if self.apply_payload(fallback):
+                        return True
+                except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+                    pass
+            with self._lock:
+                self.api_connected = False
+                self.api_error = str(getattr(e, "reason", e))[:80]
+            return False
         except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
             with self._lock:
                 self.api_connected = False
                 self.api_error = str(getattr(e, "reason", e))[:80]
             return False
-        return self.apply_payload(payload)
+        if isinstance(payload, dict) and "nodes" in payload:
+            if self.apply_payload(payload):
+                return True
+            try:
+                fallback = fetch_nodes_registry(self.api_url, timeout=timeout)
+                return self.apply_payload(fallback)
+            except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+                return False
+        return False
 
     def cycle_node(self) -> str:
         """Next discovered node; only meaningful while IDLE."""
@@ -224,7 +328,7 @@ class BenchmarkSession:
             self._requested_node = self.node_id
             raw = self._nodes.get(self.node_id) or {}
             self.node_name = raw.get("nama") or self.node_id
-            self.ai_latest = normalize_counts(raw)
+            self.ai_latest = _extract_node_counts(raw)
             self.ai_baseline = None
             self.ai_stop_snapshot = None
             node_id = self.node_id
@@ -234,6 +338,7 @@ class BenchmarkSession:
     def start_poller(self, interval: float = POLL_SEC):
         if self._poller is not None:
             return
+        self._http_enabled = True
         self._stop.clear()
 
         def loop():
@@ -345,6 +450,13 @@ class BenchmarkSession:
             return f"STOPPED {fmt_mmss(self.elapsed_seconds())}"
         return "IDLE - Press SPACE"
 
+    def api_badge_text(self) -> str:
+        if not self.api_connected:
+            return "API: OFFLINE (Standalone Mode)"
+        with self._lock:
+            node_total = sum(int(v) for v in self.ai_latest.values())
+        return f"API: ONLINE | NODE: {node_total}"
+
 
 # ---- Rendering (pure: returns the frame, opens no window) -------------
 
@@ -392,8 +504,7 @@ def render(session: BenchmarkSession, now=None) -> np.ndarray:
     node_w = _text_size(node_label, 0.45, 1)[0]
     UI_REGIONS.append(((16, 36, 16 + node_w + 8, 56), "cycle", None))
 
-    api_text = "API: ONLINE" if session.api_connected \
-        else "API: OFFLINE (Standalone Mode)"
+    api_text = session.api_badge_text()
     api_fg = GREEN if session.api_connected else AMBER
     status = session.status_label()
     status_fg = RED if session.state == "RUNNING" else \
@@ -487,9 +598,9 @@ def handle_key(session: BenchmarkSession, key: int, output_dir) -> bool:
     elif key in KEYMAP_DEC:
         session.decrement(KEYMAP_DEC[key])
     elif key in (ord("r"), ord("R")):
-        session.reset()
+        session.reset(sync=True)
     elif key == 32:
-        session.toggle_session()
+        session.toggle_session(sync=True)
     elif key in (ord("n"), ord("N"), 9):
         session.cycle_node()
     elif key in (ord("s"), ord("S")):
@@ -505,11 +616,11 @@ def handle_click(session: BenchmarkSession, x: int, y: int, output_dir):
             elif action == "dec":
                 session.decrement(payload)
             elif action == "toggle":
-                session.toggle_session()
+                session.toggle_session(sync=True)
             elif action == "save":
                 session.save_report(output_dir)
             elif action == "reset":
-                session.reset()
+                session.reset(sync=True)
             elif action == "cycle":
                 session.cycle_node()
             return action
@@ -528,7 +639,7 @@ def run(session: BenchmarkSession, output_dir, fps: int = 50) -> int:
             e == cv2.EVENT_LBUTTONDOWN and handle_click(s, x, y, output_dir)),
         session)
 
-    delay = max(1, int(1000 / fps))
+    delay = min(100, max(1, int(1000 / max(1, fps))))
     try:
         while True:
             cv2.imshow(win, render(session))

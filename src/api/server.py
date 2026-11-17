@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
 from src.utils.stats_store import today_wib
+from src.utils.zone_store import persist_zone
 import cv2
 
 # Credentials live in .env (gitignored), never in nodes.yaml. Loading here
@@ -48,6 +49,32 @@ _command_lock = threading.Lock()
 
 # Pending operator commands per node. Workers consume commands atomically.
 COMMAND_QUEUE = {}
+_node_frame_sizes = {}
+_zone_update_hook = None
+_zone_store_path = None
+app.state.zone_update_hook = None
+app.state.apply_node_zones = None
+
+
+def register_zone_update_hook(hook, nodes_path=None) -> None:
+    """Register live zone-update callback (apply_node_zones) on the API server."""
+    global _zone_update_hook, _zone_store_path
+    with _lock:
+        _zone_update_hook = hook
+        _zone_store_path = Path(nodes_path) if nodes_path else None
+        app.state.zone_update_hook = hook
+        app.state.apply_node_zones = hook
+
+
+def set_node_frame_size(node_id: str, width: int, height: int) -> None:
+    if width > 0 and height > 0:
+        with _lock:
+            _node_frame_sizes[node_id] = (int(width), int(height))
+
+
+def get_node_frame_size(node_id: str):
+    with _lock:
+        return _node_frame_sizes.get(node_id)
 
 
 def _expand_source(source):
@@ -151,6 +178,10 @@ def update_node_data(node_id: str, data: dict):
         st["last_seen"] = time.monotonic()
         # A frame just arrived: the stream is healthy again.
         st["reconnecting"] = False
+        fw = data.get("frame_width")
+        fh = data.get("frame_height")
+        if fw and fh:
+            _node_frame_sizes[node_id] = (int(fw), int(fh))
 
 
 # mark_node_reconnecting may be called every poll/frame while a stream stalls;
@@ -227,6 +258,8 @@ def clear_commands(node_id: str) -> None:
 
 def set_latest_frame(node_id: str, frame):
     """Dipanggil worker AI tiap frame untuk streaming MJPEG node tersebut."""
+    if frame is not None and hasattr(frame, "shape") and len(frame.shape) >= 2:
+        set_node_frame_size(node_id, int(frame.shape[1]), int(frame.shape[0]))
     ret, jpeg = cv2.imencode('.jpg', frame)
     if ret:
         with _lock:
@@ -286,7 +319,8 @@ def get_nodes():
     reg = _registry()
     return {"nodes": [
         {"id": nid, "nama": reg.get("nama", nid),
-         "lat": reg.get("lat"), "lng": reg.get("lng")}
+         "lat": reg.get("lat"), "lng": reg.get("lng"),
+         "zones": reg.get("zones", [])}
         for nid, reg in reg.items()
     ]}
 
@@ -323,8 +357,15 @@ def set_focus(node_id: str):
 @app.post("/api/v1/control/{node_id}/{action}")
 def control_node(node_id: str, action: str,
                  payload: Optional[dict] = Body(default=None)):
-    if node_id not in _registry() and node_id not in nodes_state:
+    with _lock:
+        hook = (_zone_update_hook
+                or getattr(app.state, "apply_node_zones", None)
+                or getattr(app.state, "zone_update_hook", None))
+        nodes_path = _zone_store_path
+    reg = {n["id"]: n for n in load_node_registry(nodes_path)} if nodes_path else _registry()
+    if node_id not in reg and node_id not in nodes_state:
         raise HTTPException(status_code=404, detail=f"unknown node {node_id}")
+    applied = False
     if action == "update_zone":
         # Trust boundary: payload comes from the browser, so every point is
         # re-checked as a 0.0-1.0 pair before it reaches the AI worker.
@@ -340,7 +381,23 @@ def control_node(node_id: str, action: str,
                 status_code=400,
                 detail="update_zone needs points: [[x, y], ...] with >=3 "
                        "pairs normalized to 0.0-1.0")
-        command = {"action": "update_zone", "points": clean}
+        fw = (payload or {}).get("frame_width")
+        fh = (payload or {}).get("frame_height")
+        if not (fw and fh):
+            fsize = get_node_frame_size(node_id)
+            if fsize is not None:
+                fw, fh = fsize
+        if hook is not None and fw and fh:
+            pixel_pts = [[int(x * float(fw)), int(y * float(fh))] for x, y in clean]
+            try:
+                persist_zone(node_id, pixel_pts, path=nodes_path)
+            except KeyError:
+                pass
+            hook(node_id, [{"name": "zone", "polygon": pixel_pts}])
+            applied = True
+            command = {"action": "update_zone", "points": clean, "applied": True}
+        else:
+            command = {"action": "update_zone", "points": clean}
     elif action in {"reset", "record"}:
         command = action
     else:
@@ -349,7 +406,7 @@ def control_node(node_id: str, action: str,
                                    "or update_zone")
     with _command_lock:
         COMMAND_QUEUE.setdefault(node_id, []).append(command)
-    return {"node_id": node_id, "action": action, "queued": True}
+    return {"node_id": node_id, "action": action, "queued": True, "applied": applied}
 
 
 def generate_video_stream(node_id: str):

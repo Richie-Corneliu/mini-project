@@ -29,11 +29,11 @@ detector:
   - 5
   - 7
   min_area: 20
-  truck_min_area: 15000
+  truck_min_area: 12000
   car_min_area: 3000
   perspective_scaling: true
-  scale_far: 0.65
-  scale_near: 1.85
+  scale_far: 0.42
+  scale_near: 1.95
   show_dims: true
   tracker_config:
     lost_track_buffer: 90
