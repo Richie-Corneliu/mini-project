@@ -4,7 +4,9 @@ nodes:
   lat: -7.419797
   lng: 109.229791
   source: rtsp://{user}:{pass}@10.26.110.128/h264/ch1/main/av_stream/
-  truck_min_area: 12000
+  truck_min_area: 14000
+  scale_far: 0.45
+  scale_near: 1.85
   zones:
   - name: zone
     polygon:
@@ -16,34 +18,39 @@ nodes:
       - 26
     - - 1274
       - 222
+
 - id: node_02
   nama: Underpass
   lat: -7.4238
   lng: 109.223655
   source: rtsp://{user}:{pass}@10.26.110.139/h264/ch1/main/av_stream
-  truck_min_area: 12000
-  scale_far: 0.25
-  scale_near: 2.5
+  truck_min_area: 14500
+  scale_far: 0.30
+  scale_near: 2.1
+  truck_min_height_ratio: 0.060
   allowed_directions:
   - up
   - down
   zones:
   - name: zone
     polygon:
-    - - 341
-      - 542
-    - - 442
-      - 303
-    - - 772
-      - 310
-    - - 848
-      - 464
+    - - 367
+      - 469
+    - - 468
+      - 241
+    - - 718
+      - 236
+    - - 868
+      - 440
+
 - id: node_03
   nama: Simpang Kebon Dalem Timur
   lat: -7.423112
   lng: 109.243761
   source: rtsp://{user}:{pass}@10.26.110.127/h264/ch1/main/av_stream
-  truck_min_area: 12000
+  truck_min_area: 16000
+  scale_far: 0.60
+  scale_near: 1.65
   zones:
   - name: zone
     polygon:
@@ -55,12 +62,16 @@ nodes:
       - 382
     - - 1057
       - 300
+
 - id: node_04
   nama: Simpang Sutosoman
   lat: -7.427808
   lng: 109.243676
   source: rtsp://{user}:{pass}@10.26.110.126/h264/ch1/main/av_stream
-  truck_min_area: 12000
+  truck_min_area: 19000
+  scale_far: 0.72
+  scale_near: 1.45
+  truck_min_height_ratio: 0.060
   zones:
   - name: zone
     polygon:

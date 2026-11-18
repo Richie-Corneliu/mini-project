@@ -1,7 +1,7 @@
 stream:
-  source: rtsp://admin:Marktel12345@10.26.110.126/h264/ch1/main/av_stream/
+  source: rtsp://{user}:{pass}@10.26.110.126/h264/ch1/main/av_stream/
   reconnect: true
-  max_retries: 5
+  max_retries: null
   backoff_sec: 2.0
   queue_size: 3
   gap_thresh_sec: 0.5
@@ -30,6 +30,7 @@ detector:
   - 7
   min_area: 20
   truck_min_area: 12000
+  truck_min_height_ratio: 0.070
   car_min_area: 3000
   perspective_scaling: true
   scale_far: 0.42
@@ -50,12 +51,14 @@ counter:
   motor_flip_frames: 4
   car_lock_frames: 3
   car_flip_frames: 6
+  truck_confirm_frames: 5
   cabin_iou: 0.6
   cabin_area_ratio: 0.55
   still_count_frames: 30
   still_min_conf: 0.35
-  ghost_ttl_frames: 6
+  ghost_ttl_frames: 12
   ghost_radius_px: 35
+  min_track_frames: 2
 ui:
   show_diagnostics: false   # or ATCS_DIAGNOSTICS=1 to flip on without editing config
 logging:
@@ -64,5 +67,5 @@ logging:
 persistence:
   stats_file: logs/daily_stats.json
   save_interval_sec: 5
-  min_persist_uptime_seconds: 1800
+  min_persist_uptime_seconds: 900
 

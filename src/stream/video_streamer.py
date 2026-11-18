@@ -1,6 +1,7 @@
 import logging
 import os
 import queue
+import re
 import threading
 import time
 
@@ -10,6 +11,14 @@ logger = logging.getLogger(__name__)
 
 # Standard Indonesian CCTV rate, used when FFmpeg reports 0/NaN/raw timebase.
 DEFAULT_FPS = 25.0
+_CREDENTIAL_RE = re.compile(r"(^[a-zA-Z][a-zA-Z0-9+.-]*://)([^/@:\s]+):([^/\s]+)@")
+
+
+def redact_url(url) -> str:
+    """Mask user:pass credentials in stream URLs before logging."""
+    if not isinstance(url, str):
+        return str(url)
+    return _CREDENTIAL_RE.sub(r"\1***:***@", url)
 
 # FFmpeg network hardening for flaky HLS. Must be set before the first
 # cv2.VideoCapture, so it lives at import time. setdefault so an explicit
@@ -34,7 +43,7 @@ class VideoStreamer:
     temporal density (ByteTrack).
     """
 
-    def __init__(self, url, max_queue=3, backoff_min=0.5, backoff_max=10.0,
+    def __init__(self, url, max_queue=3, backoff_min=0.5, backoff_max=30.0,
                  reconnect=True, max_retries=None, gap_thresh_sec=0.5):
         self.url = url
         self._queue = queue.Queue(maxsize=max_queue)
@@ -43,7 +52,10 @@ class VideoStreamer:
         self._backoff_min = backoff_min
         self._backoff_max = backoff_max
         self._reconnect = bool(reconnect)
-        self._max_retries = max_retries
+        self._max_retries = (
+            None if max_retries is None or int(max_retries) <= 0
+            else int(max_retries)
+        )
         self._gap_thresh = float(gap_thresh_sec)
         self._lock = threading.Lock()
         self._last_gap = None
@@ -112,6 +124,7 @@ class VideoStreamer:
     def _run(self):
         backoff = self._backoff_min
         attempts = 0
+        safe_url = redact_url(self.url)
         while not self._stop.is_set():
             # Pin the FFmpeg backend: the OPENCV_FFMPEG_CAPTURE_OPTIONS set
             # above (timeout + reconnect) only apply through FFmpeg. Without
@@ -127,10 +140,10 @@ class VideoStreamer:
                     return
                 if self._max_retries is not None and attempts > self._max_retries:
                     logger.error("gave up on %s after %d failed connects",
-                                 self.url, attempts)
+                                 safe_url, attempts)
                     return
                 logger.warning("could not open %s (attempt %d), retry in %.1fs",
-                               self.url, attempts, backoff)
+                               safe_url, attempts, backoff)
                 if self._stop.wait(backoff):
                     return
                 backoff = min(backoff * 2, self._backoff_max)
@@ -148,9 +161,9 @@ class VideoStreamer:
             self.connects += 1
             attempts = 0
             if self.connects > 1:
-                logger.info("reconnected to %s", self.url)
+                logger.info("reconnected to %s", safe_url)
             backoff = self._backoff_min
-            logger.info("%s opened at %.1f fps", self.url, native_fps)
+            logger.info("%s opened at %.1f fps", safe_url, native_fps)
             try:
                 self._pump(cap)
             finally:

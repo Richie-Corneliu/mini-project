@@ -30,17 +30,19 @@ import supervision as sv
 import uvicorn
 import yaml
 
-from src.api.server import (app, clear_commands, get_active_focus,
-                             mark_node_reconnecting, pop_command,
+from src.api.server import (_expand_source, app, clear_commands,
+                             get_active_focus, mark_node_reconnecting,
+                             pop_command, register_stats_store,
                              register_zone_update_hook, seed_node_data,
                              set_latest_frame, set_node_frame_size,
                              update_node_data)
 from src.core.detector import Detector, centroids
 from src.core.zone_counter import ZoneCounter
-from src.stream.video_streamer import VideoStreamer
+from src.stream.video_streamer import VideoStreamer, redact_url
 from src.ui.renderer import Renderer, ZoneEditor
+from src.utils import stats_store as _stats_mod
 from src.utils.logger import AuditLogger, get_logger, setup_logging
-from src.utils.stats_store import StatsStore, fold_hourly_counts, seed_counter
+from src.utils.stats_store import StatsStore, fold_slot_counts, seed_counter
 from src.utils.zone_store import persist_zone
 
 log = get_logger(__name__)
@@ -82,6 +84,8 @@ def _seed_api_from_stats(stats):
             "mobil": node["counts"]["mobil"],
             "truk": node["counts"]["truk"],
             "hourly_counts": node["hourly_counts"],
+            "slot_counts": node.get("slot_counts", {}),
+            "session_starts": node.get("session_starts", []),
         })
 
 
@@ -95,6 +99,7 @@ def _build_detector(cfg, polygons=None):
                     duplicate_iou=dc.get("duplicate_iou", 0.65),
                     truck_min_area=dc.get("truck_min_area", 12000),
                     car_min_area=dc.get("car_min_area", 3000),
+                    truck_min_height_ratio=dc.get("truck_min_height_ratio", 0.070),
                     perspective_scaling=dc.get("perspective_scaling", True),
                     y_ref_far=dc.get("y_ref_far"),
                     y_ref_mid=dc.get("y_ref_mid"),
@@ -132,12 +137,23 @@ def _build_pipeline(cfg, zones, source, debug):
                           cabin_area_ratio=counter_cfg.get("cabin_area_ratio", 0.55),
                           still_count_frames=counter_cfg.get("still_count_frames", 30),
                           still_min_conf=counter_cfg.get("still_min_conf", 0.35),
-                          ghost_ttl_frames=counter_cfg.get("ghost_ttl_frames", 6),
+                          ghost_ttl_frames=counter_cfg.get("ghost_ttl_frames", 12),
                           ghost_radius_px=counter_cfg.get("ghost_radius_px", 35),
                           max_stale_frames=counter_cfg.get("max_stale_frames", 300),
                           allowed_directions=counter_cfg.get("allowed_directions"),
                           flow_max_angle_deg=counter_cfg.get("flow_max_angle_deg", 75.0),
+                          min_track_frames=counter_cfg.get("min_track_frames", 2),
+                          zone_dwell_frames=counter_cfg.get("zone_dwell_frames", 1),
                           truck_min_area=counter_cfg.get("truck_min_area", dc.get("truck_min_area", 12000)),
+                          truck_confirm_frames=counter_cfg.get("truck_confirm_frames", 5),
+                          truck_min_height_ratio=counter_cfg.get(
+                              "truck_min_height_ratio", dc.get("truck_min_height_ratio", 0.070)
+                          ),
+                          scale_far=dc.get("scale_far", 0.42),
+                          scale_near=dc.get("scale_near", 1.95),
+                          y_ref_far=dc.get("y_ref_far"),
+                          y_ref_mid=dc.get("y_ref_mid"),
+                          y_ref_near=dc.get("y_ref_near"),
                           debug=debug)
     renderer = Renderer(zones, show_dims=dc.get("show_dims", True), debug=debug,
                         show_diagnostics=cfg.get("ui", {}).get("show_diagnostics"),
@@ -148,16 +164,30 @@ def _build_pipeline(cfg, zones, source, debug):
 
 
 def _polygon_signature(zones_cfg):
-    """Canonical tuple of polygon vertices across zones for change detection."""
+    """Canonical tuple of polygon vertices and flow rules across zones."""
     sig = []
     for z in zones_cfg or []:
         if hasattr(z, "polygon"):
             pts = np.asarray(z.polygon, dtype=float).reshape(-1, 2).tolist()
+            ad_raw = getattr(z, "allowed_directions", None)
+            ang_raw = getattr(z, "flow_max_angle_deg", None)
         elif isinstance(z, dict):
             pts = [[float(p[0]), float(p[1])] for p in (z.get("polygon") or [])]
+            ad_raw = z.get("allowed_directions")
+            ang_raw = z.get("flow_max_angle_deg")
         else:
             pts = [[float(p[0]), float(p[1])] for p in z]
-        sig.append(tuple((round(x, 3), round(y, 3)) for x, y in pts))
+            ad_raw = None
+            ang_raw = None
+        ad_sig = (
+            tuple(
+                tuple(float(v) for v in d) if isinstance(d, (list, tuple)) else str(d)
+                for d in ad_raw
+            )
+            if ad_raw is not None else None
+        )
+        ang_sig = None if ang_raw is None else float(ang_raw)
+        sig.append((tuple((round(x, 3), round(y, 3)) for x, y in pts), ad_sig, ang_sig))
     return tuple(sig)
 
 
@@ -226,22 +256,27 @@ class ConfigHotReloader:
                 and np.asarray(zones[0], dtype=float).ndim == 1):
             fw = int(frame_width or 1)
             fh = int(frame_height or 1)
-            counter.update_polygon(zones, fw, fh, zone_index=0)
+            counter.update_polygon(zones, fw, fh, zone_index=0, preserve_zone_attrs=True)
         else:
             zone_list = list(zones or [])
             if not zone_list:
                 return False
             if len(zone_list) == len(counter.zones) == 1:
                 z0 = zone_list[0]
-                pts0 = z0.polygon if hasattr(z0, "polygon") else z0["polygon"]
+                if isinstance(z0, dict):
+                    pts0 = z0["polygon"]
+                    ad0 = z0.get("allowed_directions")
+                    ang0 = z0.get("flow_max_angle_deg")
+                else:
+                    pts0 = z0.polygon
+                    ad0 = getattr(z0, "allowed_directions", None)
+                    ang0 = getattr(z0, "flow_max_angle_deg", None)
                 fw = int(frame_width or 1)
                 fh = int(frame_height or 1)
-                counter.update_polygon(pts0, fw, fh, zone_index=0)
-                if isinstance(z0, dict):
-                    if "allowed_directions" in z0:
-                        counter.zones[0].allowed_directions = z0["allowed_directions"]
-                    if "flow_max_angle_deg" in z0:
-                        counter.zones[0].flow_max_angle_deg = z0["flow_max_angle_deg"]
+                counter.update_polygon(
+                    pts0, fw, fh, zone_index=0,
+                    allowed_directions=ad0, flow_max_angle_deg=ang0,
+                )
             else:
                 counter.set_zones(zone_list)
 
@@ -299,6 +334,8 @@ class ConfigHotReloader:
                 self.det.car_min_area = float(dc["car_min_area"])
             if "truck_min_area" in dc:
                 self.det.truck_min_area = float(dc["truck_min_area"])
+            if "truck_min_height_ratio" in dc:
+                self.det.truck_min_height_ratio = max(0.0, float(dc["truck_min_height_ratio"]))
             if "scale_far" in dc:
                 self.det.scale_far = float(dc["scale_far"])
             if "scale_near" in dc:
@@ -323,7 +360,8 @@ class ConfigHotReloader:
         node_cfg = nodes_map.get(str(node_id), {})
 
         if det_overrides is not None:
-            for key in ("car_min_area", "truck_min_area", "scale_far", "scale_near",
+            for key in ("car_min_area", "truck_min_area", "truck_min_height_ratio",
+                        "scale_far", "scale_near",
                         "perspective_scaling", "y_ref_far", "y_ref_mid", "y_ref_near"):
                 if key in node_cfg and node_cfg[key] is not None:
                     det_overrides[key] = (
@@ -335,12 +373,16 @@ class ConfigHotReloader:
 
         merged_cc = {**cc}
         for key in ("min_displacement_px", "allowed_directions", "flow_max_angle_deg",
-                    "ghost_ttl_frames", "ghost_radius_px"):
+                    "ghost_ttl_frames", "ghost_radius_px", "truck_confirm_frames",
+                    "truck_min_height_ratio"):
             if key in node_cfg:
                 merged_cc[key] = node_cfg[key]
 
         effective_truck = node_cfg.get("truck_min_area", dc.get("truck_min_area"))
         effective_car = node_cfg.get("car_min_area", dc.get("car_min_area"))
+        effective_h_ratio = node_cfg.get("truck_min_height_ratio", dc.get("truck_min_height_ratio"))
+        effective_scale_far = node_cfg.get("scale_far", dc.get("scale_far"))
+        effective_scale_near = node_cfg.get("scale_near", dc.get("scale_near"))
 
         if counter is not None:
             try:
@@ -351,6 +393,10 @@ class ConfigHotReloader:
                     ghost_ttl_frames=merged_cc.get("ghost_ttl_frames"),
                     ghost_radius_px=merged_cc.get("ghost_radius_px"),
                     truck_min_area=effective_truck,
+                    truck_confirm_frames=merged_cc.get("truck_confirm_frames"),
+                    truck_min_height_ratio=effective_h_ratio,
+                    scale_far=effective_scale_far,
+                    scale_near=effective_scale_near,
                 )
             except ValueError as e:
                 log.warning("hot-reload rejected counter config for %s (%s)", node_id, e)
@@ -551,9 +597,21 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
     UI subscribers. The AI loop runs at acquire rate, so the file paces to
     the source fps."""
     last_seq = 0
+    current_day = _stats_mod.today_wib()
     start_time = time.time()
     peak_occupancy = 0
-    hourly_counts = stats.node(node_id)["hourly_counts"] if stats else {}
+    saved_node = stats.node(node_id) if stats else None
+    hourly_counts = dict(saved_node["hourly_counts"]) if saved_node else {}
+    slot_counts = dict(saved_node["slot_counts"]) if saved_node else {}
+    session_starts = list(saved_node["session_starts"]) if saved_node else []
+    start_hhmm = _stats_mod.hhmm_wib()
+    if start_hhmm not in session_starts:
+        session_starts.append(start_hhmm)
+    if stats is not None:
+        stats.record(
+            node_id, counter, hourly_counts,
+            slot_counts=slot_counts, session_starts=session_starts,
+        )
     writer = None          # per-node cv2.VideoWriter, open while recording
     record_desired = bool(record_desired)
     if record_desired:
@@ -566,17 +624,25 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
         raw, last_seq = bus.wait_raw(last_seq, stop_event, timeout=1.0)
         t_acquire = time.perf_counter() - t
 
-        # Midnight (WIB): close yesterday's snapshot, then zero everything this
-        # node accumulated. Checked before the frame guard so a node whose
-        # stream is down still rolls over on time.
+        # Midnight (WIB): close yesterday's snapshot once, and reset EVERY node
+        # locally whenever today_wib() changes. Checked before the frame guard
+        # so a node whose stream is down still rolls over on time.
+        now_day = _stats_mod.today_wib()
         roll = stats.rollover() if stats is not None else None
-        if roll:
+        if roll or now_day != current_day:
+            current_day = now_day
             counter.reset()
             hourly_counts.clear()
+            slot_counts.clear()
+            session_starts[:] = [_stats_mod.hhmm_wib()]
             peak_occupancy = 0
             start_time = time.time()
-            log.info("Midnight rollover completed for %s -> %s",
-                     roll["from"], roll["to"])
+            if roll:
+                log.info("Midnight rollover completed for %s -> %s",
+                         roll["from"], roll["to"])
+            else:
+                log.info("Midnight rollover reset node %s -> %s",
+                         node_id, current_day)
 
         if hot_reloader is not None:
             hot_reloader.check_and_reload(target_node_id=node_id)
@@ -609,19 +675,27 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                             frame_height=frame_h,
                         )
                     else:
-                        counter.update_polygon(command["points"], frame_w, frame_h)
+                        counter.update_polygon(
+                            command["points"], frame_w, frame_h,
+                            preserve_zone_attrs=True,
+                        )
                         if renderer is not None:
                             renderer.update_zones(counter.zones)
                         if det_overrides is not None:
                             det_overrides["polygons"] = list(counter.zones)
                         det.configure_perspective_from_polygons(counter.zones)
-                    persist_zone(node_id, pixel_pts)
+                    persist_zone(
+                        node_id,
+                        pixel_pts,
+                        path=hot_reloader.nodes_path if hot_reloader is not None else None,
+                    )
                     log.info("Node %s zone updated + saved: %d pts on frame %dx%d",
                              node_id, len(command["points"]), frame_w, frame_h)
                 except (KeyError, TypeError, ValueError) as e:
                     log.warning("Node %s rejected update_zone (%s)", node_id, e)
             command = None
-        if command == "record":
+        if command == "record" or reset_flag.get("record"):
+            reset_flag["record"] = False
             record_desired = not record_desired
             log.info("Node %s record -> %s",
                      node_id, "ON" if record_desired else "OFF")
@@ -642,6 +716,8 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
             start_time = time.time()
             peak_occupancy = 0
             hourly_counts.clear()
+            slot_counts.clear()
+            session_starts[:] = [_stats_mod.hhmm_wib()]
             log.info("Node %s counts reset", node_id)
 
         try:
@@ -664,11 +740,14 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
 
         current_occupancy = len(dets)
         peak_occupancy = max(peak_occupancy, current_occupancy)
-        fold_hourly_counts(hourly_counts, events)
+        fold_slot_counts(slot_counts, hourly_counts, events)
         if stats is not None:
             # Throttled: the in-memory snapshot follows every count, the file
             # at most once per save_interval_sec.
-            stats.record(node_id, counter, hourly_counts)
+            stats.record(
+                node_id, counter, hourly_counts,
+                slot_counts=slot_counts, session_starts=session_starts,
+            )
             stats.maybe_save()
 
         if audit:
@@ -718,6 +797,8 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
                 "start_time": start_time,
                 "peak_occupancy": peak_occupancy,
                 "hourly_counts": {h: dict(b) for h, b in hourly_counts.items()},
+                "slot_counts": {s: dict(b) for s, b in slot_counts.items()},
+                "session_starts": list(session_starts),
             })
 
         prof.tick_ai(len(dets), infer=t_infer, track=t_track, acquire=t_acquire)
@@ -820,11 +901,14 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
     zones = build_zones(zone_cfgs)
     audit = AuditLogger("logs/count_audit.csv") if debug else None
 
-    streamer, counter, renderer = _build_pipeline(cfg, zones, sc["source"], debug)
+    streamer, counter, renderer = _build_pipeline(
+        cfg, zones, _expand_source(sc["source"]), debug
+    )
     det = _build_detector(cfg, polygons=zones)
     editor = ZoneEditor(zones, zone_cfgs)
     stats = StatsStore.from_config(cfg.get("persistence"))
     stats.load()
+    register_stats_store(stats)
     _seed_api_from_stats(stats)
     seed_counter(counter, stats.node(node_id))
 
@@ -870,6 +954,8 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         k = cv2.waitKey(1) & 0xFF
         if k == ord("q"):
             stop.set()
+        elif k in (ord("c"), ord("C")):
+            reset_flag["record"] = True
         elif k in (ord("r"), ord("R")):
             # Defer to the AI thread; it owns the counter.
             reset_flag["v"] = True
@@ -877,6 +963,8 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
         elif k in (ord("s"), ord("S")) and editor.dirty and config_path:
             save_zones(config_path, zones, zone_cfgs)
             reloader.apply_node_zones(node_id, zones)
+            zones[:] = counter.zones
+            editor.zones = counter.zones
             editor.dirty = False
             log.info("Zones saved")
 
@@ -896,6 +984,7 @@ def run(cfg, show=True, config_path=None, duration=None, debug=False,
                         focused=lambda _nid: True, deadline=deadline)
     finally:
         register_zone_update_hook(None)
+        register_stats_store(None)
         with _ACTIVE_RELOADER_LOCK:
             if _ACTIVE_RELOADER is reloader:
                 _ACTIVE_RELOADER = None
@@ -946,6 +1035,7 @@ def run_multi(cfg, nodes, duration=None, debug=False,
     t_run = time.monotonic()
     stats = StatsStore.from_config(cfg.get("persistence"))
     stats.load()
+    register_stats_store(stats)
     _seed_api_from_stats(stats)
 
     threading.Thread(
@@ -959,27 +1049,29 @@ def run_multi(cfg, nodes, duration=None, debug=False,
     workers = []
     for n in nodes:
         node_id = n["id"]
-        source = n.get("source") or sc["source"]
+        source = _expand_source(n.get("source") or sc["source"])
         zones = build_zones(n.get("zones") or zone_cfgs)
-        # Per-node counter tuning (min_displacement_px, car lock, flow gate)
-        # overrides settings.yaml; unknown node keys are ignored.
-        counter_keys = set(cfg.get("counter", {})) | {
-            "max_stale_frames", "allowed_directions", "flow_max_angle_deg",
-            "truck_min_area",
-        }
-        counter_cfg = {**cfg.get("counter", {}),
-                       **{k: n[k] for k in counter_keys if k in n}}
-        streamer, counter, renderer = _build_pipeline(
-            {**cfg, "counter": counter_cfg}, zones, source, debug)
         # Optional per-node detector tuning from nodes.yaml (camera tilt /
         # distance differ per intersection); settings.yaml is the fallback.
         det_over = {
             k: (bool(n[k]) if k == "perspective_scaling" else float(n[k]))
-            for k in ("truck_min_area", "car_min_area", "perspective_scaling",
-                      "y_ref_far", "y_ref_mid", "y_ref_near",
+            for k in ("truck_min_area", "car_min_area", "truck_min_height_ratio",
+                      "perspective_scaling", "y_ref_far", "y_ref_mid", "y_ref_near",
                       "scale_far", "scale_near")
             if k in n and n[k] is not None
         }
+        # Per-node counter tuning (min_displacement_px, car lock, flow gate)
+        # overrides settings.yaml; unknown node keys are ignored.
+        counter_keys = set(cfg.get("counter", {})) | {
+            "max_stale_frames", "allowed_directions", "flow_max_angle_deg",
+            "truck_min_area", "truck_confirm_frames", "truck_min_height_ratio",
+            "min_track_frames",
+        }
+        counter_cfg = {**cfg.get("counter", {}),
+                       **{k: n[k] for k in counter_keys if k in n}}
+        node_cfg = {**cfg, "detector": {**cfg["detector"], **det_over}, "counter": counter_cfg}
+        streamer, counter, renderer = _build_pipeline(
+            node_cfg, zones, source, debug)
         det.configure_perspective_from_polygons(zones)
         det_over["polygons"] = zones
         reloader.register_node(node_id, counter, renderer, det_over)
@@ -1006,7 +1098,7 @@ def run_multi(cfg, nodes, duration=None, debug=False,
         ai.start()
         disp.start()
         workers.append((node_id, streamer, ai, disp, counter))
-        log.info("node %s: streaming %s", node_id, source)
+        log.info("node %s: streaming %s", node_id, redact_url(source))
 
     try:
         while not stop.is_set():
@@ -1026,6 +1118,7 @@ def run_multi(cfg, nodes, duration=None, debug=False,
         streamer.stop()
         log.info("node %s done: counted=%d", node_id, counter.total)
     register_zone_update_hook(None)
+    register_stats_store(None)
     with _ACTIVE_RELOADER_LOCK:
         if _ACTIVE_RELOADER is reloader:
             _ACTIVE_RELOADER = None
@@ -1056,7 +1149,7 @@ if __name__ == "__main__":
     a.add_argument("--prune-min-hourly", type=int, default=None,
                    help="remove hourly buckets below <int> total vehicles and save immediately")
     a.add_argument("--min-uptime-minutes", type=float, default=None,
-                   help="override minimum session uptime in minutes before persisting stats (default: 30.0)")
+                   help="override minimum session uptime in minutes before persisting stats (default: 15.0)")
     args = a.parse_args()
     cfg = yaml.safe_load(open(args.config, encoding="utf-8"))
     setup_logging(level=cfg.get("logging", {}).get("level", "INFO"),

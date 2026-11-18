@@ -54,7 +54,14 @@ import cv2
 import numpy as np
 import supervision as sv
 
-from .detector import centroids
+from .detector import (
+    DEFAULT_SCALE_FAR,
+    DEFAULT_SCALE_NEAR,
+    DEFAULT_TRUCK_MIN_HEIGHT_RATIO,
+    _extract_polygon_y_bounds,
+    centroids,
+    perspective_scale_for_y,
+)
 
 
 _DIRECTION_VECTORS: Dict[str, Tuple[float, float]] = {
@@ -126,15 +133,19 @@ class ZoneCounter:
     MOTOR_FLIP_FRAMES = 4   # car run <= this stays a flicker under the lock
     CAR_LOCK_FRAMES = 3     # car sightings that lock a track's class
     CAR_FLIP_FRAMES = 6     # truck run <= this stays a flicker under the lock
-    GHOST_TTL_FRAMES = 6    # frames a counted id stays claimable after vanishing
-    GHOST_RADIUS_PX = 35.0  # max birth-centroid distance for a ghost handover
+    GHOST_TTL_FRAMES = 12   # frames a counted id stays claimable after vanishing
+    GHOST_RADIUS_PX = 35.0  # base/motor birth-centroid distance for ghost handover
     MAX_STALE_FRAMES = 300  # frames before inactive tracker state is pruned
     FLOW_MAX_ANGLE_DEG = 75.0  # max angular deviation from allowed flow direction
     MIN_DISPLACEMENT_PX = 12.0
-    MIN_TRACK_FRAMES = 1
+    MIN_TRACK_FRAMES = 2
     ZONE_DWELL_FRAMES = 1
+    RECENT_TRACK_TTL_SEC = 2.5
+    RECENT_TRACK_IOU = 0.35
     TRUCK_MIN_AREA = 12000.0
     TRUCK_PROMOTE_MAX_ASPECT = 2.0
+    TRUCK_CONFIRM_FRAMES = 5
+    TRUCK_FAST_TRACK_FRAMES = 2
 
     def __init__(self, zones: List[Union[sv.PolygonZone, dict]],
                  class_labels: Optional[Dict[int, str]] = None,
@@ -158,6 +169,13 @@ class ZoneCounter:
                  truck_min_area: float = TRUCK_MIN_AREA,
                  truck_promote_area: Optional[float] = None,
                  truck_promote_max_aspect: float = TRUCK_PROMOTE_MAX_ASPECT,
+                 truck_confirm_frames: int = TRUCK_CONFIRM_FRAMES,
+                 truck_min_height_ratio: float = DEFAULT_TRUCK_MIN_HEIGHT_RATIO,
+                 scale_far: float = DEFAULT_SCALE_FAR,
+                 scale_near: float = DEFAULT_SCALE_NEAR,
+                 y_ref_far: Optional[float] = None,
+                 y_ref_mid: Optional[float] = None,
+                 y_ref_near: Optional[float] = None,
                  debug: bool = False):
         from trackers import CBIoUTracker
 
@@ -196,7 +214,10 @@ class ZoneCounter:
         self.still_count_frames = int(still_count_frames)
         self.still_min_conf = float(still_min_conf)
         self.ghost_ttl_frames = int(ghost_ttl_frames)
-        self.ghost_r2 = float(ghost_radius_px) ** 2
+        self.ghost_radius_px = float(ghost_radius_px)
+        self.ghost_r2 = self.ghost_radius_px ** 2
+        self.recent_track_ttl_sec = self.RECENT_TRACK_TTL_SEC
+        self.recent_track_iou = self.RECENT_TRACK_IOU
         self.max_stale_frames = max(int(max_stale_frames), self.ghost_ttl_frames + 1)
         self.allowed_directions = allowed_directions
         self.flow_max_angle_deg = float(flow_max_angle_deg)
@@ -209,7 +230,15 @@ class ZoneCounter:
             else float(truck_promote_area)
         )
         self.truck_promote_max_aspect = float(truck_promote_max_aspect)
-        self._zone_y_mid = self._compute_zone_y_mid()
+        self.truck_confirm_frames = max(1, int(truck_confirm_frames))
+        self.truck_min_height_ratio = max(0.0, float(truck_min_height_ratio))
+        self.scale_far = float(scale_far)
+        self.scale_near = float(scale_near)
+        self._explicit_y_ref_far = None if y_ref_far is None else float(y_ref_far)
+        self._explicit_y_ref_mid = None if y_ref_mid is None else float(y_ref_mid)
+        self._explicit_y_ref_near = None if y_ref_near is None else float(y_ref_near)
+        self._frame_height = 720.0
+        self._refresh_zone_y_bounds()
         _normalize_directions(self.allowed_directions)
         for zd in self._zone_allowed_directions:
             _normalize_directions(zd)
@@ -237,16 +266,21 @@ class ZoneCounter:
         self._truck_lock_latched = set()  # tids locked as truk/bus (receding or promoted)
         self._truck_frames = {}         # tid -> total TRUCK_CLS observations
         self._consec_valid_truck = {}   # tid -> consecutive perspective-validated TRUCK_CLS frames
+        self._consec_fast_truck = {}    # tid -> consecutive fast-track TRUCK_CLS frames
         self._peak_truck_area = {}      # tid -> max bbox area seen under TRUCK_CLS
         self._last_area = {}            # tid -> most recent bbox area
         self._last_truck_cls = {}       # tid -> most recent COCO truck/bus class id (5 or 7)
         self._prev = {}        # tid -> last centroid, for jump-over-edge sweep
+        self._vel = {}         # tid -> (vx, vy) px/frame last observed velocity
+        self._last_box = {}    # tid -> (x1, y1, x2, y2) last seen bbox
         self._start = {}       # tid -> first centroid, for the displacement gate
         self._age = {}         # tid -> frames seen, for the stable-id trust rule
         self._missing = {}     # tid -> frames since last seen (hist eviction)
         self._zone_still = {}  # tid -> {zi: frames blocked by displacement gate}
         self._counted = [set() for _ in self.zones]   # permanent per-zone id latch
         self._recent = [deque() for _ in self.zones]  # (t, x, y) accepted count events
+        self._recent_counted_tracks = [dict() for _ in self.zones]
+        self._last_now = None
         # ---- ghost handover bookkeeping --------------------------------
         # A counted id that vanishes inside a zone leaves a "ghost": its last
         # in-zone centroid plus the frame it was last seen. A tracker_id born
@@ -264,6 +298,8 @@ class ZoneCounter:
         # and a ghost keeps the last IN-ZONE one in _zone_ghost.
 
     def track(self, dets: sv.Detections, frame: np.ndarray) -> sv.Detections:
+        if frame is not None and hasattr(frame, "shape") and len(frame.shape) >= 2:
+            self._frame_height = float(frame.shape[0])
         return self.tracker.update(dets)
 
     def _label(self, cls: int) -> str:
@@ -310,22 +346,7 @@ class ZoneCounter:
                 and self._longest_non_run(h, self.MOTOR_CLS) <= self.motor_flip_frames):
             return self.MOTOR_CLS
         if tid in self._truck_lock_latched:
-            start = self._start.get(tid)
-            last_pt = self._prev.get(tid)
-            receding = (start is not None and last_pt is not None
-                        and last_pt[1] < start[1])
-            peak_a = self._peak_truck_area.get(tid, 0.0)
-            curr_a = self._last_area.get(tid, 0.0)
-            shrinking = peak_a > 0.0 and curr_a < 0.85 * peak_a
-            consec_car = 0
-            for c, _ in reversed(h):
-                if c == self.CAR_CLS:
-                    consec_car += 1
-                else:
-                    break
-            if (receding or shrinking or consec_car < 3
-                    or peak_a >= self.truck_promote_area):
-                return self._last_truck_cls.get(tid, 7)
+            return self._last_truck_cls.get(tid, 7)
         fc = self._first_cls.get(tid, ())
         if vote in self.TRUCK_CLS and (
             self._car_locked(tid)
@@ -356,12 +377,39 @@ class ZoneCounter:
         return bool(h) and sum(1 for c, _ in h if c == self.CAR_CLS) >= self.car_lock_frames
 
     def _compute_zone_y_mid(self) -> Optional[float]:
-        ys = [
-            float(p[1])
-            for z in self.zones
-            for p in np.asarray(z.polygon, dtype=float).reshape(-1, 2)
-        ]
-        return 0.5 * (min(ys) + max(ys)) if ys else None
+        far, near = _extract_polygon_y_bounds(self.zones)
+        return 0.5 * (far + near) if (far is not None and near is not None) else None
+
+    def _refresh_zone_y_bounds(self) -> None:
+        poly_far, poly_near = _extract_polygon_y_bounds(self.zones)
+        self._zone_y_far = (
+            self._explicit_y_ref_far if self._explicit_y_ref_far is not None else poly_far
+        )
+        self._zone_y_near = (
+            self._explicit_y_ref_near if self._explicit_y_ref_near is not None else poly_near
+        )
+        if self._explicit_y_ref_mid is not None:
+            self._zone_y_mid = self._explicit_y_ref_mid
+        elif self._zone_y_far is not None and self._zone_y_near is not None:
+            self._zone_y_mid = 0.5 * (self._zone_y_far + self._zone_y_near)
+        else:
+            self._zone_y_mid = None
+
+    def _effective_truck_min_area(self, y2: float) -> float:
+        scale = perspective_scale_for_y(
+            y2, self._zone_y_far, self._zone_y_mid, self._zone_y_near,
+            self.scale_far, self.scale_near,
+        )
+        return self.truck_min_area * scale
+
+    def _effective_truck_min_height(self, y2: float) -> float:
+        if self.truck_min_height_ratio <= 0.0:
+            return 0.0
+        scale = perspective_scale_for_y(
+            y2, self._zone_y_far, self._zone_y_mid, self._zone_y_near,
+            self.scale_far, self.scale_near,
+        )
+        return (self._frame_height * self.truck_min_height_ratio) * scale
 
     def update_thresholds(
         self,
@@ -372,6 +420,10 @@ class ZoneCounter:
         ghost_ttl_frames: Optional[int] = None,
         ghost_radius_px: Optional[float] = None,
         truck_min_area: Optional[float] = None,
+        truck_confirm_frames: Optional[int] = None,
+        truck_min_height_ratio: Optional[float] = None,
+        scale_far: Optional[float] = None,
+        scale_near: Optional[float] = None,
     ) -> None:
         """Apply hot-reloaded YAML thresholds in place without dropping latches."""
         if min_displacement_px is not None:
@@ -385,11 +437,20 @@ class ZoneCounter:
             self.ghost_ttl_frames = int(ghost_ttl_frames)
             self.max_stale_frames = max(self.max_stale_frames, self.ghost_ttl_frames + 1)
         if ghost_radius_px is not None:
-            self.ghost_r2 = float(ghost_radius_px) ** 2
+            self.ghost_radius_px = float(ghost_radius_px)
+            self.ghost_r2 = self.ghost_radius_px ** 2
         if truck_min_area is not None:
             self.truck_min_area = float(truck_min_area)
             if not self._explicit_truck_promote_area:
                 self.truck_promote_area = self.truck_min_area * 1.25
+        if truck_confirm_frames is not None:
+            self.truck_confirm_frames = max(1, int(truck_confirm_frames))
+        if truck_min_height_ratio is not None:
+            self.truck_min_height_ratio = max(0.0, float(truck_min_height_ratio))
+        if scale_far is not None:
+            self.scale_far = float(scale_far)
+        if scale_near is not None:
+            self.scale_near = float(scale_near)
 
     def _motor_locked(self, tid: int) -> bool:
         """Read-only mirror of the motor-inertia branch in `_resolved_class`."""
@@ -403,8 +464,8 @@ class ZoneCounter:
                               bbox: Optional[Tuple] = None) -> dict:
         """Per-track telemetry for the diagnostic HUD (`ui.show_diagnostics`).
 
-        Pure read: touches no counting state, so it is safe to call from the
-        display thread while the AI thread runs `update()`. `bbox` is the live
+        Lock-guarded read: safe to call from the display thread while the AI
+        thread mutates tracking state in `update()`. `bbox` is the live
         (x1, y1, x2, y2) row; without it `area_px` is None.
         """
         area = None
@@ -412,27 +473,29 @@ class ZoneCounter:
             b = np.asarray(bbox, dtype=float).ravel()
             if b.size == 4:
                 area = int(max(0.0, b[2] - b[0]) * max(0.0, b[3] - b[1]))
-        start, last = self._start.get(tid), self._prev.get(tid)
-        disp = None
-        if start is not None and last is not None:
-            disp = round(float(((last[0] - start[0]) ** 2
-                                + (last[1] - start[1]) ** 2) ** 0.5), 1)
-        return {"tid": int(tid),
-                "area_px": area,
-                "displacement_px": disp,
-                "car_locked": self._car_locked(tid),
-                "motor_locked": self._motor_locked(tid),
-                "counted_zones": [zi for zi in range(len(self.zones))
-                                  if tid in self._counted[zi]]}
+        with self._zone_lock:
+            start, last = self._start.get(tid), self._prev.get(tid)
+            disp = None
+            if start is not None and last is not None:
+                disp = round(float(((last[0] - start[0]) ** 2
+                                    + (last[1] - start[1]) ** 2) ** 0.5), 1)
+            return {"tid": int(tid),
+                    "area_px": area,
+                    "displacement_px": disp,
+                    "car_locked": self._car_locked(tid),
+                    "motor_locked": self._motor_locked(tid),
+                    "counted_zones": [zi for zi in range(len(self.zones))
+                                      if tid in self._counted[zi]]}
 
     def diagnostics_summary(self) -> dict:
-        """Counter health for the diagnostic strip. Pure read as well."""
-        return {"handovers": self.ghost_handovers,
-                "suppressed": self.suppressed,
-                "suppressed_cabin": self.suppressed_cabin,
-                "suppressed_direction": self.suppressed_direction,
-                "total": self.total,
-                "frames": self.n_frames}
+        """Counter health for the diagnostic strip. Lock-guarded read."""
+        with self._zone_lock:
+            return {"handovers": self.ghost_handovers,
+                    "suppressed": self.suppressed,
+                    "suppressed_cabin": self.suppressed_cabin,
+                    "suppressed_direction": self.suppressed_direction,
+                    "total": self.total,
+                    "frames": self.n_frames}
 
     def _is_direction_allowed(self, dx: float, dy: float, zone_idx: int = 0) -> bool:
         """True if movement (dx, dy) aligns within flow_max_angle_deg of allowed flows."""
@@ -474,6 +537,8 @@ class ZoneCounter:
         # near the bottom or mid-turn is perspective inflation, not a truck.
         if (new_label in self.truck_labels and old_label == self._label(self.CAR_CLS)
                 and self._car_locked(tid)):
+            return None
+        if old_label in self.truck_labels and tid in self._truck_lock_latched:
             return None
         if new_label == self._label(self.CAR_CLS):
             self._car_lock_latched.add(tid)
@@ -518,19 +583,69 @@ class ZoneCounter:
         return any((ex - pt[0]) ** 2 + (ey - pt[1]) ** 2 <= self.dedup_r2
                    for _, ex, ey in events)
 
+    def _class_group(self, cls_or_label) -> str:
+        motor_lbl = self._label(self.MOTOR_CLS)
+        if isinstance(cls_or_label, str):
+            return "motor" if cls_or_label == motor_lbl else "non_motor"
+        return "motor" if int(cls_or_label) == self.MOTOR_CLS else "non_motor"
+
+    def _record_counted_track(self, zi: int, tid: int, group: str,
+                              bbox: Tuple[float, float, float, float],
+                              now: float) -> None:
+        vx, vy = self._vel.get(tid, (0.0, 0.0))
+        self._recent_counted_tracks[zi][tid] = {
+            "tid": tid,
+            "group": group,
+            "bbox": bbox,
+            "vx": vx,
+            "vy": vy,
+            "frame_idx": self._frame_idx,
+            "t": now,
+        }
+
+    def _match_vanished_track(self, zi: int, tid: int, group: str,
+                              bbox: Tuple[float, float, float, float],
+                              pt: Tuple[float, float], live: set,
+                              now: float) -> Optional[int]:
+        """Suppress re-ID continuations matching a vanished counted track's projected bbox."""
+        recent = self._recent_counted_tracks[zi]
+        for old in [o for o, ent in recent.items()
+                    if now - ent["t"] > self.recent_track_ttl_sec]:
+            recent.pop(old, None)
+        x1, y1, x2, y2 = bbox
+        area_new = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+        for old, ent in recent.items():
+            if old == tid or old in live or ent["group"] != group:
+                continue
+            missed = max(0, self._frame_idx - ent["frame_idx"])
+            ox1, oy1, ox2, oy2 = ent["bbox"]
+            dx = ent["vx"] * missed
+            dy = ent["vy"] * missed
+            px1, py1, px2, py2 = ox1 + dx, oy1 + dy, ox2 + dx, oy2 + dy
+            if px1 <= pt[0] <= px2 and py1 <= pt[1] <= py2:
+                return old
+            ix1, iy1 = max(x1, px1), max(y1, py1)
+            ix2, iy2 = min(x2, px2), min(y2, py2)
+            inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+            if inter > 0.0:
+                area_old = max(0.0, px2 - px1) * max(0.0, py2 - py1)
+                if inter / max(area_new + area_old - inter, 1e-6) >= self.recent_track_iou:
+                    return old
+        return None
+
     def _match_ghost(self, zi: int, tid: int, live: set) -> Optional[int]:
         """Nearest unclaimed ghost in zone `zi` that `tid` may inherit.
 
         Three invariants, all required:
           a) non-coexistence — `tid` was born strictly after the ghost was last
-             seen, so the two ids never shared a frame. Two bikes riding
-             side by side can therefore never steal each other's latch.
-          b) temporal proximity — the birth is within ghost_ttl_frames of the
-             ghost's last frame (an occlusion gap, not a new vehicle minutes on).
-          c) spatial proximity — the BIRTH centroid is within ghost_radius_px of
-             the ghost's last in-zone centroid. Birth, not current position: a
-             real second rider is tracked from far away and only arrives at the
-             spot later, while an occluded vehicle respawns on top of itself.
+             seen, so the two ids never shared a frame.
+          b) temporal proximity — birth is within ghost_ttl_frames of the
+             ghost's last frame.
+          c) velocity-predicted & box-scaled spatial proximity — `birth` sits
+             within the match radius of either the ghost's last centroid or its
+             velocity-projected position (`last_pos + vel * missed_frames`).
+             Motor keeps tight `ghost_radius_px`; non-motor scales to
+             `max(ghost_radius_px, 0.65 * max(box_w, box_h))`.
         """
         ghosts = self._zone_ghost[zi]
         born = self._born_frame.get(tid)
@@ -539,7 +654,9 @@ class ZoneCounter:
             return None
         new_is_motor = (self._resolved_class(tid, -1) == self.MOTOR_CLS)
         motor_label = self._label(self.MOTOR_CLS)
-        best, best_d2 = None, self.ghost_r2
+        new_box = self._last_box.get(tid)
+        new_dim = max(new_box[2] - new_box[0], new_box[3] - new_box[1]) if new_box else 0.0
+        best, best_d2 = None, float("inf")
         for old, (ox, oy) in ghosts.items():
             if old == tid or old in live:
                 continue
@@ -551,8 +668,18 @@ class ZoneCounter:
                             else self._resolved_class(old, -1) == self.MOTOR_CLS)
             if new_is_motor != old_is_motor:
                 continue
-            d2 = (birth[0] - ox) ** 2 + (birth[1] - oy) ** 2
-            if d2 <= best_d2:                           # (c), nearest wins
+            if new_is_motor:
+                radius = self.ghost_radius_px
+            else:
+                old_box = self._last_box.get(old)
+                old_dim = max(old_box[2] - old_box[0], old_box[3] - old_box[1]) if old_box else 0.0
+                radius = max(self.ghost_radius_px, 0.65 * max(old_dim, new_dim))
+            vx, vy = self._vel.get(old, (0.0, 0.0))
+            px, py = ox + vx * gap, oy + vy * gap
+            d2_last = (birth[0] - ox) ** 2 + (birth[1] - oy) ** 2
+            d2_pred = (birth[0] - px) ** 2 + (birth[1] - py) ** 2
+            d2 = min(d2_last, d2_pred)
+            if d2 <= radius ** 2 and d2 < best_d2:
                 best, best_d2 = old, d2
         return best
 
@@ -578,6 +705,14 @@ class ZoneCounter:
             self._consec_valid_truck[new] = max(
                 self._consec_valid_truck.get(new, 0), self._consec_valid_truck[old]
             )
+        if old in self._consec_fast_truck:
+            self._consec_fast_truck[new] = max(
+                self._consec_fast_truck.get(new, 0), self._consec_fast_truck[old]
+            )
+        prev_ent = self._recent_counted_tracks[zi].pop(old, None)
+        if new in self._last_box and self._last_now is not None:
+            grp = self._class_group(label) if label is not None else (prev_ent["group"] if prev_ent else "non_motor")
+            self._record_counted_track(zi, new, grp, self._last_box[new], self._last_now)
         if old in self._peak_truck_area:
             self._peak_truck_area[new] = max(
                 self._peak_truck_area.get(new, 0.0), self._peak_truck_area[old]
@@ -602,12 +737,17 @@ class ZoneCounter:
         self.ghost_handovers += 1
 
     def _prune_stale_tracks(self) -> None:
-        """Drop expired ghosts every frame and prune stale track state every 100 frames."""
+        """Drop expired ghosts/recent tracks and prune stale track state every 100 frames."""
         with self._zone_lock:
             ghost_cutoff = self._frame_idx - self.ghost_ttl_frames
             for ghosts in self._zone_ghost:
                 for old in [o for o in ghosts if self._last_seen_frame.get(o, 0) < ghost_cutoff]:
                     ghosts.pop(old, None)
+            if self._last_now is not None:
+                for recent in self._recent_counted_tracks:
+                    for old in [o for o, ent in recent.items()
+                                if self._last_now - ent["t"] > self.recent_track_ttl_sec]:
+                        recent.pop(old, None)
             if self._frame_idx % 100 != 0:
                 return
             stale_cutoff = self._frame_idx - max(self.max_stale_frames, self.ghost_ttl_frames * 3)
@@ -617,12 +757,15 @@ class ZoneCounter:
                 self.class_hist.pop(tid, None)
                 self.trails.pop(tid, None)
                 self._prev.pop(tid, None)
+                self._vel.pop(tid, None)
+                self._last_box.pop(tid, None)
                 self._start.pop(tid, None)
                 self._first_cls.pop(tid, None)
                 self._car_lock_latched.discard(tid)
                 self._truck_lock_latched.discard(tid)
                 self._truck_frames.pop(tid, None)
                 self._consec_valid_truck.pop(tid, None)
+                self._consec_fast_truck.pop(tid, None)
                 self._peak_truck_area.pop(tid, None)
                 self._last_area.pop(tid, None)
                 self._last_truck_cls.pop(tid, None)
@@ -637,6 +780,7 @@ class ZoneCounter:
                     self._counted[zi].discard(tid)
                     self.counted_id_class[zi].pop(tid, None)
                     self._zone_ghost[zi].pop(tid, None)
+                    self._recent_counted_tracks[zi].pop(tid, None)
 
     def update(self, dets: sv.Detections, now: Optional[float] = None,
                freeze: bool = False) -> List[dict]:
@@ -651,6 +795,7 @@ class ZoneCounter:
                        freeze: bool = False) -> List[dict]:
         if now is None:
             now = time.monotonic()
+        self._last_now = now
         self.n_frames += 1
         self._frame_idx += 1   # counts empty frames too: occlusion gaps are frames
         events = []
@@ -684,6 +829,12 @@ class ZoneCounter:
         persp_trucks = dets.data.get("perspective_truck") if dets.data else None
         if persp_trucks is None or len(persp_trucks) != len(dets):
             persp_trucks = None
+        eff_areas = dets.data.get("effective_truck_min_area") if dets.data else None
+        if eff_areas is None or len(eff_areas) != len(dets):
+            eff_areas = None
+        eff_heights = dets.data.get("effective_truck_min_height") if dets.data else None
+        if eff_heights is None or len(eff_heights) != len(dets):
+            eff_heights = None
 
         for i in range(len(dets)):
             tid = int(tids[i])
@@ -693,10 +844,21 @@ class ZoneCounter:
             area = w_box * h_box
             aspect = w_box / max(h_box, 1e-6)
             pt = (float(cents[i][0]), float(cents[i][1]))
+            bbox = (
+                float(dets.xyxy[i][0]), float(dets.xyxy[i][1]),
+                float(dets.xyxy[i][2]), float(dets.xyxy[i][3]),
+            )
             bottom_pt = (float(cents[i][0]), float(dets.xyxy[i][3]))
             conf = float(dets.confidence[i]) if dets.confidence is not None else -1.0
             prev = self._prev.get(tid)
+            prev_seen = self._last_seen_frame.get(tid)
             self._prev[tid] = pt
+            self._last_box[tid] = bbox
+            if prev is not None and prev_seen is not None:
+                dt_f = max(1, self._frame_idx - prev_seen)
+                self._vel[tid] = ((pt[0] - prev[0]) / dt_f, (pt[1] - prev[1]) / dt_f)
+            else:
+                self._vel.setdefault(tid, (0.0, 0.0))
             self._last_area[tid] = area
             # Displacement anchor on the FIRST frame the id appears anywhere in
             # the view, not on zone entry: a fast bike tracked for a frame or
@@ -716,32 +878,46 @@ class ZoneCounter:
             self._missing.pop(tid, None)
             h = self.class_hist.setdefault(tid, deque(maxlen=self.class_window))
             h.append((cls, conf))
+            eff_area = (
+                float(eff_areas[i]) if eff_areas is not None
+                else self._effective_truck_min_area(bottom_pt[1])
+            )
+            eff_h = (
+                float(eff_heights[i]) if eff_heights is not None
+                else self._effective_truck_min_height(bottom_pt[1])
+            )
             if cls in self.TRUCK_CLS:
                 self._last_truck_cls[tid] = cls
                 self._truck_frames[tid] = self._truck_frames.get(tid, 0) + 1
                 self._peak_truck_area[tid] = max(self._peak_truck_area.get(tid, 0.0), area)
                 aspect_ok = aspect <= self.truck_promote_max_aspect
                 is_persp = persp_trucks is not None and bool(persp_trucks[i])
-                is_large = area >= self.truck_promote_area
+                height_ok = (eff_h <= 0.0 or h_box >= eff_h)
+                is_large = area >= self.truck_promote_area and height_ok
                 is_valid_truck = aspect_ok and (is_persp or is_large)
+                is_fast_truck = (
+                    aspect_ok
+                    and (is_persp or (persp_trucks is None and eff_area > 0.0))
+                    and eff_area > 0.0
+                    and area >= 1.5 * eff_area
+                    and (eff_h <= 0.0 or h_box >= 1.2 * eff_h)
+                )
                 self._consec_valid_truck[tid] = (
                     self._consec_valid_truck.get(tid, 0) + 1 if is_valid_truck else 0
                 )
-                if tid in self._car_lock_latched or (fc and fc[0] == self.CAR_CLS):
-                    # Distant approaching medium truck: >=2 consecutive
-                    # perspective-validated TRUCK_CLS frames promote car -> truck.
-                    if self._consec_valid_truck[tid] >= 2:
-                        self._car_lock_latched.discard(tid)
-                        self._truck_lock_latched.add(tid)
-                elif self._truck_frames[tid] >= 2 or (
-                    self._zone_y_mid is not None
-                    and bottom_pt[1] >= self._zone_y_mid
-                    and is_large
-                    and aspect_ok
-                ):
+                self._consec_fast_truck[tid] = (
+                    self._consec_fast_truck.get(tid, 0) + 1 if is_fast_truck else 0
+                )
+                confirmed_truck = (
+                    self._consec_valid_truck[tid] >= self.truck_confirm_frames
+                    or self._consec_fast_truck[tid] >= self.TRUCK_FAST_TRACK_FRAMES
+                )
+                if confirmed_truck:
+                    self._car_lock_latched.discard(tid)
                     self._truck_lock_latched.add(tid)
             else:
                 self._consec_valid_truck[tid] = 0
+                self._consec_fast_truck[tid] = 0
             if tid not in self._truck_lock_latched and (
                 (fc and fc[0] == self.CAR_CLS and self._age[tid] >= 2)
                 or (
@@ -778,6 +954,9 @@ class ZoneCounter:
                                                conf, pt[0], pt[1], now)
                         if re is not None:
                             events.append(re)
+                        self._record_counted_track(
+                            zi, tid, self._class_group(self.counted_id_class[zi][tid]), bbox, now
+                        )
                     continue
                 inside = in_zone
                 if not inside and not (prev is not None
@@ -844,10 +1023,19 @@ class ZoneCounter:
                 if ghost is not None:
                     self._handover(zi, ghost, tid)
                     continue
+                group = self._class_group(vote)
+                dup_old = self._match_vanished_track(zi, tid, group, bbox, pt, live, now)
+                if dup_old is not None:
+                    self._counted[zi].add(tid)
+                    self.suppressed += 1
+                    self._recent_counted_tracks[zi].pop(dup_old, None)
+                    self._record_counted_track(zi, tid, group, bbox, now)
+                    continue
                 self._counted[zi].add(tid)
                 label = self._label(vote)
                 self.counted_id_class[zi][tid] = label
                 self._recent[zi].append((now, pt[0], pt[1]))
+                self._record_counted_track(zi, tid, group, bbox, now)
                 self.total += 1
                 self.total_by_class[label] += 1
                 events.append({"zone": zi, "track_id": tid, "class_id": vote,
@@ -872,12 +1060,15 @@ class ZoneCounter:
             self.class_hist.clear()
             self.trails.clear()
             self._prev.clear()
+            self._vel.clear()
+            self._last_box.clear()
             self._start.clear()
             self._first_cls.clear()
             self._car_lock_latched.clear()
             self._truck_lock_latched.clear()
             self._truck_frames.clear()
             self._consec_valid_truck.clear()
+            self._consec_fast_truck.clear()
             self._peak_truck_area.clear()
             self._last_area.clear()
             self._last_truck_cls.clear()
@@ -894,50 +1085,70 @@ class ZoneCounter:
             self._counted = [set() for _ in self.zones]
             self.counted_id_class = [dict() for _ in self.zones]
             self._recent = [deque() for _ in self.zones]
+            self._recent_counted_tracks = [dict() for _ in self.zones]
 
     def update_polygon(self, normalized_points, frame_width: int,
-                       frame_height: int, zone_index: int = 0) -> None:
+                       frame_height: int, zone_index: int = 0,
+                       allowed_directions=None,
+                       flow_max_angle_deg=None,
+                       preserve_zone_attrs: bool = False) -> None:
         """Swap zone `zone_index` for a polygon drawn on the web dashboard.
 
         `normalized_points` are 0.0-1.0 ratios of the raw frame (the frontend
         letterbox-maps clicks to the video box first), so they scale to any
         stream resolution. Replaces the sv.PolygonZone in place; the latches
-        reset so vehicles inside the new polygon re-qualify."""
+        reset so vehicles inside the new polygon re-qualify. Clears per-zone
+        direction overrides unless passed explicitly or `preserve_zone_attrs`.
+        """
         pts = np.asarray(normalized_points, dtype=np.float64).reshape(-1, 2)
         if pts.shape[0] < 3:
             raise ValueError("polygon needs >= 3 points")
         pixel_pts = pts * [float(frame_width), float(frame_height)]
         with self._zone_lock:
             old_zone = self.zones[zone_index]
+            idx = len(self.zones) + zone_index if zone_index < 0 else zone_index
             new_zone = sv.PolygonZone(polygon=pixel_pts.astype(np.float32))
-            for attr in ("allowed_directions", "flow_max_angle_deg"):
-                if hasattr(old_zone, attr):
-                    setattr(new_zone, attr, getattr(old_zone, attr))
+            if preserve_zone_attrs:
+                ad = getattr(old_zone, "allowed_directions", None)
+                if ad is None and 0 <= idx < len(self._zone_allowed_directions):
+                    ad = self._zone_allowed_directions[idx]
+                ang = getattr(old_zone, "flow_max_angle_deg", None)
+                if ang is None and 0 <= idx < len(self._zone_flow_max_angle_deg):
+                    ang = self._zone_flow_max_angle_deg[idx]
+            else:
+                ad = allowed_directions
+                ang = flow_max_angle_deg
+            if ad is not None:
+                _normalize_directions(ad)
+                new_zone.allowed_directions = ad
+            if ang is not None:
+                new_zone.flow_max_angle_deg = ang
             self.zones[zone_index] = new_zone
-            self._zone_y_mid = self._compute_zone_y_mid()
+            if 0 <= idx < len(self._zone_allowed_directions):
+                self._zone_allowed_directions[idx] = ad
+            if 0 <= idx < len(self._zone_flow_max_angle_deg):
+                self._zone_flow_max_angle_deg[idx] = ang
+            self._refresh_zone_y_bounds()
             self._counted = [set() for _ in self.zones]
             self.counted_id_class = [dict() for _ in self.zones]
             self._recent = [deque() for _ in self.zones]
-            self._zone_ghost = [dict() for _ in self.zones]   # latches are gone
+            self._zone_ghost = [dict() for _ in self.zones]
+            self._recent_counted_tracks = [dict() for _ in self.zones]   # latches are gone
+            self._recent_counted_tracks = [dict() for _ in self.zones]
 
     def set_zones(self, zones: List[Union[sv.PolygonZone, dict]]) -> None:
         """Replace all zone polygons in place while preserving counts and active tracks."""
         new_zones: List[sv.PolygonZone] = []
         new_ads = []
         new_angs = []
-        for idx, z in enumerate(zones):
-            old = self.zones[idx] if idx < len(self.zones) else None
+        for z in zones:
             if isinstance(z, dict):
                 pts = np.asarray(z["polygon"], dtype=np.float32).reshape(-1, 2)
                 if pts.shape[0] < 3:
                     raise ValueError("polygon needs >= 3 points")
                 pz = sv.PolygonZone(polygon=pts)
                 ad = z.get("allowed_directions")
-                if ad is None and old is not None:
-                    ad = getattr(old, "allowed_directions", None)
                 ang = z.get("flow_max_angle_deg")
-                if ang is None and old is not None:
-                    ang = getattr(old, "flow_max_angle_deg", None)
                 if ad is not None:
                     _normalize_directions(ad)
                     pz.allowed_directions = ad
@@ -951,15 +1162,7 @@ class ZoneCounter:
                 if pts.shape[0] < 3:
                     raise ValueError("polygon needs >= 3 points")
                 ad = getattr(z, "allowed_directions", None)
-                if ad is None and old is not None:
-                    ad = getattr(old, "allowed_directions", None)
-                    if ad is not None:
-                        z.allowed_directions = ad
                 ang = getattr(z, "flow_max_angle_deg", None)
-                if ang is None and old is not None:
-                    ang = getattr(old, "flow_max_angle_deg", None)
-                    if ang is not None:
-                        z.flow_max_angle_deg = ang
                 if ad is not None:
                     _normalize_directions(ad)
                 new_zones.append(z)
@@ -969,8 +1172,9 @@ class ZoneCounter:
             self.zones = new_zones
             self._zone_allowed_directions = new_ads
             self._zone_flow_max_angle_deg = new_angs
-            self._zone_y_mid = self._compute_zone_y_mid()
+            self._refresh_zone_y_bounds()
             self._counted = [set() for _ in self.zones]
             self.counted_id_class = [dict() for _ in self.zones]
             self._recent = [deque() for _ in self.zones]
             self._zone_ghost = [dict() for _ in self.zones]
+            self._recent_counted_tracks = [dict() for _ in self.zones]

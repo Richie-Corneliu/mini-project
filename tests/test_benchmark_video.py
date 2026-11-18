@@ -48,7 +48,7 @@ def test_run_video_benchmark_counts_handover_and_area_percentiles():
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]],
                                            dtype=np.float32))
     counter = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
-                          min_displacement_px=0, dedup_cooldown_sec=0)
+                          min_displacement_px=0, dedup_cooldown_sec=0, min_track_frames=1)
     # Preserve controlled tracker IDs while exercising real ZoneCounter.update.
     counter.track = lambda dets, frame: dets
     outputs = [_dets([50, 50, 70, 70], tid=1),
@@ -67,7 +67,7 @@ def test_run_video_benchmark_counts_handover_and_area_percentiles():
 def test_ground_truth_integration_and_report_files(tmp_path):
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]],
                                            dtype=np.float32))
-    counter = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=0)
+    counter = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=0, min_track_frames=1)
     counter.track = lambda dets, frame: dets
     outputs = [_dets([50, 50, 70, 70], cls=2, tid=1)]
     report = run_video_benchmark([np.zeros((220, 220, 3), np.uint8)],

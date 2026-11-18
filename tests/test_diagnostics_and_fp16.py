@@ -387,6 +387,46 @@ def test_perspective_area_refinement_far_vs_near(monkeypatch):
     assert list(out_suv.data["perspective_truck"]) == [True, False]
 
 
+def test_truck_min_height_ratio_scales_across_resolutions(monkeypatch):
+    """7% frame-height guard demotes wide flat SUVs/glare on both 720p and 1080p streams."""
+    state = {"xyxy": [[100.0, 300.0, 220.0, 348.0], [300.0, 290.0, 420.0, 345.0]]}
+
+    class _HeightModel(_FakeRTDETR):
+        def predict(self, frame, **kw):
+            self.predict_kwargs.append(kw)
+            n = len(state["xyxy"])
+
+            class _R:
+                boxes = _StubBoxes(state["xyxy"], [0.9] * n, [7] * n)
+
+            return [_R()]
+
+    monkeypatch.setattr("torch.cuda.is_available", lambda: False)
+    monkeypatch.setattr("ultralytics.RTDETR", _HeightModel)
+
+    det = Detector(
+        device="cpu", model_size="rtdetr-l",
+        truck_min_area=1000, car_min_area=100,
+        truck_min_height_ratio=0.070,
+        y_ref_far=100.0, y_ref_near=600.0,  # mid = 350 (scale ~ 1.0)
+    )
+    # 720p: base_h = 50.4 px -> h=48 demoted to car (2), h=55 stays truck (7)
+    out_720 = det.detect(np.zeros((720, 1280, 3), dtype=np.uint8))
+    assert list(out_720.class_id) == [2, 7]
+    assert list(out_720.data["perspective_truck"]) == [False, True]
+
+    # 1080p: base_h = 75.6 px -> h=70 demoted to car (2), h=80 stays truck (7)
+    state["xyxy"] = [[100.0, 280.0, 260.0, 350.0], [300.0, 270.0, 460.0, 350.0]]
+    out_1080 = det.detect(np.zeros((1080, 1920, 3), dtype=np.uint8))
+    assert list(out_1080.class_id) == [2, 7]
+    assert list(out_1080.data["perspective_truck"]) == [False, True]
+
+    # Side-view override (0.040 -> 28.8 px on 720p) allows h=48 box to stay truck
+    state["xyxy"] = [[100.0, 300.0, 220.0, 348.0]]
+    out_side = det.detect(np.zeros((720, 1280, 3), dtype=np.uint8), truck_min_height_ratio=0.040)
+    assert list(out_side.class_id) == [7]
+
+
 def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
     import os
     from main import ConfigHotReloader
@@ -395,9 +435,9 @@ def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
     nodes_file = tmp_path / "nodes.yaml"
     settings_file.write_text(
         "detector:\n  conf: 0.2\n  car_min_area: 3000\n  truck_min_area: 12000\n"
-        "  scale_far: 0.42\n  scale_near: 1.95\n"
+        "  truck_min_height_ratio: 0.070\n  scale_far: 0.42\n  scale_near: 1.95\n"
         "counter:\n  min_displacement_px: 12\n  flow_max_angle_deg: 75\n"
-        "  ghost_ttl_frames: 6\n  ghost_radius_px: 35\n",
+        "  ghost_ttl_frames: 6\n  ghost_radius_px: 35\n  truck_confirm_frames: 5\n",
         encoding="utf-8",
     )
     nodes_file.write_text(
@@ -420,13 +460,14 @@ def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
     # Modify YAML files and advance mtime
     settings_file.write_text(
         "detector:\n  conf_threshold: 0.28\n  car_min_area: 2500\n  truck_min_area: 11000\n"
-        "  scale_far: 0.38\n  scale_near: 2.1\n"
+        "  truck_min_height_ratio: 0.065\n  scale_far: 0.38\n  scale_near: 2.1\n"
         "counter:\n  min_displacement_px: 18\n  flow_max_angle_deg: 60\n"
-        "  ghost_ttl_frames: 8\n  ghost_radius_px: 40\n",
+        "  ghost_ttl_frames: 8\n  ghost_radius_px: 40\n  truck_confirm_frames: 6\n",
         encoding="utf-8",
     )
     nodes_file.write_text(
-        "nodes:\n- id: node_01\n  truck_min_area: 13500\n  allowed_directions: [\"down\"]\n",
+        "nodes:\n- id: node_01\n  truck_min_area: 13500\n  truck_min_height_ratio: 0.050\n"
+        "  truck_confirm_frames: 4\n  allowed_directions: [\"down\"]\n",
         encoding="utf-8",
     )
     future_mtime = os.path.getmtime(settings_file) + 5.0
@@ -440,11 +481,15 @@ def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
     assert det.conf == pytest.approx(0.28)
     assert det.car_min_area == pytest.approx(2500.0)
     assert det.truck_min_area == pytest.approx(11000.0)
+    assert det.truck_min_height_ratio == pytest.approx(0.065)
     assert det.scale_far == pytest.approx(0.38)
     assert det.scale_near == pytest.approx(2.1)
     assert det_over["truck_min_area"] == pytest.approx(13500.0)
+    assert det_over["truck_min_height_ratio"] == pytest.approx(0.050)
     assert zc.min_disp2 == pytest.approx(18.0 ** 2)
     assert zc.allowed_directions == ["down"]
     assert zc.flow_max_angle_deg == pytest.approx(60.0)
     assert zc.ghost_ttl_frames == 8
     assert zc.ghost_r2 == pytest.approx(40.0 ** 2)
+    assert zc.truck_confirm_frames == 4
+    assert zc.truck_min_height_ratio == pytest.approx(0.050)

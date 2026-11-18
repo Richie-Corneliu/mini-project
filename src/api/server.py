@@ -2,25 +2,31 @@
 for the Command Center WebGIS. One worker thread per CCTV node calls the
 setters below; the frontend polls /api/v1/traffic-data and opens
 /api/v1/video-feed/{node_id} per selected node."""
+import csv
+import hmac
+import io
 import os
+import re
 import threading
 import time
 from pathlib import Path
-
-import csv
-import io
-
-import yaml
-from dotenv import load_dotenv
 from typing import Optional
 
-from fastapi import Body, FastAPI, HTTPException
+import cv2
+import yaml
+from dotenv import load_dotenv
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
-from src.utils.stats_store import today_wib
+from src.utils.stats_store import (
+    StatsStore,
+    all_slot_keys,
+    format_slot_interval,
+    normalize_node,
+    today_wib,
+)
 from src.utils.zone_store import persist_zone
-import cv2
 
 # Credentials live in .env (gitignored), never in nodes.yaml. Loading here
 # covers every entry point that imports the server; main.py also imports it.
@@ -32,11 +38,28 @@ app = FastAPI(
     version="2.0.0"
 )
 
+
+def _cors_origins() -> list:
+    raw = os.getenv("ATCS_CORS_ORIGINS", "")
+    origins = [o.strip() for o in raw.split(",") if o.strip()]
+    return origins or ["*"]
+
+
+def _require_api_key(
+    x_api_key: Optional[str] = Header(default=None, alias="X-API-Key"),
+) -> None:
+    expected = os.getenv("ATCS_API_KEY", "").strip()
+    if not expected:
+        return
+    if not x_api_key or not hmac.compare_digest(x_api_key, expected):
+        raise HTTPException(status_code=401, detail="invalid or missing API key")
+
+
 # Izinkan CORS agar WebGIS (HTML/JS) bisa mengakses API tanpa diblokir browser
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins(),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -46,6 +69,21 @@ STALE_SEC = 10.0
 
 _lock = threading.Lock()
 _command_lock = threading.Lock()
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_stats_store = None
+
+
+def register_stats_store(store) -> None:
+    """Bind the active StatsStore so historical dates and archives can be queried."""
+    global _stats_store
+    with _lock:
+        _stats_store = store
+
+
+def get_stats_store() -> StatsStore:
+    with _lock:
+        store = _stats_store
+    return store if store is not None else StatsStore()
 
 # Pending operator commands per node. Workers consume commands atomically.
 COMMAND_QUEUE = {}
@@ -111,7 +149,7 @@ def _blank_state():
     return {"motor": 0, "mobil": 0, "truk": 0, "occupancy": 0,
             "status": "LANCAR", "fps": 0.0, "last_seen": 0.0,
             "start_time": 0.0, "peak_occupancy": 0, "hourly_counts": {},
-            "reconnecting": False}
+            "slot_counts": {}, "session_starts": [], "reconnecting": False}
 
 
 def _registry():
@@ -124,6 +162,7 @@ nodes_state = {}
 
 # Global frame storage per node untuk Video Streaming MJPEG
 latest_frames = {}
+_frame_seqs = {}
 
 # Node yang sedang ditonton operator (di-set lewat POST /api/v1/set-focus).
 # Dibaca worker AI di main.py: hanya node ini yang menjalankan render + encode
@@ -141,24 +180,25 @@ def _status_for(occupancy: int) -> str:
     return "LANCAR"
 
 
-def _clean_hourly(raw):
-    """Normalize hourly buckets to {hour: {motor, mobil, truk, total}}.
-
-    The worker sends per-class buckets, but a bucket can legitimately carry a
-    total with no class split yet (legacy snapshot, or an hour the worker
-    attributed to an unknown label). That total is preserved rather than
-    recomputed as 0, otherwise the frontend gets a 693-vehicle hour with three
-    empty segments and draws nothing.
-    """
+def _clean_buckets(raw):
+    """Normalize hour or 15m slot buckets to {key: {motor, mobil, truk, total}}."""
     out = {}
-    for hour, bucket in (raw or {}).items():
+    for key, bucket in (raw or {}).items():
         if isinstance(bucket, dict):
-            b = {k: int(bucket.get(k, 0)) for k in ("motor", "mobil", "truk")}
+            b = {
+                "motor": int(bucket.get("motor", 0)),
+                "mobil": int(bucket.get("mobil", 0)),
+                "truk": int(bucket.get("truk", bucket.get("truk/bus", 0))),
+            }
             b["total"] = max(int(bucket.get("total") or 0), sum(b.values()))
         else:
             b = {"motor": 0, "mobil": 0, "truk": 0, "total": int(bucket or 0)}
-        out[str(hour)] = b
+        out[str(key)] = b
     return out
+
+
+_clean_hourly = _clean_buckets
+_clean_slots = _clean_buckets
 
 
 def update_node_data(node_id: str, data: dict):
@@ -174,6 +214,10 @@ def update_node_data(node_id: str, data: dict):
         st["peak_occupancy"] = int(data.get("peak_occupancy", st["peak_occupancy"]))
         st["hourly_counts"] = _clean_hourly(
             data.get("hourly_counts", st["hourly_counts"]))
+        if "slot_counts" in data:
+            st["slot_counts"] = _clean_slots(data.get("slot_counts"))
+        if "session_starts" in data:
+            st["session_starts"] = [str(s) for s in (data.get("session_starts") or [])]
         st["status"] = _status_for(st["occupancy"])
         st["last_seen"] = time.monotonic()
         # A frame just arrived: the stream is healthy again.
@@ -264,6 +308,7 @@ def set_latest_frame(node_id: str, frame):
     if ret:
         with _lock:
             latest_frames[node_id] = jpeg.tobytes()
+            _frame_seqs[node_id] = _frame_seqs.get(node_id, 0) + 1
 
 
 def get_active_focus():
@@ -276,10 +321,34 @@ def get_active_focus():
         return ACTIVE_FOCUS_NODE
 
 
+def _compute_avg_per_hour(
+    total: int,
+    slot_counts: dict,
+    start_time: float,
+    is_historical: bool = False,
+    now_wall: Optional[float] = None,
+) -> tuple[int, str]:
+    if is_historical:
+        return round(total / 24.0), "rata-rata 24 jam"
+    now = time.time() if now_wall is None else float(now_wall)
+    elapsed_hours = max(0.0, (now - start_time) / 3600.0) if start_time > 0 else 0.0
+    active_slots = sum(
+        1 for b in (slot_counts or {}).values() if int(b.get("total", 0)) > 0
+    )
+    active_hours = max(elapsed_hours, active_slots * 0.25, 0.25)
+    avg = round(total / active_hours) if total > 0 else 0
+    return avg, f"dari {active_hours:.1f} jam aktif"
+
+
 def _public_state(node_id, reg, st, now):
     last_seen = st.get("last_seen", 0.0)
     online = last_seen > 0 and (now - last_seen) <= STALE_SEC
     stream_status, stale_seconds = stream_health(st, now)
+    slots = {s: dict(b) for s, b in (st.get("slot_counts") or {}).items()}
+    total = int(st["motor"]) + int(st["mobil"]) + int(st["truk"])
+    avg_per_hour, avg_basis_label = _compute_avg_per_hour(
+        total, slots, float(st.get("start_time") or 0.0), is_historical=False
+    )
     return {
         "nama": reg.get("nama", node_id),
         "lat": reg.get("lat"),
@@ -295,8 +364,53 @@ def _public_state(node_id, reg, st, now):
         "start_time": st["start_time"],
         "peak_occupancy": st["peak_occupancy"],
         "hourly_counts": {h: dict(b) for h, b in st["hourly_counts"].items()},
+        "slot_counts": slots,
+        "session_starts": list(st.get("session_starts") or []),
+        "avg_per_hour": avg_per_hour,
+        "avg_basis_label": avg_basis_label,
         "online": online,
     }
+
+
+def _historical_public_state(node_id: str, reg: dict, raw_node: dict) -> dict:
+    norm = normalize_node(raw_node)
+    counts = norm["counts"]
+    total = max(norm["total"], sum(counts.values()))
+    hourly = _clean_hourly(norm["hourly_counts"])
+    slots = _clean_slots(norm["slot_counts"])
+    avg_per_hour, avg_basis_label = _compute_avg_per_hour(
+        total, slots, 0.0, is_historical=True
+    )
+    return {
+        "nama": reg.get("nama", node_id),
+        "lat": reg.get("lat"),
+        "lng": reg.get("lng"),
+        "status": "ARSIP",
+        "stream_status": "OFFLINE",
+        "stale_seconds": None,
+        "motor": counts["motor"],
+        "mobil": counts["mobil"],
+        "truk": counts["truk"],
+        "occupancy": 0,
+        "fps": 0.0,
+        "start_time": 0.0,
+        "peak_occupancy": 0,
+        "hourly_counts": hourly,
+        "slot_counts": slots,
+        "session_starts": list(norm["session_starts"]),
+        "avg_per_hour": avg_per_hour,
+        "avg_basis_label": avg_basis_label,
+        "online": False,
+        "is_historical": True,
+    }
+
+
+def _validate_date_param(date: Optional[str]) -> Optional[str]:
+    if date is None:
+        return None
+    if not _DATE_RE.match(date):
+        raise HTTPException(status_code=400, detail="invalid date format, expected YYYY-MM-DD")
+    return date
 
 
 # -------------------------------------------------------------------
@@ -325,22 +439,79 @@ def get_nodes():
     ]}
 
 
-@app.get("/api/v1/traffic-data")
-def get_traffic_data():
-    """Endpoint JSON untuk ditarik oleh Leaflet.js / app.js"""
-    reg = _registry()
-    now = time.monotonic()
+@app.get("/api/v1/history/dates")
+def get_history_dates():
+    """Sorted YYYY-MM-DD date strings with recorded counting data."""
+    today = today_wib()
+    dates = set(get_stats_store().recorded_dates())
     with _lock:
-        tracked = dict(nodes_state)
-    snap = {nid: _public_state(nid, reg.get(nid, {}), st, now)
-            for nid, st in tracked.items()}
+        has_live = any(
+            (st["motor"] + st["mobil"] + st["truk"] > 0)
+            or bool(st.get("slot_counts"))
+            or bool(st.get("hourly_counts"))
+            for st in nodes_state.values()
+        )
+    if has_live:
+        dates.add(today)
+    return {"dates": sorted(dates), "today": today}
+
+
+@app.get("/api/v1/history/{node_id}/{date}")
+def get_node_history(node_id: str, date: str):
+    """Day summary (hourly, 15m slots, session_starts, avg/hour) for one node and date."""
+    target_date = _validate_date_param(date)
+    reg_map = _registry()
+    today = today_wib()
+    if target_date == today:
+        now = time.monotonic()
+        with _lock:
+            st = nodes_state.get(node_id)
+            if st is not None:
+                st = dict(st)
+        if st is None:
+            if node_id not in reg_map:
+                raise HTTPException(status_code=404, detail="Node not found")
+            st = _blank_state()
+        pub = _public_state(node_id, reg_map.get(node_id, {}), st, now)
+        return {"node_id": node_id, "date": target_date, "is_historical": False, **pub}
+
+    doc = get_stats_store().load_date(target_date)
+    hist_nodes = (doc or {}).get("nodes", {})
+    if node_id not in hist_nodes and node_id not in reg_map:
+        raise HTTPException(status_code=404, detail="Node not found")
+    pub = _historical_public_state(node_id, reg_map.get(node_id, {}), hist_nodes.get(node_id, {}))
+    return {"node_id": node_id, "date": target_date, **pub}
+
+
+@app.get("/api/v1/traffic-data")
+def get_traffic_data(date: Optional[str] = Query(default=None)):
+    """Endpoint JSON untuk ditarik oleh Leaflet.js / app.js."""
+    target_date = _validate_date_param(date)
+    reg = _registry()
+    today = today_wib()
+    if target_date is None or target_date == today:
+        now = time.monotonic()
+        with _lock:
+            tracked = dict(nodes_state)
+        snap = {nid: _public_state(nid, reg.get(nid, {}), st, now)
+                for nid, st in tracked.items()}
+        for nid, reg_node in reg.items():
+            snap.setdefault(nid, _public_state(nid, reg_node,
+                                               tracked.get(nid, _blank_state()), now))
+        return {"date": today, "is_historical": False, "nodes": snap}
+
+    doc = get_stats_store().load_date(target_date)
+    hist_nodes = (doc or {}).get("nodes", {})
+    snap = {
+        nid: _historical_public_state(nid, reg.get(nid, {}), node_doc)
+        for nid, node_doc in hist_nodes.items()
+    }
     for nid, reg_node in reg.items():
-        snap.setdefault(nid, _public_state(nid, reg_node,
-                                           tracked.get(nid, _blank_state()), now))
-    return {"nodes": snap}
+        snap.setdefault(nid, _historical_public_state(nid, reg_node, hist_nodes.get(nid, {})))
+    return {"date": target_date, "is_historical": True, "nodes": snap}
 
 
-@app.post("/api/v1/set-focus/{node_id}")
+@app.post("/api/v1/set-focus/{node_id}", dependencies=[Depends(_require_api_key)])
 def set_focus(node_id: str):
     """Tandai satu node sebagai fokus live; worker-nya merender + encode MJPEG.
 
@@ -354,7 +525,7 @@ def set_focus(node_id: str):
     return {"focus": current}
 
 
-@app.post("/api/v1/control/{node_id}/{action}")
+@app.post("/api/v1/control/{node_id}/{action}", dependencies=[Depends(_require_api_key)])
 def control_node(node_id: str, action: str,
                  payload: Optional[dict] = Body(default=None)):
     with _lock:
@@ -389,11 +560,12 @@ def control_node(node_id: str, action: str,
                 fw, fh = fsize
         if hook is not None and fw and fh:
             pixel_pts = [[int(x * float(fw)), int(y * float(fh))] for x, y in clean]
+            hook_zones = [{"name": "zone", "polygon": pixel_pts}]
             try:
-                persist_zone(node_id, pixel_pts, path=nodes_path)
+                hook_zones = persist_zone(node_id, pixel_pts, path=nodes_path)
             except KeyError:
                 pass
-            hook(node_id, [{"name": "zone", "polygon": pixel_pts}])
+            hook(node_id, hook_zones)
             applied = True
             command = {"action": "update_zone", "points": clean, "applied": True}
         else:
@@ -409,64 +581,111 @@ def control_node(node_id: str, action: str,
     return {"node_id": node_id, "action": action, "queued": True, "applied": applied}
 
 
-def generate_video_stream(node_id: str):
+def generate_video_stream(node_id: str, keepalive_sec: float = 1.0):
+    last_seq = None
+    last_bytes = None
+    last_sent_at = 0.0
     while True:
         with _lock:
             jpg = latest_frames.get(node_id)
+            seq = _frame_seqs.get(node_id)
+        now = time.monotonic()
         if jpg is not None:
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + jpg + b'\r\n')
+            changed = (seq != last_seq) if seq is not None else (jpg is not last_bytes)
+            if changed or (now - last_sent_at >= keepalive_sec):
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + jpg + b'\r\n')
+                last_seq = seq
+                last_bytes = jpg
+                last_sent_at = now
         time.sleep(0.04)  # ~25 FPS stream
 
 
-@app.get("/api/v1/nodes/{node_id}/export-csv")
-def export_node_csv(node_id: str):
-    """Laporan harian CSV per simpang: 24 baris jam + baris TOTAL HARIAN.
+def _resolve_export_state(node_id: str, target_date: str, reg_map: dict) -> dict:
+    if target_date == today_wib():
+        with _lock:
+            if node_id in nodes_state:
+                raw = nodes_state[node_id]
+                return {
+                    "motor": int(raw.get("motor", 0)),
+                    "mobil": int(raw.get("mobil", 0)),
+                    "truk": int(raw.get("truk", 0)),
+                    "slot_counts": {s: dict(b) for s, b in (raw.get("slot_counts") or {}).items()},
+                    "session_starts": list(raw.get("session_starts") or []),
+                }
+        if node_id in reg_map:
+            doc = get_stats_store().load_date(target_date)
+            doc_nodes = (doc or {}).get("nodes", {})
+            if node_id in doc_nodes:
+                norm = normalize_node(doc_nodes[node_id])
+                return {
+                    "motor": norm["counts"]["motor"],
+                    "mobil": norm["counts"]["mobil"],
+                    "truk": norm["counts"]["truk"],
+                    "slot_counts": _clean_slots(norm["slot_counts"]),
+                    "session_starts": list(norm["session_starts"]),
+                }
+            return _blank_state()
+        raise HTTPException(status_code=404, detail="Node not found")
 
-    Snapshot nodes_state diambil di bawah _lock (deep-copy) supaya tidak
-    ada race dengan thread worker AI yang menulis state di frame berikutnya.
+    doc = get_stats_store().load_date(target_date)
+    doc_nodes = (doc or {}).get("nodes", {})
+    if node_id in doc_nodes:
+        norm = normalize_node(doc_nodes[node_id])
+        return {
+            "motor": norm["counts"]["motor"],
+            "mobil": norm["counts"]["mobil"],
+            "truk": norm["counts"]["truk"],
+            "slot_counts": _clean_slots(norm["slot_counts"]),
+            "session_starts": list(norm["session_starts"]),
+        }
+    if node_id in reg_map:
+        return _blank_state()
+    raise HTTPException(status_code=404, detail="Node not found")
+
+
+@app.get("/api/v1/export-csv/{node_id}")
+@app.get("/api/v1/nodes/{node_id}/export-csv")
+def export_node_csv(node_id: str, date: Optional[str] = Query(default=None)):
+    """Laporan CSV interval 15 menit per simpang (96 slot + baris TOTAL).
+
     BOM UTF-8 disisipkan agar Excel Windows langsung menampilkan kolom rapi.
     """
-    with _lock:
-        if node_id not in nodes_state:
-            raise HTTPException(status_code=404, detail="Node not found")
-        st = dict(nodes_state[node_id])
-        st["hourly_counts"] = {h: dict(b) for h, b in st["hourly_counts"].items()}
-
-    reg = _registry().get(node_id, {})
-    nama = reg.get("nama", node_id)
-    date_wib = today_wib()
+    target_date = _validate_date_param(date) or today_wib()
+    reg_map = _registry()
+    st = _resolve_export_state(node_id, target_date, reg_map)
 
     buf = io.StringIO()
     buf.write("\ufeff")
     writer = csv.writer(buf, lineterminator="\n")
-    writer.writerow(["Tanggal", "ID Simpang", "Nama Simpang", "Rentang Jam",
-                     "Motor", "Mobil", "Truk/Bus", "Total Kendaraan",
-                     "Status Lalu Lintas"])
+    writer.writerow(["Interval Waktu", "Motor", "Mobil", "Truk/Bus", "Total"])
 
-    for hour in range(24):
-        key = f"{hour:02d}"
-        bucket = st["hourly_counts"].get(key, {})
+    slots = st.get("slot_counts") or {}
+    starts = st.get("session_starts") or []
+    slot_m = slot_b = slot_t = slot_tot = 0
+    for skey in all_slot_keys():
+        bucket = slots.get(skey, {})
         motor = int(bucket.get("motor", 0))
         mobil = int(bucket.get("mobil", 0))
         truk = int(bucket.get("truk", 0))
-        total = max(int(bucket.get("total", 0)), motor + mobil + truk)
-        writer.writerow([date_wib, node_id, nama,
-                         f"{key}:00 - {key}:59",
-                         motor, mobil, truk, total, st["status"]])
+        tot = max(int(bucket.get("total", 0)), motor + mobil + truk)
+        slot_m += motor
+        slot_b += mobil
+        slot_t += truk
+        slot_tot += tot
+        writer.writerow([format_slot_interval(skey, starts), motor, mobil, truk, tot])
 
-    motor = int(st.get("motor", 0))
-    mobil = int(st.get("mobil", 0))
-    truk = int(st.get("truk", 0))
-    total = motor + mobil + truk
-    writer.writerow([date_wib, node_id, nama, "00:00 - 23:59 (Total)",
-                     motor, mobil, truk, total, st["status"]])
+    tm = max(slot_m, int(st.get("motor", 0))) if slots else int(st.get("motor", 0))
+    tb = max(slot_b, int(st.get("mobil", 0))) if slots else int(st.get("mobil", 0))
+    tt = max(slot_t, int(st.get("truk", 0))) if slots else int(st.get("truk", 0))
+    grand = max(slot_tot, tm + tb + tt)
+    writer.writerow(["TOTAL", tm, tb, tt, grand])
 
     return Response(
         content=buf.getvalue(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition":
-                 f'attachment; filename="laporan_lalin_{node_id}_{date_wib}.csv"'},
+                 f'attachment; filename="laporan_lalin_{node_id}_{target_date}.csv"'},
     )
 
 

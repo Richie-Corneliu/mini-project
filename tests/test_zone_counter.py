@@ -67,7 +67,7 @@ def test_reclassify_empty_dets():
 def test_zone_latch_and_dedup():
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]]))
     zc = ZoneCounter([zone], class_labels={2: "mobil"}, dedup_radius_px=40,
-                     dedup_cooldown_sec=4.0, min_displacement_px=0)
+                     dedup_cooldown_sec=4.0, min_displacement_px=0, min_track_frames=1)
     t = time.monotonic()
     d = _dets([[90, 90, 110, 110]], [2], tid=[1])
     ev = zc.update(d, now=t)
@@ -162,7 +162,7 @@ def test_stable_id_beats_spatial_dedup():
 def test_ghost_id_still_suppressed():
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]]))
     zc = ZoneCounter([zone], class_labels={2: "mobil"}, dedup_radius_px=10,
-                     dedup_cooldown_sec=4.0, min_displacement_px=0)
+                     dedup_cooldown_sec=4.0, min_displacement_px=0, min_track_frames=1)
     t = time.monotonic()
     assert zc.update(_dets([[90, 90, 110, 110]], [2], tid=[1]), now=t)
     assert not zc.update(_dets([[91, 91, 111, 111]], [2], tid=[2]), now=t + 0.2)
@@ -227,7 +227,8 @@ def test_still_vehicle_counts_after_timeout():
     """Stopped vehicle in intersection queue counts after still_count_frames."""
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
     zc = ZoneCounter([zone], class_labels={3: "motor"},
-                     min_displacement_px=50, still_count_frames=5, still_min_conf=0.35)
+                     min_displacement_px=50, still_count_frames=5, still_min_conf=0.35,
+                     min_track_frames=1)
     t = time.monotonic()
     box = [[90, 90, 110, 110]]  # never moves, displacement = 0
     for i in range(4):
@@ -240,7 +241,8 @@ def test_still_low_conf_never_counts():
     """Low-confidence static detection (bush) never fires the still-vehicle escape hatch."""
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
     zc = ZoneCounter([zone], class_labels={3: "motor"},
-                     min_displacement_px=50, still_count_frames=5, still_min_conf=0.35)
+                     min_displacement_px=50, still_count_frames=5, still_min_conf=0.35,
+                     min_track_frames=1)
     t = time.monotonic()
     for i in range(30):
         zc.update(_dets([[90, 90, 110, 110]], [3], conf=[0.1], tid=[1]), now=t + i)
@@ -300,7 +302,7 @@ def test_latch_survives_exit_and_reset_clears_it():
     za = sv.PolygonZone(polygon=np.array([(100, 200), (350, 200), (350, 500), (100, 500)]))
     zb = sv.PolygonZone(polygon=np.array([(340, 200), (600, 200), (600, 500), (340, 500)]))
     zc = ZoneCounter([za, zb], class_labels={3: "motor"}, dedup_cooldown_sec=0.0,
-                     min_displacement_px=0)
+                     min_displacement_px=0, min_track_frames=1)
     t = time.monotonic()
     zc.update(_dets([[300, 300, 400, 400]], [3], tid=[1]), now=t)   # centroid in both
     assert zc.total == 2, zc.total
@@ -318,7 +320,7 @@ def test_latch_survives_exit_and_reset_clears_it():
 def test_audit_logger_writes_header_and_row():
     """One accepted count -> header + one CSV row."""
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]]))
-    zc = ZoneCounter([zone], class_labels={3: "motor"}, min_displacement_px=0)
+    zc = ZoneCounter([zone], class_labels={3: "motor"}, min_displacement_px=0, min_track_frames=1)
     ev = zc.update(_dets([[90, 90, 110, 110]], [3], tid=[7]), now=time.monotonic())
     tmp = os.path.join(tempfile.mkdtemp(), "count_audit.csv")
     al = AuditLogger(tmp)
@@ -550,7 +552,7 @@ def test_demoted_car_outside_truck_counts_as_motor():
     as a motorcycle, not suppressed."""
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [400, 0], [400, 400], [0, 400]]))
     zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
-                     min_displacement_px=0)
+                     min_displacement_px=0, min_track_frames=1)
     t = time.monotonic()
     ev = zc.update(_dets([[90, 90, 130, 130]], [3], tid=[1],
                          demoted_car=[True]), now=t)
@@ -618,7 +620,7 @@ def test_in_zone_ghost_handover_preserves_reattribution():
                                             [600, 500], [100, 500]]))
     zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor",
                                            5: "truk/bus", 7: "truk/bus"},
-                     min_displacement_px=0)
+                     min_displacement_px=0, min_track_frames=1)
     t = time.monotonic()
     ev = zc.update(_dets([[280, 230, 320, 270]], [7], tid=[1]), now=t)
     assert len(ev) == 1 and ev[0]["class_name"] == "truk/bus", ev
@@ -678,7 +680,7 @@ def test_stale_tracker_id_pruning_preserves_counts_and_ghost_handover():
 
     zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
                      ghost_ttl_frames=10, max_stale_frames=150,
-                     min_displacement_px=0, debug=True)
+                     min_displacement_px=0, min_track_frames=1, debug=True)
     t = time.monotonic()
 
     # Frame 1: tid=1 counted inside zone
@@ -824,6 +826,7 @@ def test_flow_gate_ghost_handover_preserves_start_anchor():
         zc.update(sv.Detections.empty(), now=t + k)
     # Respawn near ghost with slight lateral offset; inherited _start=(300,100) gives dy=+215 (down)
     ev_ho = zc.update(_dets([[300, 305, 320, 325]], [2], tid=[2]), now=t + 6)
+    ev_ho += zc.update(_dets([[300, 325, 320, 345]], [2], tid=[2]), now=t + 7)
     assert not ev_ho
     assert zc.ghost_handovers == 1
     assert zc.total == 1
@@ -906,27 +909,32 @@ def test_mobil_strict_lock_prevents_late_upgrade_or_reattribution_to_truk():
 
 
 def test_receding_medium_truck_locked_against_shrink_demotion():
-    """Medium truck starts near/mid as truk/bus, moves up (dy < 0) into upper
-    polygon where raw class drops to mobil as box shrinks: stays truk/bus via
-    _truck_lock_latched (and across Ghost ID Handover)."""
+    """Medium truck confirmed near/mid as truk/bus moves up (dy < 0) into upper
+    polygon where raw class drops to mobil while remaining >= 0.85x effective
+    truck area: stays truk/bus via _truck_lock_latched (and across Ghost ID Handover)."""
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [500, 0], [500, 500], [0, 500]]))
     zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"},
                      dedup_cooldown_sec=0.0)
     t = time.monotonic()
 
-    # Frames 1..2: starts near/mid as truck (dy < 0)
-    zc.update(_dets([[200, 320, 320, 440]], [7], tid=[1]), now=t)
-    ev = zc.update(_dets([[205, 270, 315, 380]], [7], tid=[1]), now=t + 1)
-    assert len(ev) == 1 and ev[0]["class_name"] == "truk/bus"
+    # Frames 1..2: fast-track large/tall medium truck entering near bottom/mid (dy < 0)
+    # y2=440 -> eff_area ~ 20640 -> 1.5x = 30960, eff_h ~ 87 -> 1.2x = 104
+    for k, box in enumerate(([160, 260, 340, 440], [165, 210, 345, 390])):
+        d = _dets([box], [7], tid=[1])
+        d.data["perspective_truck"] = np.array([True], dtype=bool)
+        ev_k = zc.update(d, now=t + k)
+        if k == 1:
+            # Zone entry never waits for confirmation: counted immediately once disp >= 12px
+            assert len(ev_k) == 1 and ev_k[0]["class_name"] == "truk/bus"
     assert 1 in zc._truck_lock_latched
 
-    # Frames 3..10: moves away upward into upper polygon; box shrinks & drops to mobil (2)
+    # Frames 3..8: moves away upward into upper polygon; raw class drops to mobil (2)
+    # while perspective area stays >= 0.85 * effective_truck_min_area(y2)
     later = []
-    for k in range(8):
-        y1 = 230 - k * 20
-        w = max(55, 100 - k * 6)
-        h = max(50, 95 - k * 6)
-        later += zc.update(_dets([[250 - w / 2, y1, 250 + w / 2, y1 + h]],
+    for k in range(6):
+        y2 = 240 - k * 25
+        w, h = 110 - k * 4, 100 - k * 4  # 11000..7200 px2 (> 0.85x eff_truck_min_area)
+        later += zc.update(_dets([[250 - w / 2, y2 - h, 250 + w / 2, y2]],
                                  [2], conf=[0.95], tid=[1]), now=t + 2 + k)
     assert not any(e.get("reattributed_from") for e in later), later
     assert zc.total == 1
@@ -935,48 +943,95 @@ def test_receding_medium_truck_locked_against_shrink_demotion():
 
     # Brief occlusion + Ghost ID Handover preserves _truck_lock_latched on tid=2
     zc.update(sv.Detections.empty(), now=t + 10)
-    ev_ho = zc.update(_dets([[220, 65, 280, 115]], [2], conf=[0.95], tid=[2]), now=t + 11)
+    ev_ho = zc.update(_dets([[205, 45, 295, 115]], [2], conf=[0.95], tid=[2]), now=t + 11)
+    ev_ho += zc.update(_dets([[205, 35, 295, 105]], [2], conf=[0.95], tid=[2]), now=t + 12)
     assert not ev_ho and zc.ghost_handovers == 1
     assert 2 in zc._truck_lock_latched
     assert zc.total == 1 and zc.total_by_class["truk/bus"] == 1
 
 
 def test_approaching_medium_truck_promotes_after_consecutive_validated_frames():
-    """Track starting far away as demoted mobil promotes to truk/bus once it
-    receives >= 2 consecutive perspective-validated truk/bus frames."""
+    """Track starting as mobil resists 3-4 glare TRUCK_CLS frames (< truck_confirm_frames=5),
+    promotes on 5th consecutive perspective-validated frame, or fast-tracks in 2 frames
+    when >= 1.5x effective area and >= 1.2x effective height."""
     zone = sv.PolygonZone(polygon=np.array([[0, 0], [600, 0], [600, 600], [0, 600]]))
     zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"},
                      truck_min_area=12000.0)
     t = time.monotonic()
 
-    # Case A: Detector perspective_truck flag on >=2 consecutive frames promotes mobil -> truk/bus
+    # Case A: Rain/night glare protection — 4 consecutive TRUCK_CLS frames (<5) stay mobil; 5th promotes
     zc.update(_dets([[270, 80, 330, 140]], [2], tid=[1]), now=t)
     ev = zc.update(_dets([[268, 100, 332, 165]], [2], tid=[1]), now=t + 1)
     assert len(ev) == 1 and ev[0]["class_name"] == "mobil"
     assert 1 in zc._car_lock_latched
 
-    d3 = _dets([[250, 150, 350, 255]], [7], conf=[0.85], tid=[1])
-    d3.data["perspective_truck"] = np.array([True], dtype=bool)
-    ev3 = zc.update(d3, now=t + 2)
-    assert not ev3  # 1st validated frame: not promoted yet
+    for step in range(4):
+        d = _dets([[250, 150 + step * 20, 350, 260 + step * 20]], [7], conf=[0.85], tid=[1])  # ~11000 px2 (< 1.5x eff)
+        d.data["perspective_truck"] = np.array([True], dtype=bool)
+        assert not zc.update(d, now=t + 2 + step)
+    assert 1 in zc._car_lock_latched and 1 not in zc._truck_lock_latched
+    assert zc.total_by_class["mobil"] == 1
 
-    d4 = _dets([[245, 190, 355, 310]], [7], conf=[0.85], tid=[1])
-    d4.data["perspective_truck"] = np.array([True], dtype=bool)
-    ev4 = zc.update(d4, now=t + 3)
-    assert len(ev4) == 1 and ev4[0]["reattributed_from"] == "mobil"
-    assert ev4[0]["class_name"] == "truk/bus"
+    d5 = _dets([[240, 230, 360, 350]], [7], conf=[0.85], tid=[1])
+    d5.data["perspective_truck"] = np.array([True], dtype=bool)
+    ev5 = zc.update(d5, now=t + 6)
+    assert len(ev5) == 1 and ev5[0]["reattributed_from"] == "mobil"
+    assert ev5[0]["class_name"] == "truk/bus"
     assert 1 not in zc._car_lock_latched and 1 in zc._truck_lock_latched
-    assert zc.total == 1 and zc.total_by_class["truk/bus"] == 1
-    assert zc.total_by_class.get("mobil", 0) == 0
 
-    # Case B: Standalone area >= 1.25 * truck_min_area (15000) with truck aspect ratio also promotes
+    # Case B: Fast-track daytime truck (>= 1.5x eff_area AND >= 1.2x eff_h) promotes in 2 frames
     zc.update(_dets([[420, 60, 480, 120]], [2], tid=[2]), now=t + 10)
     ev_b = zc.update(_dets([[418, 80, 482, 145]], [2], tid=[2]), now=t + 11)
     assert len(ev_b) == 1 and ev_b[0]["class_name"] == "mobil"
-    zc.update(_dets([[390, 200, 510, 330]], [7], conf=[0.9], tid=[2]), now=t + 12)   # 120x130=15600
-    ev_b2 = zc.update(_dets([[385, 240, 515, 380]], [7], conf=[0.9], tid=[2]), now=t + 13)  # 130x140=18200
-    assert len(ev_b2) == 1 and ev_b2[0]["reattributed_from"] == "mobil"
+    # Wide-only box (>= 1.5x area but short height < 1.2 * 50.4 = 60.5) must NOT fast-track
+    d_short1 = _dets([[350, 200, 560, 255]], [7], conf=[0.9], tid=[2])  # 210x55 = 11550
+    d_short1.data["perspective_truck"] = np.array([True], dtype=bool)
+    assert not zc.update(d_short1, now=t + 12)
+    # Full tall/large fast-track truck at mid y2=300: eff_area=12000 (1.5x=18000), eff_h=50.4 (1.2x=60.5)
+    for k, box in enumerate(([370, 140, 520, 290], [365, 160, 525, 310])):  # 150x150=22500, 160x150=24000
+        dt = _dets([box], [7], conf=[0.9], tid=[2])
+        dt.data["perspective_truck"] = np.array([True], dtype=bool)
+        ev_ft = zc.update(dt, now=t + 13 + k)
+        if k == 0:
+            assert not ev_ft
+        else:
+            assert len(ev_ft) == 1 and ev_ft[0]["reattributed_from"] == "mobil"
+            assert ev_ft[0]["class_name"] == "truk/bus"
     assert zc.total == 2 and zc.total_by_class["truk/bus"] == 2
+    assert zc.total_by_class.get("mobil", 0) == 0
+
+
+def test_receding_truck_latched_permanent_through_far_zone():
+    """Truck latched near bottom edge stays permanently in _truck_lock_latched
+    and counted as truk/bus even as perspective shrinks < 0.85x effective
+    truck area and raw class flickers to CAR_CLS in the upper/far zone."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [500, 0], [500, 500], [0, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 5: "truk/bus", 7: "truk/bus"},
+                     truck_min_area=12000.0)
+    t = time.monotonic()
+
+    # Frames 1..2: bottom entry (y2=460,410 > mid=250), fast-tracks into _truck_lock_latched
+    for k, box in enumerate(([150, 280, 330, 460], [155, 235, 335, 410])):  # 180x180, 180x175
+        d = _dets([box], [7], conf=[0.9], tid=[1])
+        d.data["perspective_truck"] = np.array([True], dtype=bool)
+        ev = zc.update(d, now=t + k)
+        if k == 1:
+            assert len(ev) == 1 and ev[0]["class_name"] == "truk/bus"
+    assert 1 in zc._truck_lock_latched
+
+    # Frames 3..8: moves upward (dy < 0) through upper/far zone while shrinking
+    # below 0.85 * effective_truck_min_area and reading raw CAR_CLS (2)
+    later = []
+    for k in range(6):
+        y2 = 230 - k * 25
+        later += zc.update(
+            _dets([[210, y2 - 65, 285, y2]], [2], conf=[0.95], tid=[1]),  # 75x65=4875 (< 0.85x eff)
+            now=t + 2 + k,
+        )
+    assert not any(e.get("reattributed_from") for e in later), later
+    assert 1 in zc._truck_lock_latched and 1 not in zc._car_lock_latched
+    assert zc.total == 1
+    assert zc.total_by_class["truk/bus"] == 1
     assert zc.total_by_class.get("mobil", 0) == 0
 
 
@@ -1135,6 +1190,240 @@ def test_live_zone_polygon_update_hook_and_hot_reload_preserve_counts(monkeypatc
         srv.clear_commands("node_live_zone")
         with srv._lock:
             srv._node_frame_sizes.pop("node_live_zone", None)
+
+
+def test_get_track_diagnostics_thread_safe_under_concurrent_updates():
+    """Concurrent Renderer diagnostic reads must never hit deque mutated during iteration."""
+    import threading
+
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [500, 0], [500, 500], [0, 500]], dtype=np.float32))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor", 7: "truk/bus"}, min_displacement_px=0)
+    errors = []
+    stop = threading.Event()
+
+    def writer():
+        t0 = time.monotonic()
+        try:
+            for step in range(400):
+                cls = (2, 3, 7)[step % 3]
+                zc.update(_dets([[100, 100 + (step % 40), 160, 160 + (step % 40)]], [cls], tid=[1]), now=t0 + step * 0.04)
+                if step % 150 == 149:
+                    zc.reset()
+        except Exception as exc:
+            errors.append(exc)
+        finally:
+            stop.set()
+
+    def reader():
+        try:
+            while not stop.is_set():
+                zc.get_track_diagnostics(1, [100, 100, 160, 160])
+                zc.diagnostics_summary()
+        except Exception as exc:
+            errors.append(exc)
+
+    t_w = threading.Thread(target=writer)
+    t_r = threading.Thread(target=reader)
+    t_r.start()
+    t_w.start()
+    t_w.join(timeout=5.0)
+    t_r.join(timeout=5.0)
+    assert not errors
+
+
+def test_persist_zone_and_hot_reload_attribute_integrity(tmp_path):
+    """persist_zone keeps custom zone attrs/extra zones; update_polygon/set_zones clear omitted rules."""
+    import yaml
+    import main as main_mod
+    from src.utils.zone_store import persist_zone
+
+    nodes_file = tmp_path / "custom_nodes.yaml"
+    nodes_file.write_text(
+        "nodes:\n"
+        "- id: node_x\n"
+        "  nama: Test\n"
+        "  zones:\n"
+        "  - name: south_gate\n"
+        "    polygon: [[100, 100], [400, 100], [400, 400], [100, 400]]\n"
+        "    allowed_directions: [\"down\"]\n"
+        "    flow_max_angle_deg: 60\n"
+        "    min_displacement_px: 15\n"
+        "  - name: north_gate\n"
+        "    polygon: [[500, 100], [700, 100], [700, 400], [500, 400]]\n",
+        encoding="utf-8",
+    )
+
+    persist_zone("node_x", [[120, 120], [420, 120], [420, 420], [120, 420]], path=nodes_file)
+    saved = yaml.safe_load(nodes_file.read_text(encoding="utf-8"))["nodes"][0]
+    assert len(saved["zones"]) == 2
+    assert saved["zones"][0]["name"] == "south_gate"
+    assert saved["zones"][0]["polygon"] == [[120, 120], [420, 120], [420, 420], [120, 420]]
+    assert saved["zones"][0]["allowed_directions"] == ["down"]
+    assert saved["zones"][0]["flow_max_angle_deg"] == 60
+    assert saved["zones"][0]["min_displacement_px"] == 15
+    assert saved["zones"][1]["name"] == "north_gate"
+
+    # Single-zone update_polygon clears omitted allowed_directions unless preserve_zone_attrs=True
+    zc = ZoneCounter([{"name": "z0", "polygon": [[0, 0], [500, 0], [500, 500], [0, 500]],
+                       "allowed_directions": ["down"], "flow_max_angle_deg": 45.0}],
+                     class_labels={2: "mobil"}, min_displacement_px=12, dedup_cooldown_sec=0)
+    t0 = time.monotonic()
+    zc.update(_dets([[100, 300, 140, 340]], [2], tid=[1]), now=t0)
+    assert zc.update(_dets([[100, 260, 140, 300]], [2], tid=[1]), now=t0 + 0.1) == []
+    assert zc.suppressed_direction == 1
+
+    zc.update_polygon([[0.0, 0.0], [0.5, 0.0], [0.5, 0.5], [0.0, 0.5]], 1000, 1000)
+    assert not hasattr(zc.zones[0], "allowed_directions")
+    zc.update(_dets([[100, 300, 140, 340]], [2], tid=[2]), now=t0 + 1.0)
+    ev = zc.update(_dets([[100, 260, 140, 300]], [2], tid=[2]), now=t0 + 1.1)
+    assert len(ev) == 1
+
+    # set_zones and ConfigHotReloader also clear direction rules when deleted from nodes.yaml
+    zc.set_zones([{"name": "z0", "polygon": [[0, 0], [500, 0], [500, 500], [0, 500]],
+                   "allowed_directions": ["down"]}])
+    reloader = main_mod.ConfigHotReloader(settings_path=None, nodes_path=nodes_file, check_interval_sec=0.0)
+    reloader.register_node("node_x", zc)
+    nodes_file.write_text(
+        "nodes:\n"
+        "- id: node_x\n"
+        "  nama: Test\n"
+        "  zones:\n"
+        "  - name: south_gate\n"
+        "    polygon: [[0, 0], [500, 0], [500, 500], [0, 500]]\n",
+        encoding="utf-8",
+    )
+    future = os.path.getmtime(nodes_file) + 5.0
+    os.utime(nodes_file, (future, future))
+    assert reloader.check_and_reload(now=100.0) is True
+    assert not hasattr(zc.zones[0], "allowed_directions")
+    zc.update(_dets([[100, 300, 140, 340]], [2], tid=[3]), now=t0 + 2.0)
+    ev2 = zc.update(_dets([[100, 260, 140, 300]], [2], tid=[3]), now=t0 + 2.1)
+    assert len(ev2) == 1
+
+    # Deferred _ai_worker update_zone forwards hot_reloader.nodes_path to persist_zone
+    import threading
+    from src.api import server as srv
+
+    bus = main_mod.FrameBus()
+    stop = threading.Event()
+    prof = main_mod.StageProfiler("node_x")
+
+    class _Det:
+        def detect(self, f, **kw):
+            return sv.Detections.empty()
+
+        def configure_perspective_from_polygons(self, z):
+            pass
+
+    class _Str:
+        def is_frozen(self):
+            return False
+
+        def effective_fps(self, default=25.0):
+            return 25.0
+
+    nodes_file.write_text(
+        "nodes:\n- id: node_x\n  nama: Test\n  zones:\n"
+        "  - name: south_gate\n    polygon: [[0, 0], [500, 0], [500, 500], [0, 500]]\n"
+        "    allowed_directions: [\"down\"]\n",
+        encoding="utf-8",
+    )
+    future2 = os.path.getmtime(nodes_file) + 10.0
+    os.utime(nodes_file, (future2, future2))
+    zc.update_polygon([[0.0, 0.0], [0.5, 0.0], [0.5, 0.5], [0.0, 0.5]], 1000, 1000,
+                      allowed_directions=["down"])
+    reloader.check_and_reload(now=200.0)
+    srv.COMMAND_QUEUE["node_x"] = [{"action": "update_zone", "points": [[0.1, 0.1], [0.9, 0.1], [0.9, 0.9], [0.1, 0.9]]}]
+    th = threading.Thread(
+        target=main_mod._ai_worker,
+        args=("node_x", bus, _Str(), _Det(), zc, None, threading.Lock(),
+              stop, prof, {"v": False}, time.monotonic()),
+        kwargs={"hot_reloader": reloader},
+        daemon=True,
+    )
+    th.start()
+    try:
+        bus.publish_raw(np.zeros((1000, 1000, 3), dtype=np.uint8), time.monotonic(), time.time())
+        deadline = time.monotonic() + 3.0
+        while srv.COMMAND_QUEUE.get("node_x") and time.monotonic() < deadline:
+            time.sleep(0.01)
+        time.sleep(0.05)
+    finally:
+        stop.set()
+        th.join(timeout=3.0)
+        srv.clear_commands("node_x")
+    saved_after = yaml.safe_load(nodes_file.read_text(encoding="utf-8"))["nodes"][0]["zones"][0]
+    assert saved_after["polygon"] == [[100, 100], [900, 100], [900, 900], [100, 900]]
+    assert saved_after["allowed_directions"] == ["down"]
+    assert zc.zones[0].allowed_directions == ["down"]
+
+
+def test_mid_zone_car_id_split_velocity_and_bbox_dedup_no_double_count():
+    """Mid-zone car splits over 8-frame gap (velocity-projected + box-scaled ghost handover)
+    and coexisting 1-frame split handoff (vanished-track bbox IoU dedup) count only once."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [800, 0], [800, 600], [0, 600]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     dedup_cooldown_sec=0.0)
+    assert zc.ghost_ttl_frames == 12
+    t = time.monotonic()
+
+    # Car tid=1 (120x90 -> box-scaled radius max(35, 0.65*120)=78px), moves +10px/frame right
+    zc.update(_dets([[80, 200, 200, 290]], [2], tid=[1]), now=t)
+    ev1 = zc.update(_dets([[95, 200, 215, 290]], [2], tid=[1]), now=t + 0.04)  # disp=15px -> counts
+    assert len(ev1) == 1 and zc.total == 1
+    zc.update(_dets([[105, 200, 225, 290]], [2], tid=[1]), now=t + 0.08)  # vel=(10,0), center=(165,245)
+
+    # 8 empty frames (occluded by truck); car traveled ~80px right to center (245, 245)
+    for k in range(8):
+        zc.update(sv.Detections.empty(), now=t + 0.12 + k * 0.04)
+
+    # tid=2 spawns near velocity-predicted (245, 245) + 55px shift on box edge -> ghost handover catches it
+    zc.update(_dets([[220, 205, 340, 295]], [2], tid=[2]), now=t + 0.44)
+    ev2 = zc.update(_dets([[230, 205, 350, 295]], [2], tid=[2]), now=t + 0.48)
+    assert not ev2 and zc.total == 1 and zc.ghost_handovers == 1
+
+    # Next: coexisting 1-frame split where tid=3 overlaps tid=2 BEFORE tid=2 vanishes
+    # (ghost handover won't match because tid=3 coexisted with tid=2; vanished-track IoU catches it)
+    zc.update(_dets([[240, 205, 360, 295], [248, 208, 368, 298]], [2, 2], tid=[2, 3]), now=t + 0.52)
+    # tid=2 gone on next frame; tid=3 moves +15px from its birth -> vanished-track bbox dedup blocks
+    ev3 = zc.update(_dets([[263, 208, 383, 298]], [2], tid=[3]), now=t + 0.56)
+    assert not ev3 and zc.total == 1 and zc.suppressed == 1
+    assert 3 in zc._counted[0]
+    assert zc.total_by_class["mobil"] == 1
+
+    zc.reset()
+    assert not any(zc._recent_counted_tracks)
+
+
+def test_dense_side_by_side_cars_never_suppress_each_other():
+    """Two distinct active cars side-by-side in the same frames both count."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [800, 0], [800, 600], [0, 600]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=12.0)
+    t = time.monotonic()
+
+    # Frame 1: both cars enter zone side-by-side (~20px gap)
+    zc.update(_dets([[100, 100, 220, 200], [230, 100, 350, 200]], [2, 2], tid=[1, 2]), now=t)
+    # Frame 2: car 1 moves 20px, car 2 moves 18px; both active -> both must count!
+    ev = zc.update(_dets([[100, 120, 220, 220], [230, 118, 350, 218]], [2, 2], tid=[1, 2]), now=t + 0.04)
+    assert len(ev) == 2
+    assert zc.total == 2 and zc.total_by_class["mobil"] == 2
+    assert zc.suppressed == 0
+
+
+def test_transient_one_frame_motor_split_box_blocked_by_min_track_frames():
+    """Default min_track_frames=2 rejects transient 1-frame split boxes without delaying normal motors."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [500, 0], [500, 500], [0, 500]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     min_displacement_px=0.0, dedup_cooldown_sec=0.0)
+    assert zc.min_track_frames == 2
+    t = time.monotonic()
+
+    # Frame 1: real motor tid=1 + transient 1-frame split box tid=99
+    assert zc.update(_dets([[100, 100, 125, 135], [130, 102, 152, 134]], [3, 3], tid=[1, 99]), now=t) == []
+    # Frame 2: tid=99 vanished after 1 frame (never counted); tid=1 hits frame 2 -> counts immediately!
+    ev = zc.update(_dets([[100, 120, 125, 155]], [3], tid=[1]), now=t + 0.04)
+    assert len(ev) == 1 and ev[0]["track_id"] == 1
+    assert zc.total == 1 and zc.total_by_class["motor"] == 1
 
 
 if __name__ == "__main__":

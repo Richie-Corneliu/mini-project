@@ -30,22 +30,30 @@ def _leading_comments(text: str) -> str:
 
 
 def persist_zone(node_id: str, pixel_points, zone_name: str = "zone",
-                 path=None) -> None:
-    """Overwrite `node_id`'s zones with one polygon of int [x, y] pixels.
+                 path=None) -> list:
+    """Overwrite `node_id`'s zones[0] polygon while keeping zone attrs & extra zones.
 
-    Raises KeyError when the node id is not in the registry file; callers
-    log it and keep the in-memory zone."""
+    Returns a shallow copy of the saved zones list. Raises KeyError when the
+    node id is not in the registry file; callers log it and keep the in-memory zone."""
     path = Path(path) if path else _DEFAULT_PATH
     with _LOCK:
         raw = path.read_text(encoding="utf-8") if path.exists() else ""
         doc = yaml.safe_load(raw) or {}
         nodes = doc.get("nodes") or []
+        saved_zones = None
         for node in nodes:
             if node.get("id") == node_id:
-                node["zones"] = [{
-                    "name": zone_name,
-                    "polygon": [[int(x), int(y)] for x, y in pixel_points],
-                }]
+                existing_zones = node.get("zones")
+                poly = [[int(x), int(y)] for x, y in pixel_points]
+                if (isinstance(existing_zones, list) and existing_zones
+                        and isinstance(existing_zones[0], dict)):
+                    first = dict(existing_zones[0])
+                    first["polygon"] = poly
+                    first.setdefault("name", zone_name)
+                    saved_zones = [first, *[dict(z) if isinstance(z, dict) else z for z in existing_zones[1:]]]
+                else:
+                    saved_zones = [{"name": zone_name, "polygon": poly}]
+                node["zones"] = saved_zones
                 break
         else:
             raise KeyError(f"node {node_id} not found in {path.name}")
@@ -55,3 +63,4 @@ def persist_zone(node_id: str, pixel_points, zone_name: str = "zone",
         tmp.write_text(header + ("\n" if header else "") + body,
                        encoding="utf-8")
         os.replace(tmp, path)
+        return [dict(z) if isinstance(z, dict) else z for z in saved_zones]

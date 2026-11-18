@@ -129,10 +129,23 @@ const el = {
   countMobil: byId("count-mobil"),
   countTruk: byId("count-truk"),
   avgHour: byId("avg-hour"),
+  avgBasis: byId("avg-basis"),
   peakHour: byId("peak-hour"),
 
+  datePickerBtn: byId("btn-date-picker"),
+  datePickerLabel: byId("date-picker-label"),
+  calPopover: byId("cal-popover"),
+  calPrev: byId("cal-prev"),
+  calNext: byId("cal-next"),
+  calTodayBtn: byId("cal-today-btn"),
+  calMonthLabel: byId("cal-month-label"),
+  calGrid: byId("cal-grid"),
+
+  chartSub: byId("chart-sub"),
   chart: byId("chart"),
   chartAxis: byId("chart-axis"),
+  slotHourSelect: byId("slot-hour-select"),
+  slotDetailBody: byId("slot-detail-body"),
   gauge: byId("gauge"),
   gaugeFill: byId("gauge-fill"),
   occValue: byId("occ-value"),
@@ -148,6 +161,15 @@ const markers = new Map();
 let map = null;
 let selectedId = null;
 let lastEscapeAt = 0;
+
+let todayWibDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
+let selectedDate = null;
+let selectedHour = null;
+let historyDates = new Set();
+const historicalNodes = new Map();
+let calViewYear = Number(todayWibDate.slice(0, 4)) || new Date().getFullYear();
+let calViewMonth = (Number(todayWibDate.slice(5, 7)) || 1) - 1;
+let lastDatesFetchAt = 0;
 
 const total = (node) => node.motor + node.mobil + node.truk;
 
@@ -342,13 +364,18 @@ function showView(which) {
   el.viewMap.classList.toggle("is-visible", !toCounting);
   el.viewCount.classList.toggle("is-visible", toCounting);
 
-  /* Leaflet measures wrong while its pane is hidden, so re-measure on return. */
-  if (!toCounting && map) map.invalidateSize();
+  if (!toCounting) {
+    cancelZoneDraw();
+    selectedId = null;
+    clearStream();
+    renderStreamHealth();
+    if (map) map.invalidateSize();
+    return;
+  }
 
   /* The MJPEG connection lives in the img src, so dropping it on the way out
      is what stops the stream and frees the browser's bandwidth. */
-  if (toCounting) attachStream(selectedId);
-  else clearStream();
+  attachStream(selectedId);
 }
 
 /* ---- Backend bridge (focus + MJPEG) ----------------------------- */
@@ -555,7 +582,14 @@ function openCounting(id) {
   if (!node) return;
 
   selectedId = id;
+  selectedDate = null;
+  selectedHour = null;
+  historicalNodes.clear();
+  closeCalendar();
+  updateDatePickerButton();
+  el.controlStatus.textContent = "";
   renderAnalytics(node);
+  loadHistoryDates();
 
   /* Leaflet fires marker clicks after a double-click timeout, so a rapid tap
      can arrive after Escape already returned to the map. Ignore the stale one. */
@@ -563,7 +597,11 @@ function openCounting(id) {
   showView("count");
 }
 
-el.backBtn.addEventListener("click", () => showView("map"));
+el.backBtn.addEventListener("click", () => {
+  closeCalendar();
+  selectedDate = null;
+  showView("map");
+});
 
 /* ---- Export CSV laporan harian simpang aktif --------------------- */
 
@@ -573,18 +611,20 @@ el.exportCsvBtn.addEventListener("click", async () => {
     return;
   }
   const btn = el.exportCsvBtn;
+  const targetDate = selectedDate || todayWibDate;
   btn.disabled = true;
   btn.querySelector("span").textContent = "Mengunduh...";
   try {
-    const res = await fetch(API_BASE + "/nodes/" +
-                            encodeURIComponent(selectedId) + "/export-csv");
+    const query = selectedDate ? "?date=" + encodeURIComponent(selectedDate) : "";
+    const res = await fetch(
+      API_BASE + "/export-csv/" + encodeURIComponent(selectedId) + query
+    );
     if (!res.ok) throw new Error("HTTP " + res.status);
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "laporan_lalin_" + selectedId + "_" +
-      new Date().toISOString().slice(0, 10) + ".csv";
+    a.download = "laporan_lalin_" + selectedId + "_" + targetDate + ".csv";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -600,16 +640,182 @@ el.exportCsvBtn.addEventListener("click", async () => {
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
+  if (!el.calPopover.hidden) {
+    closeCalendar();
+    return;
+  }
   lastEscapeAt = performance.now();
   if (el.viewCount.classList.contains("is-visible")) showView("map");
 });
 
-/* ---- Analytics (VIEW 2) ----------------------------------------- */
+/* ---- Analytics & Historical Date View (VIEW 2) ------------------ */
+
+const MONTH_NAMES_ID = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+const MONTH_SHORT_ID = [
+  "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+  "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+];
+
+function formatShortDateId(dateStr) {
+  if (!dateStr || dateStr.length !== 10) return dateStr || "";
+  const y = dateStr.slice(0, 4);
+  const m = Number(dateStr.slice(5, 7)) - 1;
+  const d = Number(dateStr.slice(8, 10));
+  return d + " " + (MONTH_SHORT_ID[m] || "") + " " + y;
+}
+
+function updateDatePickerButton() {
+  el.datePickerLabel.textContent = selectedDate
+    ? formatShortDateId(selectedDate)
+    : "Hari Ini";
+  el.datePickerBtn.classList.toggle("is-historical", Boolean(selectedDate));
+}
+
+function closeCalendar() {
+  el.calPopover.hidden = true;
+  el.datePickerBtn.setAttribute("aria-expanded", "false");
+}
+
+function openCalendar() {
+  const ref = selectedDate || todayWibDate;
+  calViewYear = Number(ref.slice(0, 4)) || calViewYear;
+  calViewMonth = (Number(ref.slice(5, 7)) || 1) - 1;
+  renderCalendar();
+  el.calPopover.hidden = false;
+  el.datePickerBtn.setAttribute("aria-expanded", "true");
+}
+
+function renderCalendar() {
+  el.calMonthLabel.textContent = MONTH_NAMES_ID[calViewMonth] + " " + calViewYear;
+  const firstDow = new Date(Date.UTC(calViewYear, calViewMonth, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(calViewYear, calViewMonth + 1, 0)).getUTCDate();
+  const activeDate = selectedDate || todayWibDate;
+  const ym = String(calViewYear) + "-" + String(calViewMonth + 1).padStart(2, "0");
+
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) {
+    cells.push('<span class="cal-pad" aria-hidden="true"></span>');
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = ym + "-" + String(d).padStart(2, "0");
+    const hasData = historyDates.has(ds);
+    const isSelected = ds === activeDate;
+    const isToday = ds === todayWibDate;
+    const isFuture = todayWibDate && ds > todayWibDate;
+    const cls = ["cal-day"];
+    if (hasData) cls.push("has-data");
+    if (isToday) cls.push("is-today");
+    if (isSelected) cls.push("is-selected");
+    if (isFuture) cls.push("is-future");
+    cells.push(
+      '<button type="button" class="' + cls.join(" ") + '" data-date="' + ds + '"' +
+      (isFuture ? " disabled" : "") + ' aria-pressed="' + (isSelected ? "true" : "false") +
+      '">' + d + "</button>"
+    );
+  }
+  el.calGrid.innerHTML = cells.join("");
+}
+
+async function selectDate(dateStr) {
+  const next = !dateStr || dateStr === todayWibDate ? null : dateStr;
+  selectedDate = next;
+  selectedHour = null;
+  updateDatePickerButton();
+  closeCalendar();
+
+  if (!selectedDate) {
+    historicalNodes.clear();
+    if (selectedId && nodes.has(selectedId)) renderAnalytics(nodes.get(selectedId));
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      API_BASE + "/traffic-data?date=" + encodeURIComponent(selectedDate),
+      { cache: "no-store" }
+    );
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const payload = await res.json();
+    historicalNodes.clear();
+    Object.entries(payload.nodes || {}).forEach(([id, raw]) => {
+      historicalNodes.set(id, mapNodePayload(id, raw, nodes.get(id)));
+    });
+    if (selectedId) {
+      const target = historicalNodes.get(selectedId) || nodes.get(selectedId);
+      if (target) renderAnalytics(target);
+    }
+  } catch (err) {
+    el.controlStatus.textContent = "Gagal memuat data tanggal " + selectedDate + ".";
+  }
+}
+
+async function loadHistoryDates() {
+  lastDatesFetchAt = Date.now();
+  try {
+    const res = await fetch(API_BASE + "/history/dates", { cache: "no-store" });
+    if (!res.ok) return;
+    const payload = await res.json();
+    if (payload.today) todayWibDate = payload.today;
+    historyDates = new Set(payload.dates || []);
+    if (!el.calPopover.hidden) renderCalendar();
+  } catch (err) {
+    /* Non-fatal: calendar still navigates dates manually. */
+  }
+}
+
+el.datePickerBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  el.calPopover.hidden ? openCalendar() : closeCalendar();
+});
+
+el.calPopover.addEventListener("click", (event) => event.stopPropagation());
+
+el.calPrev.addEventListener("click", () => {
+  calViewMonth -= 1;
+  if (calViewMonth < 0) { calViewMonth = 11; calViewYear -= 1; }
+  renderCalendar();
+});
+
+el.calNext.addEventListener("click", () => {
+  calViewMonth += 1;
+  if (calViewMonth > 11) { calViewMonth = 0; calViewYear += 1; }
+  renderCalendar();
+});
+
+el.calTodayBtn.addEventListener("click", () => {
+  calViewYear = Number(todayWibDate.slice(0, 4)) || calViewYear;
+  calViewMonth = (Number(todayWibDate.slice(5, 7)) || 1) - 1;
+  selectDate(todayWibDate);
+});
+
+el.calGrid.addEventListener("click", (event) => {
+  const btn = event.target.closest(".cal-day");
+  if (!btn || btn.disabled) return;
+  selectDate(btn.dataset.date);
+});
+
+document.addEventListener("click", (event) => {
+  if (el.calPopover.hidden) return;
+  if (!el.calPopover.contains(event.target) && !el.datePickerBtn.contains(event.target)) {
+    closeCalendar();
+  }
+});
+
+function currentAnalyticsNode() {
+  if (!selectedId) return null;
+  if (selectedDate && historicalNodes.has(selectedId)) {
+    return historicalNodes.get(selectedId);
+  }
+  return nodes.get(selectedId) || null;
+}
 
 function renderAnalytics(node) {
-  const cls = stClass(node);
+  const liveNode = nodes.get(node.id) || node;
+  const cls = stClass(selectedDate ? liveNode : node);
 
-  el.controlStatus.textContent = "";
   el.panelPlace.textContent = node.nama;
   el.camChip.textContent = "CAM " +
     String([...nodes.keys()].indexOf(node.id) + 1).padStart(2, "0");
@@ -617,26 +823,38 @@ function renderAnalytics(node) {
 
   renderStreamHealth();
 
-  el.sumTotal.textContent = total(node);
-  el.sumMotor.textContent = node.motor;
-  el.sumMobil.textContent = node.mobil;
-  el.sumTruk.textContent = node.truk;
+  el.sumTotal.textContent = fmtNum(total(node));
+  el.sumMotor.textContent = fmtNum(node.motor);
+  el.sumMobil.textContent = fmtNum(node.mobil);
+  el.sumTruk.textContent = fmtNum(node.truk);
 
-  el.countMotor.textContent = node.motor;
-  el.countMobil.textContent = node.mobil;
-  el.countTruk.textContent = node.truk;
+  el.countMotor.textContent = fmtNum(node.motor);
+  el.countMobil.textContent = fmtNum(node.mobil);
+  el.countTruk.textContent = fmtNum(node.truk);
 
-  el.avgHour.textContent = averagePerHour(node);
-  el.peakHour.textContent = node.startTime ? node.peakOccupancy : 0;
+  el.avgHour.textContent = fmtNum(averagePerHour(node));
+  el.avgBasis.textContent = node.avgBasisLabel ||
+    (selectedDate ? "rata-rata 24 jam" : "dari 0.2 jam aktif");
+  el.peakHour.textContent = selectedDate
+    ? "-"
+    : (node.startTime ? node.peakOccupancy : 0);
+
+  el.chartSub.textContent = selectedDate
+    ? "24 jam \u2014 " + formatShortDateId(selectedDate) + " (WIB)"
+    : "24 jam (00:00 - 23:00 WIB)";
 
   renderChart(node);
-  renderGauge(node);
+  renderGauge(liveNode);
 }
 
 function averagePerHour(node) {
-  if (!node.startTime) return 0;
-  const elapsedHours = Math.max((Date.now() / 1000 - node.startTime) / 3600, 1);
-  return Math.round(total(node) / elapsedHours);
+  if (node.avgPerHour != null) return node.avgPerHour;
+  if (selectedDate) return Math.round(total(node) / 24);
+  const elapsed = node.startTime ? Math.max((Date.now() / 1000 - node.startTime) / 3600, 0) : 0;
+  const slots = node.slotCounts || {};
+  const activeSlots = Object.values(slots).filter((b) => (Number(b && b.total) || 0) > 0).length;
+  const activeHours = Math.max(elapsed, activeSlots * 0.25, 0.25);
+  return total(node) > 0 ? Math.round(total(node) / activeHours) : 0;
 }
 
 /* Hourly buckets arrive as {motor, mobil, truk, total}; older snapshots carry
@@ -645,37 +863,31 @@ function averagePerHour(node) {
    cumulative mix so the column still renders instead of collapsing to 0px. */
 function chartData(node) {
   const raw = node.hourlyCounts || {};
-  const hours = Object.keys(raw).sort().slice(-6);
-
   const cm = Number(node.motor) || 0;
   const cb = Number(node.mobil) || 0;
   const ct = Number(node.truk) || 0;
   const csum = cm + cb + ct;
 
+  const hours = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0"));
   return hours.map((hour) => {
     const b = raw[hour];
     let motor = 0;
     let mobil = 0;
     let truk = 0;
-    let total = 0;
+    let tot = 0;
 
     if (b != null && typeof b === "object") {
       motor = Number(b.motor) || 0;
       mobil = Number(b.mobil) || 0;
       truk = Number(b.truk) || 0;
-      total = Number(b.total) || motor + mobil + truk;
+      tot = Number(b.total) || motor + mobil + truk;
     } else {
-      total = Number(b || 0);
+      tot = Number(b || 0);
     }
 
-    /* Anything the classes do not account for is unattributed: an hour whose
-       split is entirely missing (legacy total), or one where only some events
-       were classed. Apportion that gap by the cumulative mix — floor the first
-       two and hand the remainder to the last, so the parts always sum back to
-       the reported total and none can go negative. */
     const sum = motor + mobil + truk;
-    if (total > sum) {
-      const gap = total - sum;
+    if (tot > sum) {
+      const gap = tot - sum;
       if (csum > 0) {
         const gm = Math.floor((gap * cm) / csum);
         const gb = Math.floor((gap * cb) / csum);
@@ -683,10 +895,10 @@ function chartData(node) {
         mobil += gb;
         truk += Math.max(0, gap - gm - gb);
       } else {
-        motor += gap;   // no mix to go on: show the volume as one segment
+        motor += gap;
       }
     }
-    return { hour, motor, mobil, truk, total };
+    return { hour, motor, mobil, truk, total: tot };
   });
 }
 
@@ -735,8 +947,6 @@ function paintChart(points, peak) {
     const bar = bars[i];
     if (!bar) return;
 
-    /* The visually topmost non-empty segment carries the rounded cap. The
-       stack is column-reverse, so the last non-empty in DOM order is on top. */
     let topKey = null;
     SEG_ORDER.forEach((k) => { if (p[k] > 0) topKey = k; });
 
@@ -748,6 +958,10 @@ function paintChart(points, peak) {
     });
 
     bar.classList.toggle("is-peak", peak > 0 && p.total === peak);
+    bar.classList.toggle("is-selected", p.hour === selectedHour);
+    bar.classList.toggle("tip-left", i < 5);
+    bar.classList.toggle("tip-right", i > 18);
+    bar.setAttribute("aria-pressed", p.hour === selectedHour ? "true" : "false");
     bar.querySelector(".tip-name").textContent = p.hour + ":00 WIB";
     bar.querySelector(".tip-total").textContent = fmtNum(p.total) + " Kendaraan";
     CLASS_META.forEach((m) => {
@@ -757,6 +971,115 @@ function paintChart(points, peak) {
       p.hour + ":00, total " + fmtNum(p.total) + " kendaraan");
   });
 }
+
+function formatSlotInterval(slotKey, sessionStarts) {
+  const [hh, mm] = slotKey.split(":").map(Number);
+  const startMin = hh * 60 + mm;
+  const endMin = startMin + 15;
+  const endStr =
+    String(Math.floor(endMin / 60) % 24).padStart(2, "0") +
+    ":" +
+    String(endMin % 60).padStart(2, "0");
+
+  let matched = null;
+  (sessionStarts || []).forEach((raw) => {
+    const parts = String(raw || "").trim().split(":");
+    if (parts.length !== 2) return;
+    const sh = Number(parts[0]);
+    const sm = Number(parts[1]);
+    if (!Number.isFinite(sh) || !Number.isFinite(sm)) return;
+    const sMin = sh * 60 + sm;
+    if (sMin >= startMin && sMin < endMin && (!matched || sMin < matched.min)) {
+      matched = {
+        min: sMin,
+        label: String(sh).padStart(2, "0") + ":" + String(sm).padStart(2, "0"),
+      };
+    }
+  });
+  return matched
+    ? matched.label + " (system start) - " + endStr
+    : slotKey + " - " + endStr;
+}
+
+function defaultDrilldownHour(points, node) {
+  for (let i = points.length - 1; i >= 0; i--) {
+    if (points[i].total > 0) return points[i].hour;
+  }
+  const slotHours = Object.keys(node.slotCounts || {}).map((k) => k.slice(0, 2)).sort();
+  if (slotHours.length) return slotHours[slotHours.length - 1];
+  const starts = (node.sessionStarts || []).map((s) => s.slice(0, 2)).sort();
+  if (starts.length) return starts[starts.length - 1];
+  if (!selectedDate) {
+    return new Date().toLocaleTimeString("en-GB", {
+      timeZone: "Asia/Jakarta",
+      hour: "2-digit",
+    }).slice(0, 2);
+  }
+  return "00";
+}
+
+function renderSlotDetail(node, points) {
+  if (!selectedHour || !/^\d{2}$/.test(selectedHour)) {
+    selectedHour = defaultDrilldownHour(points, node);
+  }
+
+  el.slotHourSelect.innerHTML = points.map((p) => {
+    const suffix = p.total > 0 ? " (" + fmtNum(p.total) + ")" : "";
+    return '<option value="' + p.hour + '"' +
+      (p.hour === selectedHour ? " selected" : "") + ">" +
+      p.hour + ":00 - " + p.hour + ":59" + suffix + "</option>";
+  }).join("");
+  el.slotHourSelect.value = selectedHour;
+
+  const slots = node.slotCounts || {};
+  const starts = node.sessionStarts || [];
+  const rows = [0, 15, 30, 45].map((m) => {
+    const skey = selectedHour + ":" + String(m).padStart(2, "0");
+    const b = slots[skey] || {};
+    const motor = Number(b.motor) || 0;
+    const mobil = Number(b.mobil) || 0;
+    const truk = Number(b.truk) || 0;
+    const tot = Math.max(Number(b.total) || 0, motor + mobil + truk);
+    const label = formatSlotInterval(skey, starts);
+    const hasStart = label.includes("(system start)");
+    const cls = tot > 0 ? "is-active" : (hasStart ? "is-start" : "");
+    return (
+      '<tr class="' + cls + '">' +
+        "<td>" + label + "</td>" +
+        "<td>" + fmtNum(motor) + "</td>" +
+        "<td>" + fmtNum(mobil) + "</td>" +
+        "<td>" + fmtNum(truk) + "</td>" +
+        "<td><b>" + fmtNum(tot) + "</b></td>" +
+      "</tr>"
+    );
+  });
+  el.slotDetailBody.innerHTML = rows.join("");
+}
+
+function selectChartHour(hour) {
+  if (!hour || hour === selectedHour) return;
+  selectedHour = hour;
+  const node = currentAnalyticsNode();
+  if (node) renderChart(node);
+}
+
+el.chart.addEventListener("click", (event) => {
+  const bar = event.target.closest(".chart-bar");
+  if (bar && bar.dataset.hour) selectChartHour(bar.dataset.hour);
+});
+
+el.chart.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const bar = event.target.closest(".chart-bar");
+  if (bar && bar.dataset.hour) {
+    event.preventDefault();
+    selectChartHour(bar.dataset.hour);
+  }
+});
+
+el.slotHourSelect.addEventListener("change", () => {
+  selectChartHour(el.slotHourSelect.value);
+});
 
 function renderChart(node) {
   const points = chartData(node);
@@ -768,14 +1091,18 @@ function renderChart(node) {
     el.chart.innerHTML = points.length
       ? points.map(chartBarHtml).join("")
       : '<span class="chart-empty">Belum ada data per jam.</span>';
-    el.chartAxis.innerHTML = points.map((p) => "<span>" + p.hour + "</span>").join("");
+    el.chartAxis.innerHTML = points.map((p, i) => {
+      const showTick = (i % 3 === 0) || i === 23;
+      return "<span>" + (showTick ? p.hour : "") + "</span>";
+    }).join("");
   }
 
+  renderSlotDetail(node, points);
   paintChart(points, peak);
 
   el.chart.setAttribute(
     "aria-label",
-    "Diagram batang bertumpuk jumlah kendaraan per jam: motor, mobil, truk/bus. " +
+    "Diagram batang bertumpuk jumlah kendaraan 24 jam: motor, mobil, truk/bus. " +
     "Puncak " + peak + " kendaraan."
   );
 }
@@ -820,8 +1147,47 @@ async function loadRegistry() {
       startTime: (prev && prev.startTime) || 0,
       peakOccupancy: (prev && prev.peakOccupancy) || 0,
       hourlyCounts: (prev && prev.hourlyCounts) || {},
+      slotCounts: (prev && prev.slotCounts) || {},
+      sessionStarts: (prev && prev.sessionStarts) || [],
+      avgPerHour: prev ? prev.avgPerHour : null,
+      avgBasisLabel: (prev && prev.avgBasisLabel) || "",
     });
   });
+}
+
+function mapNodePayload(id, incoming, prev) {
+  return {
+    id: id,
+    nama: incoming.nama || (prev && prev.nama) || id,
+    lat: incoming.lat != null ? incoming.lat : (prev && prev.lat),
+    lng: incoming.lng != null ? incoming.lng : (prev && prev.lng),
+    zones: incoming.zones || (prev && prev.zones) || [],
+    motor: incoming.motor || 0,
+    mobil: incoming.mobil || 0,
+    truk: incoming.truk || 0,
+    occupancy: incoming.occupancy || 0,
+    online: incoming.online != null
+      ? Boolean(incoming.online) : (prev && prev.online) || false,
+    status: incoming.status || (prev && prev.status) || "OFFLINE",
+    streamStatus: incoming.stream_status ||
+      (prev && prev.streamStatus) ||
+      (incoming.online ? "LIVE" : "OFFLINE"),
+    staleSeconds: incoming.stale_seconds != null
+      ? Number(incoming.stale_seconds)
+      : (prev && prev.staleSeconds) || null,
+    startTime: incoming.start_time != null
+      ? Number(incoming.start_time) : (prev && prev.startTime) || 0,
+    peakOccupancy: incoming.peak_occupancy != null
+      ? Number(incoming.peak_occupancy) : (prev && prev.peakOccupancy) || 0,
+    hourlyCounts: incoming.hourly_counts != null
+      ? incoming.hourly_counts : (prev && prev.hourlyCounts) || {},
+    slotCounts: incoming.slot_counts != null
+      ? incoming.slot_counts : (prev && prev.slotCounts) || {},
+    sessionStarts: incoming.session_starts != null
+      ? incoming.session_starts : (prev && prev.sessionStarts) || [],
+    avgPerHour: incoming.avg_per_hour != null ? Number(incoming.avg_per_hour) : null,
+    avgBasisLabel: incoming.avg_basis_label || "",
+  };
 }
 
 /* ---- Live polling ----------------------------------------------- */
@@ -830,38 +1196,14 @@ async function loadRegistry() {
    so a node that appears in /traffic-data without /nodes still shows up. */
 function applyNodes(apiNodes) {
   Object.entries(apiNodes).forEach(([id, incoming]) => {
-    const prev = nodes.get(id);
-    nodes.set(id, {
-      id: id,
-      nama: incoming.nama || (prev && prev.nama) || id,
-      lat: incoming.lat != null ? incoming.lat : (prev && prev.lat),
-      lng: incoming.lng != null ? incoming.lng : (prev && prev.lng),
-      zones: incoming.zones || (prev && prev.zones) || [],
-      motor: incoming.motor || 0,
-      mobil: incoming.mobil || 0,
-      truk: incoming.truk || 0,
-      occupancy: incoming.occupancy || 0,
-      online: incoming.online != null
-        ? Boolean(incoming.online) : (prev && prev.online) || false,
-      status: incoming.status || (prev && prev.status) || "OFFLINE",
-      streamStatus: incoming.stream_status ||
-        (prev && prev.streamStatus) ||
-        (incoming.online ? "LIVE" : "OFFLINE"),
-      staleSeconds: incoming.stale_seconds != null
-        ? Number(incoming.stale_seconds)
-        : (prev && prev.staleSeconds) || null,
-      startTime: incoming.start_time != null
-        ? Number(incoming.start_time) : (prev && prev.startTime) || 0,
-      peakOccupancy: incoming.peak_occupancy != null
-        ? Number(incoming.peak_occupancy) : (prev && prev.peakOccupancy) || 0,
-      hourlyCounts: incoming.hourly_counts != null
-        ? incoming.hourly_counts : (prev && prev.hourlyCounts) || {},
-    });
+    nodes.set(id, mapNodePayload(id, incoming, nodes.get(id)));
   });
 
   upsertMarkers();
   renderMenu();
-  if (selectedId && nodes.has(selectedId)) renderAnalytics(nodes.get(selectedId));
+  if (selectedId && !selectedDate && nodes.has(selectedId)) {
+    renderAnalytics(nodes.get(selectedId));
+  }
   renderStreamHealth();
 }
 
@@ -870,7 +1212,9 @@ async function poll() {
     const res = await fetch(API_BASE + "/traffic-data", { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
     const payload = await res.json();
+    if (payload.date) todayWibDate = payload.date;
     applyNodes(payload.nodes || {});
+    if (Date.now() - lastDatesFetchAt > 30000) loadHistoryDates();
   } catch (err) {
     /* Backend unreachable: keep whatever is on screen. */
   }

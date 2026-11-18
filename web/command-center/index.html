@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
@@ -167,7 +167,7 @@
         <!-- Right 30%: vertically scrollable analytics sidebar -->
         <aside class="analytics" aria-label="Panel analitik">
           <div class="analytics-head">
-            <h2 class="analytics-place" id="panel-place">â€”</h2>
+            <h2 class="analytics-place" id="panel-place">&mdash;</h2>
             <span class="analytics-live"><span class="live-dot"></span>LIVE</span>
           </div>
 
@@ -200,7 +200,11 @@
               </article>
             </div>
             <dl class="mini-stats">
-              <div><dt>Rata-rata / jam</dt><dd id="avg-hour">0</dd></div>
+              <div>
+                <dt>Rata-rata / jam</dt>
+                <dd id="avg-hour">0</dd>
+                <small id="avg-basis" class="stat-sub">dari 0.2 jam aktif</small>
+              </div>
               <div><dt>Puncak tercatat</dt><dd id="peak-hour">0</dd></div>
             </dl>
             <p class="panel-totals">
@@ -214,23 +218,54 @@
             </p>
           </section>
 
-          <section class="panel-block" aria-label="Statistik per jam">
+          <section class="panel-block panel-hourly" aria-label="Statistik per jam">
             <div class="panel-head">
               <p class="eyebrow">Statistik Per Jam</p>
-              <button id="btn-export-csv" class="btn-export-csv" type="button"
-                      title="Unduh laporan lalu lintas harian (CSV)">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
-                     stroke="currentColor" stroke-width="2"
-                     stroke-linecap="round" stroke-linejoin="round"
-                     aria-hidden="true">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                <span>Export CSV</span>
-              </button>
+              <div class="panel-actions">
+                <button id="btn-date-picker" class="btn-date-picker" type="button"
+                        aria-expanded="false" aria-haspopup="dialog"
+                        title="Pilih tanggal riwayat statistik">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+                       stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round"
+                       aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <span id="date-picker-label">Hari Ini</span>
+                </button>
+                <button id="btn-export-csv" class="btn-export-csv" type="button"
+                        title="Unduh laporan lalu lintas harian (CSV)">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+                       stroke="currentColor" stroke-width="2"
+                       stroke-linecap="round" stroke-linejoin="round"
+                       aria-hidden="true">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  <span>Export CSV</span>
+                </button>
+              </div>
             </div>
-            <p class="col-sub">6 jam terakhir</p>
+            <div id="cal-popover" class="cal-popover" role="dialog"
+                 aria-label="Pilih tanggal statistik" hidden>
+              <div class="cal-head">
+                <button id="cal-prev" class="cal-nav" type="button"
+                        aria-label="Bulan sebelumnya">&lsaquo;</button>
+                <span id="cal-month-label" class="cal-month"></span>
+                <button id="cal-next" class="cal-nav" type="button"
+                        aria-label="Bulan berikutnya">&rsaquo;</button>
+                <button id="cal-today-btn" class="cal-today-btn" type="button">Hari Ini</button>
+              </div>
+              <div class="cal-weekdays" aria-hidden="true">
+                <span>Min</span><span>Sen</span><span>Sel</span><span>Rab</span><span>Kam</span><span>Jum</span><span>Sab</span>
+              </div>
+              <div id="cal-grid" class="cal-grid"></div>
+            </div>
+            <p class="col-sub" id="chart-sub">24 jam (00:00 - 23:00 WIB)</p>
             <div class="chart" id="chart" role="group"
                  aria-label="Diagram batang bertumpuk jumlah kendaraan per jam"></div>
             <p class="chart-axis" id="chart-axis" aria-hidden="true"></p>
@@ -239,6 +274,25 @@
               <li><i class="dot-mobil"></i>Mobil</li>
               <li><i class="dot-truk"></i>Truk/Bus</li>
             </ul>
+            <div class="slot-detail" id="slot-detail">
+              <div class="slot-detail-head">
+                <span class="slot-detail-title">Detail per 15 Menit</span>
+                <select id="slot-hour-select" class="slot-hour-select"
+                        aria-label="Pilih jam untuk rincian 15 menit"></select>
+              </div>
+              <table class="slot-table" aria-label="Rincian kendaraan per 15 menit">
+                <thead>
+                  <tr>
+                    <th>Interval</th>
+                    <th>Motor</th>
+                    <th>Mobil</th>
+                    <th>Truk/Bus</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="slot-detail-body"></tbody>
+              </table>
+            </div>
           </section>
 
           <section class="panel-block" aria-label="Status okupansi simpang">
@@ -270,6 +324,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
           integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
           crossorigin=""></script>
-  <script src="js/app.js?v=7"></script>
+  <script src="js/app.js?v=9"></script>
 </body>
 </html>

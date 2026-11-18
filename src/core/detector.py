@@ -20,10 +20,33 @@ CAR_CLS = 2
 MOTOR_CLS = 3
 TRUCK_CLS = (5, 7)
 DEFAULT_TRUCK_MIN_AREA = 12000
+DEFAULT_TRUCK_MIN_HEIGHT_RATIO = 0.070
 DEFAULT_CAR_MIN_AREA = 3000
 DEFAULT_SCALE_FAR = 0.42
 DEFAULT_SCALE_NEAR = 1.95
 MIN_PERSPECTIVE_SPAN_PX = 40.0
+
+
+def perspective_scale_for_y(
+    y: float,
+    far: Optional[float],
+    mid: Optional[float],
+    near: Optional[float],
+    scale_far: float,
+    scale_near: float,
+    perspective_scaling: bool = True,
+) -> float:
+    """Center-anchored piecewise linear scale along image Y."""
+    if not perspective_scaling or far is None or near is None or (near - far) < MIN_PERSPECTIVE_SPAN_PX:
+        return 1.0
+    mid_raw = 0.5 * (far + near) if mid is None else float(mid)
+    y_mid = float(np.clip(mid_raw, far + 1.0, near - 1.0))
+    yf = float(y)
+    if yf <= y_mid:
+        t = float(np.clip((yf - far) / (y_mid - far), 0.0, 1.0))
+        return float(scale_far + t * (1.0 - scale_far))
+    t = float(np.clip((yf - y_mid) / (near - y_mid), 0.0, 1.0))
+    return float(1.0 + t * (scale_near - 1.0))
 
 
 def _extract_polygon_y_bounds(polygons: Optional[Sequence]) -> Tuple[Optional[float], Optional[float]]:
@@ -57,12 +80,13 @@ def _extract_polygon_y_bounds(polygons: Optional[Sequence]) -> Tuple[Optional[fl
 def reclassify_small_trucks(dets: sv.Detections,
                             truck_min_area: Union[float, np.ndarray],
                             truck_classes: Sequence[int] = TRUCK_CLS,
-                            car_class: int = CAR_CLS) -> sv.Detections:
-    """Demote truck/bus boxes with area < `truck_min_area` px to car, in place.
+                            car_class: int = CAR_CLS,
+                            truck_min_height: Union[float, np.ndarray] = 0.0) -> sv.Detections:
+    """Demote truck/bus boxes below `truck_min_area` px^2 or `truck_min_height` px to car.
 
     One vectorised pass over the final post-NMS boxes (no per-box Python loop),
-    negligible beside inference. Returns `dets` untouched when disabled
-    (threshold <= 0) or empty.
+    negligible beside inference. Returns `dets` untouched when thresholds <= 0
+    or empty.
 
     ponytail: box size alone cannot separate a far-away large truck from a
     near small pickup - both are small boxes. This is a per-camera heuristic
@@ -70,11 +94,15 @@ def reclassify_small_trucks(dets: sv.Detections,
     class head instead.
     """
     thr = np.asarray(truck_min_area, dtype=float)
-    if dets.class_id is None or len(dets) == 0 or np.all(thr <= 0):
+    h_thr = np.asarray(truck_min_height, dtype=float)
+    if dets.class_id is None or len(dets) == 0 or (np.all(thr <= 0) and np.all(h_thr <= 0)):
         return dets
     xyxy = dets.xyxy
     areas = (xyxy[:, 2] - xyxy[:, 0]) * (xyxy[:, 3] - xyxy[:, 1])
-    demote = np.isin(dets.class_id, truck_classes) & (thr > 0) & (areas < thr)
+    heights = xyxy[:, 3] - xyxy[:, 1]
+    area_fail = (thr > 0) & (areas < thr)
+    height_fail = (h_thr > 0) & (heights < h_thr)
+    demote = np.isin(dets.class_id, truck_classes) & (area_fail | height_fail)
     if demote.any():
         cls = dets.class_id.copy()
         cls[demote] = car_class
@@ -120,12 +148,13 @@ def reclassify_small_cars(dets: sv.Detections,
 
 def apply_size_heuristics(dets: sv.Detections,
                           truck_min_area: Union[float, np.ndarray],
-                          car_min_area: Union[float, np.ndarray]) -> sv.Detections:
+                          car_min_area: Union[float, np.ndarray],
+                          truck_min_height: Union[float, np.ndarray] = 0.0) -> sv.Detections:
     """Both tier demotions in one call. Car sweep first so a truck demoted to
     car by the second sweep lands on car (its final class) and is never
     re-demoted to motorcycle by the car threshold."""
     dets = reclassify_small_cars(dets, car_min_area)
-    return reclassify_small_trucks(dets, truck_min_area)
+    return reclassify_small_trucks(dets, truck_min_area, truck_min_height=truck_min_height)
 
 
 def cross_class_nms(dets: sv.Detections,
@@ -192,6 +221,7 @@ class Detector:
                  duplicate_iou: float = 0.65,
                  truck_min_area: float = DEFAULT_TRUCK_MIN_AREA,
                  car_min_area: float = DEFAULT_CAR_MIN_AREA,
+                 truck_min_height_ratio: float = DEFAULT_TRUCK_MIN_HEIGHT_RATIO,
                  perspective_scaling: bool = True,
                  y_ref_far: Optional[float] = None,
                  y_ref_mid: Optional[float] = None,
@@ -211,6 +241,7 @@ class Detector:
         self.duplicate_iou = float(duplicate_iou)
         self.truck_min_area = float(truck_min_area)
         self.car_min_area = float(car_min_area)
+        self.truck_min_height_ratio = max(0.0, float(truck_min_height_ratio))
         self.perspective_scaling = bool(perspective_scaling)
         self.y_ref_far = None if y_ref_far is None else float(y_ref_far)
         self.y_ref_near = None if y_ref_near is None else float(y_ref_near)
@@ -281,20 +312,10 @@ class Detector:
         ps = self.perspective_scaling if perspective_scaling is None else bool(perspective_scaling)
         far = self.y_ref_far if y_ref_far is None else float(y_ref_far)
         near = self.y_ref_near if y_ref_near is None else float(y_ref_near)
-        if not ps or far is None or near is None or (near - far) < MIN_PERSPECTIVE_SPAN_PX:
-            return 1.0
-        mid_raw = self.y_ref_mid if y_ref_mid is None else float(y_ref_mid)
-        if mid_raw is None:
-            mid_raw = 0.5 * (far + near)
-        y_mid = float(np.clip(mid_raw, far + 1.0, near - 1.0))
+        mid = self.y_ref_mid if y_ref_mid is None else float(y_ref_mid)
         sf = self.scale_far if scale_far is None else float(scale_far)
         sn = self.scale_near if scale_near is None else float(scale_near)
-        yf = float(y)
-        if yf <= y_mid:
-            t = float(np.clip((yf - far) / (y_mid - far), 0.0, 1.0))
-            return float(sf + t * (1.0 - sf))
-        t = float(np.clip((yf - y_mid) / (near - y_mid), 0.0, 1.0))
-        return float(1.0 + t * (sn - 1.0))
+        return perspective_scale_for_y(y, far, mid, near, sf, sn, perspective_scaling=ps)
 
     def _apply_size_heuristics(
         self,
@@ -308,12 +329,19 @@ class Detector:
         y_ref_near: Optional[float] = None,
         scale_far: Optional[float] = None,
         scale_near: Optional[float] = None,
+        truck_min_height_ratio: Optional[float] = None,
+        frame_height: Optional[int] = None,
     ) -> sv.Detections:
         if dets.class_id is None or len(dets) == 0:
             return dets
         base_truck = self.truck_min_area if truck_min_area is None else float(truck_min_area)
         base_car = self.car_min_area if car_min_area is None else float(car_min_area)
-        if base_truck <= 0 and base_car <= 0:
+        h_ratio = (
+            self.truck_min_height_ratio
+            if truck_min_height_ratio is None else max(0.0, float(truck_min_height_ratio))
+        )
+        base_truck_h = (float(frame_height) * h_ratio) if (frame_height and h_ratio > 0) else 0.0
+        if base_truck <= 0 and base_car <= 0 and base_truck_h <= 0:
             return dets
         poly_far, poly_near = _extract_polygon_y_bounds(polygons) if polygons is not None else (None, None)
         far = float(y_ref_far) if y_ref_far is not None else (
@@ -329,23 +357,35 @@ class Detector:
         else:
             mid = self.y_ref_mid
         ps = self.perspective_scaling if perspective_scaling is None else bool(perspective_scaling)
-        if not ps or far is None or near is None or (near - far) < MIN_PERSPECTIVE_SPAN_PX:
-            return apply_size_heuristics(dets, base_truck, base_car)
-        scales = np.array([
-            self._compute_perspective_scale(
-                float(y2),
-                perspective_scaling=ps,
-                y_ref_far=far,
-                y_ref_mid=mid,
-                y_ref_near=near,
-                scale_far=scale_far,
-                scale_near=scale_near,
-            )
-            for y2 in dets.xyxy[:, 3]
-        ], dtype=float)
-        out = apply_size_heuristics(dets, base_truck * scales, base_car * scales)
+        persp_active = bool(ps and far is not None and near is not None and (near - far) >= MIN_PERSPECTIVE_SPAN_PX)
+        if persp_active:
+            scales = np.array([
+                self._compute_perspective_scale(
+                    float(y2),
+                    perspective_scaling=ps,
+                    y_ref_far=far,
+                    y_ref_mid=mid,
+                    y_ref_near=near,
+                    scale_far=scale_far,
+                    scale_near=scale_near,
+                )
+                for y2 in dets.xyxy[:, 3]
+            ], dtype=float)
+        else:
+            scales = np.ones(len(dets), dtype=float)
+        eff_truck_areas = base_truck * scales
+        eff_truck_heights = base_truck_h * scales
+        out = apply_size_heuristics(
+            dets,
+            eff_truck_areas,
+            base_car * scales,
+            truck_min_height=eff_truck_heights,
+        )
         if out.class_id is not None and len(out):
-            out.data["perspective_truck"] = np.isin(out.class_id, TRUCK_CLS)
+            out.data["effective_truck_min_area"] = eff_truck_areas.astype(np.float32)
+            out.data["effective_truck_min_height"] = eff_truck_heights.astype(np.float32)
+            if persp_active:
+                out.data["perspective_truck"] = np.isin(out.class_id, TRUCK_CLS)
         return out
 
     def detect(self, frame: np.ndarray,
@@ -357,7 +397,8 @@ class Detector:
                y_ref_mid: Optional[float] = None,
                y_ref_near: Optional[float] = None,
                scale_far: Optional[float] = None,
-               scale_near: Optional[float] = None) -> sv.Detections:
+               scale_near: Optional[float] = None,
+               truck_min_height_ratio: Optional[float] = None) -> sv.Detections:
         r = self.model.predict(
             frame, conf=self.conf, imgsz=self.imgsz,
             device=self.device, classes=self.classes,
@@ -380,6 +421,7 @@ class Detector:
             class_id=cls_ids[mask],
         )
         dets = cross_class_nms(dets, self.duplicate_iou)
+        fh = int(frame.shape[0]) if hasattr(frame, "shape") and len(frame.shape) >= 2 else None
         return self._apply_size_heuristics(
             dets,
             truck_min_area=truck_min_area,
@@ -391,4 +433,6 @@ class Detector:
             y_ref_near=y_ref_near,
             scale_far=scale_far,
             scale_near=scale_near,
+            truck_min_height_ratio=truck_min_height_ratio,
+            frame_height=fh,
         )
