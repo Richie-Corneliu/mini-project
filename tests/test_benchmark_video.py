@@ -81,3 +81,43 @@ def test_ground_truth_integration_and_report_files(tmp_path):
     saved = json.loads(json_path.read_text(encoding="utf-8"))
     assert saved["accuracy"]["passed"] is True
     assert "PASSED" in md_path.read_text(encoding="utf-8")
+
+
+
+def test_resolve_node_config_and_run_forwards_height_ratio_and_confirm_frames(tmp_path):
+    settings = tmp_path / "settings.yaml"
+    nodes = tmp_path / "nodes.yaml"
+    settings.write_text(
+        "detector:\n  truck_min_height_ratio: 0.070\n"
+        "counter:\n  truck_confirm_frames: 5\n  min_track_frames: 2\n"
+        "zones:\n- name: default\n  polygon: [[0, 0], [200, 0], [200, 200], [0, 200]]\n",
+        encoding="utf-8",
+    )
+    nodes.write_text(
+        "nodes:\n- id: node_02\n  truck_min_height_ratio: 0.060\n"
+        "  truck_confirm_frames: 6\n  min_track_frames: 3\n",
+        encoding="utf-8",
+    )
+    cfg = resolve_node_config("node_02", settings_path=settings, nodes_path=nodes)
+    assert cfg["detector"]["truck_min_height_ratio"] == pytest.approx(0.060)
+    assert cfg["counter"]["truck_min_height_ratio"] == pytest.approx(0.060)
+    assert cfg["counter"]["truck_confirm_frames"] == 6
+    assert cfg["counter"]["min_track_frames"] == 3
+
+    seen_kwargs = []
+
+    class _KwDetector(FakeDetector):
+        def detect(self, frame, **kwargs):
+            seen_kwargs.append(kwargs)
+            return super().detect(frame, **kwargs)
+
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [200, 0], [200, 200], [0, 200]], dtype=np.float32))
+    counter = ZoneCounter([zone], class_labels={2: "mobil"}, min_displacement_px=0, min_track_frames=1)
+    counter.track = lambda dets, frame: dets
+    run_video_benchmark(
+        [np.zeros((220, 220, 3), dtype=np.uint8)],
+        _KwDetector([_dets([50, 50, 70, 70], cls=2, tid=1)]),
+        counter,
+        truck_min_height_ratio=cfg["detector"]["truck_min_height_ratio"],
+    )
+    assert seen_kwargs and seen_kwargs[0]["truck_min_height_ratio"] == pytest.approx(0.060)

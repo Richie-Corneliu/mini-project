@@ -382,8 +382,50 @@ function showView(which) {
 
 /* Ask the worker to prioritise this node's inference. Fire-and-forget: the
    endpoint is optional, so a missing backend must not break the UI. */
+function getApiKey() {
+  try {
+    const qp = new URLSearchParams(window.location.search).get("api_key");
+    if (qp && qp.trim()) {
+      sessionStorage.setItem("atcs_api_key", qp.trim());
+      return qp.trim();
+    }
+    return (sessionStorage.getItem("atcs_api_key") || "").trim();
+  } catch (err) {
+    return "";
+  }
+}
+
+function postHeaders(extra) {
+  const headers = Object.assign({}, extra || {});
+  const key = getApiKey();
+  if (key) headers["X-API-Key"] = key;
+  return headers;
+}
+
+async function postControlFetch(url, options, allowPrompt) {
+  const opts = Object.assign({ method: "POST" }, options || {});
+  opts.headers = postHeaders(options && options.headers);
+  let res = await fetch(url, opts);
+  if (res.status === 401 && allowPrompt && typeof window.prompt === "function") {
+    const entered = window.prompt("Masukkan API Key (ATCS_API_KEY) untuk kontrol:");
+    if (entered && entered.trim()) {
+      try { sessionStorage.setItem("atcs_api_key", entered.trim()); } catch (err) {}
+      opts.headers = postHeaders(options && options.headers);
+      res = await fetch(url, opts);
+    }
+  }
+  return res;
+}
+
 function setFocus(nodeId) {
-  fetch(API_BASE + "/set-focus/" + nodeId, { method: "POST" }).catch(() => {});
+  const allowPrompt = nodeId !== "none";
+  postControlFetch(API_BASE + "/set-focus/" + encodeURIComponent(nodeId), null, allowPrompt)
+    .then((res) => {
+      if (res.status === 401) {
+        el.controlStatus.textContent = "Akses stream ditolak (ATCS_API_KEY tidak valid).";
+      }
+    })
+    .catch(() => {});
 }
 
 async function sendControl(action) {
@@ -393,15 +435,18 @@ async function sendControl(action) {
   el.toggleRecordBtn.disabled = true;
   el.controlStatus.textContent = "Mengirim perintah...";
   try {
-    const res = await fetch(API_BASE + "/control/" + selectedId + "/" + action, {
-      method: "POST",
-    });
+    const res = await postControlFetch(
+      API_BASE + "/control/" + encodeURIComponent(selectedId) + "/" + action,
+      null,
+      true
+    );
+    if (res.status === 401) throw new Error("API Key diperlukan / tidak valid (401)");
     if (!res.ok) throw new Error("HTTP " + res.status);
     el.controlStatus.textContent = action === "reset"
       ? "Perintah reset diterima."
       : "Perintah rekam diterima.";
   } catch (err) {
-    el.controlStatus.textContent = "Perintah gagal dikirim.";
+    el.controlStatus.textContent = "Perintah gagal dikirim: " + err.message;
   } finally {
     el.resetCounterBtn.disabled = false;
     el.toggleRecordBtn.disabled = false;
@@ -524,11 +569,15 @@ async function saveZone() {
   el.saveZoneBtn.disabled = true;
   el.controlStatus.textContent = "Menyimpan zona...";
   try {
-    const res = await fetch(API_BASE + "/control/" + selectedId + "/update_zone", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ points: zoneDraw.points.map((p) => [p[0], p[1]]) }),
-    });
+    const res = await postControlFetch(
+      API_BASE + "/control/" + encodeURIComponent(selectedId) + "/update_zone",
+      {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ points: zoneDraw.points.map((p) => [p[0], p[1]]) }),
+      },
+      true
+    );
+    if (res.status === 401) throw new Error("API Key diperlukan / tidak valid (401)");
     if (!res.ok) throw new Error("HTTP " + res.status);
     cancelZoneDraw();
     await loadRegistry().catch(() => {});
@@ -536,7 +585,7 @@ async function saveZone() {
     el.controlStatus.textContent = "Zona baru disimpan & aktif.";
   } catch (err) {
     el.saveZoneBtn.disabled = false;
-    el.controlStatus.textContent = "Zona gagal dikirim.";
+    el.controlStatus.textContent = "Zona gagal dikirim: " + err.message;
   }
 }
 

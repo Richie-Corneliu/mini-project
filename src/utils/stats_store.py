@@ -437,9 +437,6 @@ class StatsStore:
             cur_date = str(self.state.get("date") or "")
             if _DATE_RE.match(cur_date) and self._doc_has_data(self.state):
                 dates.add(cur_date)
-            for hdate, hdoc in (self.state.get("history") or {}).items():
-                if _DATE_RE.match(str(hdate)) and self._doc_has_data(hdoc):
-                    dates.add(str(hdate))
             archive_dir = self.archive_dir
         if archive_dir.exists():
             for path in archive_dir.glob("daily_stats_*.json"):
@@ -459,24 +456,18 @@ class StatsStore:
         return sorted(dates)
 
     def load_date(self, date_str: str) -> Optional[dict]:
-        """Return normalized snapshot for YYYY-MM-DD (today, history, or archive)."""
+        """Return normalized snapshot for YYYY-MM-DD (today or archive)."""
         if not _DATE_RE.match(str(date_str or "")):
             return None
         with self._lock:
             if date_str == self.state.get("date"):
                 return self.snapshot()
-            hdoc = (self.state.get("history") or {}).get(date_str)
-            if isinstance(hdoc, dict):
-                raw_doc = hdoc
-            else:
-                raw_doc = None
             path = self.archive_path(date_str)
-        if raw_doc is None:
-            try:
-                with open(path, encoding="utf-8") as f:
-                    raw_doc = json.load(f)
-            except (FileNotFoundError, OSError, ValueError):
-                return None
+        try:
+            with open(path, encoding="utf-8") as f:
+                raw_doc = json.load(f)
+        except (FileNotFoundError, OSError, ValueError):
+            return None
         if not isinstance(raw_doc, dict):
             return None
         raw_nodes = raw_doc.get("nodes") if isinstance(raw_doc.get("nodes"), dict) else {}

@@ -376,10 +376,6 @@ class ZoneCounter:
         h = self.class_hist.get(tid)
         return bool(h) and sum(1 for c, _ in h if c == self.CAR_CLS) >= self.car_lock_frames
 
-    def _compute_zone_y_mid(self) -> Optional[float]:
-        far, near = _extract_polygon_y_bounds(self.zones)
-        return 0.5 * (far + near) if (far is not None and near is not None) else None
-
     def _refresh_zone_y_bounds(self) -> None:
         poly_far, poly_near = _extract_polygon_y_bounds(self.zones)
         self._zone_y_far = (
@@ -395,21 +391,19 @@ class ZoneCounter:
         else:
             self._zone_y_mid = None
 
-    def _effective_truck_min_area(self, y2: float) -> float:
-        scale = perspective_scale_for_y(
+    def _perspective_scale(self, y2: float) -> float:
+        return perspective_scale_for_y(
             y2, self._zone_y_far, self._zone_y_mid, self._zone_y_near,
             self.scale_far, self.scale_near,
         )
-        return self.truck_min_area * scale
+
+    def _effective_truck_min_area(self, y2: float) -> float:
+        return self.truck_min_area * self._perspective_scale(y2)
 
     def _effective_truck_min_height(self, y2: float) -> float:
         if self.truck_min_height_ratio <= 0.0:
             return 0.0
-        scale = perspective_scale_for_y(
-            y2, self._zone_y_far, self._zone_y_mid, self._zone_y_near,
-            self.scale_far, self.scale_near,
-        )
-        return (self._frame_height * self.truck_min_height_ratio) * scale
+        return (self._frame_height * self.truck_min_height_ratio) * self._perspective_scale(y2)
 
     def update_thresholds(
         self,
@@ -424,6 +418,7 @@ class ZoneCounter:
         truck_min_height_ratio: Optional[float] = None,
         scale_far: Optional[float] = None,
         scale_near: Optional[float] = None,
+        min_track_frames: Optional[int] = None,
     ) -> None:
         """Apply hot-reloaded YAML thresholds in place without dropping latches."""
         if min_displacement_px is not None:
@@ -451,6 +446,8 @@ class ZoneCounter:
             self.scale_far = float(scale_far)
         if scale_near is not None:
             self.scale_near = float(scale_near)
+        if min_track_frames is not None:
+            self.min_track_frames = max(1, int(min_track_frames))
 
     def _motor_locked(self, tid: int) -> bool:
         """Read-only mirror of the motor-inertia branch in `_resolved_class`."""
@@ -683,7 +680,8 @@ class ZoneCounter:
                 best, best_d2 = old, d2
         return best
 
-    def _handover(self, zi: int, old: int, new: int) -> None:
+    def _handover(self, zi: int, old: int, new: int,
+                  count_as_suppressed: bool = False) -> None:
         """Move `old`'s counted latch and class state onto `new`, then retire
         the ghost. Same physical vehicle, so `total` and the class buckets do
         not move — only the id that owns the existing count changes."""
@@ -734,7 +732,10 @@ class ZoneCounter:
         if old in self._start:          # keeps the displacement anchor
             self._start[new] = self._start[old]
         self._age[new] = self._age.get(new, 0) + self._age.get(old, 0)
-        self.ghost_handovers += 1
+        if count_as_suppressed:
+            self.suppressed += 1
+        else:
+            self.ghost_handovers += 1
 
     def _prune_stale_tracks(self) -> None:
         """Drop expired ghosts/recent tracks and prune stale track state every 100 frames."""
@@ -1026,10 +1027,7 @@ class ZoneCounter:
                 group = self._class_group(vote)
                 dup_old = self._match_vanished_track(zi, tid, group, bbox, pt, live, now)
                 if dup_old is not None:
-                    self._counted[zi].add(tid)
-                    self.suppressed += 1
-                    self._recent_counted_tracks[zi].pop(dup_old, None)
-                    self._record_counted_track(zi, tid, group, bbox, now)
+                    self._handover(zi, dup_old, tid, count_as_suppressed=True)
                     continue
                 self._counted[zi].add(tid)
                 label = self._label(vote)
@@ -1134,7 +1132,6 @@ class ZoneCounter:
             self._recent = [deque() for _ in self.zones]
             self._zone_ghost = [dict() for _ in self.zones]
             self._recent_counted_tracks = [dict() for _ in self.zones]   # latches are gone
-            self._recent_counted_tracks = [dict() for _ in self.zones]
 
     def set_zones(self, zones: List[Union[sv.PolygonZone, dict]]) -> None:
         """Replace all zone polygons in place while preserving counts and active tracks."""

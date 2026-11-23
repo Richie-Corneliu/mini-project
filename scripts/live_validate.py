@@ -238,11 +238,12 @@ def run_audit(node_id: str, duration: float, base_url: str,
                     "occupancy": int(node.get("occupancy") or 0),
                     "stream_status": status,
                 })
+                net_total_delta = sum(deltas.values())
                 for cls_name in BURST_CLASSES:
                     d = deltas[cls_name]
                     if d < 0:
                         anomalies.append({
-                            "type": "counter_drop",
+                            "type": "class_reattribution" if net_total_delta == 0 else "counter_drop",
                             "class_name": cls_name,
                             "delta": d,
                             "elapsed_sec": round(elapsed, 2),

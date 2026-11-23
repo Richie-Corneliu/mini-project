@@ -374,7 +374,7 @@ class ConfigHotReloader:
         merged_cc = {**cc}
         for key in ("min_displacement_px", "allowed_directions", "flow_max_angle_deg",
                     "ghost_ttl_frames", "ghost_radius_px", "truck_confirm_frames",
-                    "truck_min_height_ratio"):
+                    "truck_min_height_ratio", "min_track_frames"):
             if key in node_cfg:
                 merged_cc[key] = node_cfg[key]
 
@@ -397,6 +397,7 @@ class ConfigHotReloader:
                     truck_min_height_ratio=effective_h_ratio,
                     scale_far=effective_scale_far,
                     scale_near=effective_scale_near,
+                    min_track_frames=merged_cc.get("min_track_frames"),
                 )
             except ValueError as e:
                 log.warning("hot-reload rejected counter config for %s (%s)", node_id, e)
@@ -637,6 +638,15 @@ def _ai_worker(node_id, bus, streamer, det, counter, renderer, gpu_lock,
             session_starts[:] = [_stats_mod.hhmm_wib()]
             peak_occupancy = 0
             start_time = time.time()
+            if publish_api:
+                seed_node_data(node_id, {
+                    "motor": 0,
+                    "mobil": 0,
+                    "truk": 0,
+                    "hourly_counts": {},
+                    "slot_counts": {},
+                    "session_starts": list(session_starts),
+                })
             if roll:
                 log.info("Midnight rollover completed for %s -> %s",
                          roll["from"], roll["to"])

@@ -1426,6 +1426,46 @@ def test_transient_one_frame_motor_split_box_blocked_by_min_track_frames():
     assert zc.total == 1 and zc.total_by_class["motor"] == 1
 
 
+def test_double_split_vanished_track_and_subsequent_ghost_no_double_count():
+    """After a vanished-track dedup catches tid_1 -> tid_2 (> ghost_ttl_frames),
+    tid_2 retains counted_id_class and locks so a later split tid_2 -> tid_3
+    still hands over instead of double counting."""
+    zone = sv.PolygonZone(polygon=np.array([[0, 0], [900, 0], [900, 600], [0, 600]]))
+    zc = ZoneCounter([zone], class_labels={2: "mobil", 3: "motor"},
+                     dedup_cooldown_sec=0.0)
+    t = time.monotonic()
+
+    # tid=1 enters and counts as mobil, moving +10..15px/frame right
+    zc.update(_dets([[100, 100, 200, 180]], [2], tid=[1]), now=t)
+    ev1 = zc.update(_dets([[115, 100, 215, 180]], [2], tid=[1]), now=t + 0.04)
+    assert len(ev1) == 1 and zc.total == 1
+    zc.update(_dets([[125, 100, 225, 180]], [2], tid=[1]), now=t + 0.08)
+
+    # Gap of 14 frames (> ghost_ttl_frames=12): ghost expires, vanished-track dedup catches tid=2
+    for k in range(14):
+        zc.update(sv.Detections.empty(), now=t + 0.12 + k * 0.04)
+
+    zc.update(_dets([[275, 100, 375, 180]], [2], tid=[2]), now=t + 0.68)
+    ev2 = zc.update(_dets([[290, 100, 390, 180]], [2], tid=[2]), now=t + 0.72)
+    assert not ev2 and zc.total == 1 and zc.suppressed == 1 and zc.ghost_handovers == 0
+    assert zc.counted_id_class[0].get(2) == "mobil"
+    assert 2 in zc._car_lock_latched
+
+    # Advance tid=2 further down the zone so L947 refreshes _zone_ghost & _recent_counted_tracks
+    for step in range(1, 4):
+        x = 290 + step * 15
+        zc.update(_dets([[x, 100, x + 100, 180]], [2], tid=[2]), now=t + 0.72 + step * 0.04)
+
+    # Second occlusion (5 empty frames) -> tid=3 spawns near tid=2 -> ghost handover catches it
+    for k in range(5):
+        zc.update(sv.Detections.empty(), now=t + 0.88 + k * 0.04)
+    zc.update(_dets([[410, 100, 510, 180]], [2], tid=[3]), now=t + 1.08)
+    ev3 = zc.update(_dets([[425, 100, 525, 180]], [2], tid=[3]), now=t + 1.12)
+    assert not ev3 and zc.total == 1 and zc.ghost_handovers == 1
+    assert zc.total_by_class["mobil"] == 1
+    assert zc.counted_id_class[0].get(3) == "mobil"
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

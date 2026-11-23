@@ -437,7 +437,8 @@ def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
         "detector:\n  conf: 0.2\n  car_min_area: 3000\n  truck_min_area: 12000\n"
         "  truck_min_height_ratio: 0.070\n  scale_far: 0.42\n  scale_near: 1.95\n"
         "counter:\n  min_displacement_px: 12\n  flow_max_angle_deg: 75\n"
-        "  ghost_ttl_frames: 6\n  ghost_radius_px: 35\n  truck_confirm_frames: 5\n",
+        "  ghost_ttl_frames: 6\n  ghost_radius_px: 35\n  truck_confirm_frames: 5\n"
+        "  min_track_frames: 2\n",
         encoding="utf-8",
     )
     nodes_file.write_text(
@@ -467,7 +468,7 @@ def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
     )
     nodes_file.write_text(
         "nodes:\n- id: node_01\n  truck_min_area: 13500\n  truck_min_height_ratio: 0.050\n"
-        "  truck_confirm_frames: 4\n  allowed_directions: [\"down\"]\n",
+        "  truck_confirm_frames: 4\n  min_track_frames: 4\n  allowed_directions: [\"down\"]\n",
         encoding="utf-8",
     )
     future_mtime = os.path.getmtime(settings_file) + 5.0
@@ -493,3 +494,4 @@ def test_hot_reloader_updates_detector_and_counter(tmp_path, monkeypatch):
     assert zc.ghost_r2 == pytest.approx(40.0 ** 2)
     assert zc.truck_confirm_frames == 4
     assert zc.truck_min_height_ratio == pytest.approx(0.050)
+    assert zc.min_track_frames == 4

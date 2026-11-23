@@ -35,8 +35,11 @@ NODE_COUNTER_KEYS = ("dedup_cooldown_sec", "dedup_radius_px", "min_displacement_
                      "car_lock_frames", "car_flip_frames", "cabin_iou",
                      "cabin_area_ratio", "still_count_frames", "still_min_conf",
                      "ghost_ttl_frames", "ghost_radius_px", "max_stale_frames",
-                     "allowed_directions", "flow_max_angle_deg")
-NODE_DETECTOR_KEYS = ("car_min_area", "truck_min_area", "perspective_scaling",
+                     "allowed_directions", "flow_max_angle_deg",
+                     "truck_confirm_frames", "truck_min_height_ratio",
+                     "min_track_frames")
+NODE_DETECTOR_KEYS = ("car_min_area", "truck_min_area", "truck_min_height_ratio",
+                      "perspective_scaling",
                       "y_ref_far", "y_ref_mid", "y_ref_near",
                       "scale_far", "scale_near")
 
@@ -96,7 +99,8 @@ def _area_summary(values):
 
 
 def run_video_benchmark(source, detector, counter, *, car_min_area=None,
-                        truck_min_area=None, conf=None, max_frames=None,
+                        truck_min_area=None, truck_min_height_ratio=None,
+                        conf=None, max_frames=None,
                         stride=1, save_video=None, renderer=None, gt=None,
                         scenario="", output_dir="logs/benchmarks", save_report=False):
     """Run Detector -> ZoneCounter.track -> ZoneCounter.update headlessly."""
@@ -119,7 +123,8 @@ def run_video_benchmark(source, detector, counter, *, car_min_area=None,
             seen += 1
             detect = getattr(detector, "detect", detector)
             raw = detect(frame, car_min_area=car_min_area,
-                         truck_min_area=truck_min_area)
+                         truck_min_area=truck_min_area,
+                         truck_min_height_ratio=truck_min_height_ratio)
             tracked = counter.track(raw, frame) if hasattr(counter, "track") else raw
             counter.update(tracked)
             processed += 1
@@ -240,6 +245,7 @@ def main(argv=None):
                         half=dc.get("half"), duplicate_iou=dc.get("duplicate_iou", .65),
                         truck_min_area=dc.get("truck_min_area", 10500),
                         car_min_area=dc.get("car_min_area", 3000),
+                        truck_min_height_ratio=dc.get("truck_min_height_ratio", 0.070),
                         perspective_scaling=dc.get("perspective_scaling", True),
                         y_ref_far=dc.get("y_ref_far"),
                         y_ref_mid=dc.get("y_ref_mid"),
@@ -252,7 +258,9 @@ def main(argv=None):
     gt = load_counts(a.gt) if a.gt else parse_cli_counts(a.gt_counts) if a.gt_counts else None
     run_video_benchmark(a.video, detector, counter,
                         car_min_area=dc.get("car_min_area"),
-                        truck_min_area=dc.get("truck_min_area"), conf=a.conf,
+                        truck_min_area=dc.get("truck_min_area"),
+                        truck_min_height_ratio=dc.get("truck_min_height_ratio"),
+                        conf=a.conf,
                         max_frames=a.max_frames, stride=a.stride,
                         save_video=a.save_video, gt=gt, scenario=a.scenario,
                         output_dir=a.output_dir, save_report=a.save_report)

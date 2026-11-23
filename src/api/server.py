@@ -601,6 +601,17 @@ def generate_video_stream(node_id: str, keepalive_sec: float = 1.0):
         time.sleep(0.04)  # ~25 FPS stream
 
 
+def _node_doc_to_export_state(raw_node: dict) -> dict:
+    norm = normalize_node(raw_node)
+    return {
+        "motor": norm["counts"]["motor"],
+        "mobil": norm["counts"]["mobil"],
+        "truk": norm["counts"]["truk"],
+        "slot_counts": _clean_slots(norm["slot_counts"]),
+        "session_starts": list(norm["session_starts"]),
+    }
+
+
 def _resolve_export_state(node_id: str, target_date: str, reg_map: dict) -> dict:
     if target_date == today_wib():
         with _lock:
@@ -613,32 +624,13 @@ def _resolve_export_state(node_id: str, target_date: str, reg_map: dict) -> dict
                     "slot_counts": {s: dict(b) for s, b in (raw.get("slot_counts") or {}).items()},
                     "session_starts": list(raw.get("session_starts") or []),
                 }
-        if node_id in reg_map:
-            doc = get_stats_store().load_date(target_date)
-            doc_nodes = (doc or {}).get("nodes", {})
-            if node_id in doc_nodes:
-                norm = normalize_node(doc_nodes[node_id])
-                return {
-                    "motor": norm["counts"]["motor"],
-                    "mobil": norm["counts"]["mobil"],
-                    "truk": norm["counts"]["truk"],
-                    "slot_counts": _clean_slots(norm["slot_counts"]),
-                    "session_starts": list(norm["session_starts"]),
-                }
-            return _blank_state()
-        raise HTTPException(status_code=404, detail="Node not found")
+        if node_id not in reg_map:
+            raise HTTPException(status_code=404, detail="Node not found")
 
     doc = get_stats_store().load_date(target_date)
     doc_nodes = (doc or {}).get("nodes", {})
     if node_id in doc_nodes:
-        norm = normalize_node(doc_nodes[node_id])
-        return {
-            "motor": norm["counts"]["motor"],
-            "mobil": norm["counts"]["mobil"],
-            "truk": norm["counts"]["truk"],
-            "slot_counts": _clean_slots(norm["slot_counts"]),
-            "session_starts": list(norm["session_starts"]),
-        }
+        return _node_doc_to_export_state(doc_nodes[node_id])
     if node_id in reg_map:
         return _blank_state()
     raise HTTPException(status_code=404, detail="Node not found")

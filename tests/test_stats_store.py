@@ -534,3 +534,76 @@ def test_default_900s_uptime_gate_and_15min_slots_and_dates(tmp_path):
     assert old_loaded is not None
     assert old_loaded["nodes"]["node_01"]["session_starts"] == ["10:10"]
     assert old_loaded["nodes"]["node_01"]["slot_counts"]["10:00"]["total"] == 3
+
+
+
+def test_offline_worker_midnight_rollover_zero_seeds_api_state(tmp_path, monkeypatch):
+    """Offline/stalled camera across midnight zeroes stale API totals immediately."""
+    import threading
+    import time
+    import main as main_mod
+    from src.api.server import nodes_state
+
+    day1, day2 = "2026-11-15", "2026-11-16"
+    current_day = [day1]
+    monkeypatch.setattr("src.utils.stats_store.today_wib", lambda: current_day[0])
+
+    class _Det:
+        def detect(self, frame, **kwargs):
+            return sv.Detections.empty()
+
+    class _Streamer:
+        def is_frozen(self):
+            return False
+
+        def effective_fps(self, default=25.0):
+            return 25.0
+
+    class _Bus:
+        def __init__(self):
+            self.calls = 0
+
+        def wait_raw(self, last_seq, stop_event, timeout=1.0):
+            self.calls += 1
+            if self.calls >= 2:
+                current_day[0] = day2
+            time.sleep(0.01)
+            return None, last_seq
+
+    store = StatsStore(tmp_path / "daily_stats.json", save_interval_sec=0.0, min_persist_uptime_seconds=0.0)
+    store.load()
+    nid = "offline_rollover_test"
+    nodes_state[nid] = {
+        "motor": 120, "mobil": 45, "truk": 5, "occupancy": 3,
+        "status": "LIVE", "fps": 15.0, "last_seen": time.monotonic(),
+        "start_time": 0.0, "peak_occupancy": 5,
+        "hourly_counts": {"23": {"motor": 120, "mobil": 45, "truk": 5, "total": 170}},
+        "slot_counts": {"23:45": {"motor": 120, "mobil": 45, "truk": 5, "total": 170}},
+        "session_starts": ["23:40"], "reconnecting": False,
+    }
+    stop = threading.Event()
+    th = threading.Thread(
+        target=main_mod._ai_worker,
+        args=(nid, _Bus(), _Streamer(), _Det(), _zone_counter(), None,
+              threading.Lock(), stop, main_mod.StageProfiler(nid),
+              {"v": False}, time.monotonic()),
+        kwargs={"publish_api": True, "stats": store},
+        daemon=True,
+    )
+    th.start()
+    try:
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            st = nodes_state.get(nid, {})
+            if (st.get("motor"), st.get("mobil"), st.get("truk")) == (0, 0, 0) and st.get("hourly_counts") == {}:
+                break
+            time.sleep(0.01)
+        st = nodes_state[nid]
+        assert (st["motor"], st["mobil"], st["truk"]) == (0, 0, 0)
+        assert st["hourly_counts"] == {}
+        assert st["slot_counts"] == {}
+        assert st["last_seen"] == 0.0
+    finally:
+        stop.set()
+        th.join(timeout=2.0)
+        nodes_state.pop(nid, None)
