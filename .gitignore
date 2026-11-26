@@ -32,3 +32,6 @@ __pycache__/
 # Secrets (commit the template, never .env)
 .env
 !.env.example
+
+laporan/
+.agents/

@@ -1,32 +1,34 @@
 /* Smart ATCS Banyumas - Command Center
    Node identity (markers + sidebar) comes from /api/v1/nodes, which reads
    nodes.yaml fresh per request, so a new simpang appears without a redeploy.
-   /api/v1/traffic-data then overlays live counts on a 1.5s poll; markers and
-   sidebar repaint from the same snapshot.
+   /api/v1/traffic-data then overlays live counts on a 1.5s poll; markers,
+   preview card, and sidebar repaint from the same snapshot.
 
    Two views share one page:
-     view-map    WebGIS overview, Leaflet map plus the floating dashboard menu
-     view-count  fixed-height split screen: stream + action bar (left),
-                 scrollable analytics sidebar (right)
+     view-map    WebGIS overview, OpenStreetMap dark basemap + floating frosted drawer
+     view-count  fixed-height split screen: 3-row stream viewport (left),
+                 460px analytics console (right)
 */
 
 "use strict";
 
 const MAP_CENTER = [-7.4245, 109.2302];
 const MAP_ZOOM = 14;
-/* Dark basemap providers. Stadia Maps is the default: it needs NO key from
-   localhost/127.0.0.1, and in production you authorise the domain in their
-   dashboard (also keyless). An API key is only needed for non-browser
-   clients. MapTiler is the alternate and does want a key: paste it below and
-   open the page with ?tiles=maptiler. A provider with no key falls back to
-   Stadia, so the map can never go blank.
-   Frontend keys are public by nature — that is how these services work. */
+
+/* Free, keyless OpenStreetMap default (dark-styled via CSS tile-pane filter).
+   Stadia and MapTiler remain available via ?tiles=stadia or ?tiles=maptiler. */
 const FREE_KEYS = {
-  maptiler: "",   // https://cloud.maptiler.com/account/keys/
-  stadia: "",     // optional in a browser: localhost/domain auth needs none
+  maptiler: "",
+  stadia: "",
 };
 
 const TILE_PROVIDERS = {
+  osm: {
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    subdomains: "",
+    maxZoom: 19,
+    attr: "&copy; OpenStreetMap contributors",
+  },
   stadia: {
     url: "https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png",
     subdomains: "",
@@ -41,30 +43,21 @@ const TILE_PROVIDERS = {
   },
 };
 
-/* Named provider with a key on board, else the Stadia default. Returns the
-   provider with its url already keyed, so callers just hand it to Leaflet. */
 function pickTileProvider() {
   const want = new URLSearchParams(location.search).get("tiles");
   const chosen = TILE_PROVIDERS[want];
-  if (!chosen) return TILE_PROVIDERS.stadia;
+  if (!chosen) return TILE_PROVIDERS.osm;
   if (chosen.url.includes("{key}")) {
     const key = FREE_KEYS[want];
     if (!key) {
-      console.warn("[ATCS] no key for tiles=" + want + ", using Stadia dark");
-      return TILE_PROVIDERS.stadia;
+      console.warn("[ATCS] no key for tiles=" + want + ", using OpenStreetMap");
+      return TILE_PROVIDERS.osm;
     }
     return Object.assign({}, chosen, { url: chosen.url.replace("{key}", key) });
   }
   return chosen;
 }
 
-/* Backend: FastAPI serves processed MJPEG + tracker JSON. The frontend never
-   touches RTSP/HLS directly, only these HTTP endpoints.
-
-   Absolute by default so the page works from Live Server (localhost:5500) and
-   from the backend itself (localhost:8000). Override at deploy time by setting
-   window.ATCS_API_BASE before this script loads, or ?api= on the query string
-   (handy when the dashboard is served from another host). */
 const API_BASE = (
   new URLSearchParams(location.search).get("api") ||
   window.ATCS_API_BASE ||
@@ -84,8 +77,6 @@ const NOTES = {
   MACET: "Kepadatan tinggi. Pengaturan simpang perlu dikoordinasikan.",
 };
 
-const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 50;
-
 /* ---- DOM refs --------------------------------------------------- */
 
 const byId = (id) => document.getElementById(id);
@@ -96,6 +87,8 @@ const el = {
   feed: byId("stage-video"),
   backBtn: byId("back-btn"),
   camChip: byId("cam-chip"),
+  viewportLive: byId("viewport-live"),
+  viewportLiveText: byId("viewport-live-text"),
   liveBadge: byId("live-badge"),
   liveBadgeText: byId("live-badge-text"),
   streamOverlay: byId("stream-overlay"),
@@ -103,10 +96,31 @@ const el = {
   clockTime: byId("clock-time"),
   clockDate: byId("clock-date"),
 
+  mapFilterBar: byId("map-filter-bar"),
+  filterCountAll: byId("filter-count-all"),
+  filterCountLancar: byId("filter-count-lancar"),
+  filterCountCongested: byId("filter-count-congested"),
+
+  previewCard: byId("map-preview-card"),
+  previewName: byId("preview-name"),
+  previewStatus: byId("preview-status"),
+  previewCloseBtn: byId("preview-close-btn"),
+  previewOccVal: byId("preview-occ-val"),
+  previewOccFill: byId("preview-occ-fill"),
+  previewMotor: byId("preview-motor"),
+  previewMobil: byId("preview-mobil"),
+  previewTruk: byId("preview-truk"),
+  previewOpenBtn: byId("preview-open-btn"),
+
   menuCount: byId("menu-count"),
   menuList: byId("menu-list"),
   totalKendaraan: byId("total-kendaraan"),
   totalSimpang: byId("total-simpang"),
+  classSplit: {
+    motor: byId("class-split-motor"),
+    mobil: byId("class-split-mobil"),
+    truk: byId("class-split-truk"),
+  },
   split: {
     LANCAR: byId("split-LANCAR"),
     PADAT: byId("split-PADAT"),
@@ -146,6 +160,7 @@ const el = {
   chartAxis: byId("chart-axis"),
   slotHourSelect: byId("slot-hour-select"),
   slotDetailBody: byId("slot-detail-body"),
+  slotDetailFoot: byId("slot-detail-foot"),
   gauge: byId("gauge"),
   gaugeFill: byId("gauge-fill"),
   occValue: byId("occ-value"),
@@ -160,6 +175,9 @@ const nodes = new Map();
 const markers = new Map();
 let map = null;
 let selectedId = null;
+let previewNodeId = null;
+let previewPinned = false;
+let mapFilter = "ALL";
 let lastEscapeAt = 0;
 
 let todayWibDate = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
@@ -172,9 +190,8 @@ let calViewMonth = (Number(todayWibDate.slice(5, 7)) || 1) - 1;
 let lastDatesFetchAt = 0;
 
 const total = (node) => node.motor + node.mobil + node.truk;
+const fmtNum = (n) => Number(n || 0).toLocaleString("id-ID");
 
-/* Stream health mirrors the backend's `stream_status`. Unknown/missing values
-   fall back to `online` so an older backend still renders a sane badge. */
 const STREAM_BADGE = {
   LIVE: { text: "COMMAND CENTER - LIVE", cls: "" },
   RECONNECTING: { text: "STREAM RECONNECTING...", cls: "status-reconnecting" },
@@ -187,7 +204,6 @@ function streamStatusOf(node) {
   return node.online ? "LIVE" : "OFFLINE";
 }
 
-/* Selected simpang wins; on the map, worst-case over every node. */
 function activeStreamStatus() {
   if (selectedId && nodes.has(selectedId)) {
     return streamStatusOf(nodes.get(selectedId));
@@ -203,16 +219,30 @@ function renderStreamHealth() {
   const meta = STREAM_BADGE[status] || STREAM_BADGE.OFFLINE;
   el.liveBadge.className = "live-badge" + (meta.cls ? " " + meta.cls : "");
   el.liveBadgeText.textContent = meta.text;
+  if (el.viewportLive) {
+    el.viewportLive.className = "viewport-live" + (meta.cls ? " " + meta.cls : "");
+    if (el.viewportLiveText) {
+      el.viewportLiveText.textContent =
+        status === "RECONNECTING" ? "RECONNECT" : status;
+    }
+  }
   el.streamOverlay.hidden = status !== "RECONNECTING";
 }
 
-/* Raw status for data-status attributes, CSS class for st-* selectors. */
 function rawStatus(node) {
   if (!node.online) return "OFFLINE";
   return STATUS_ORDER.includes(node.status) ? node.status : "unknown";
 }
 function stClass(node) {
   return STATUS_CLASS[rawStatus(node)] || "st-unknown";
+}
+
+function matchesMapFilter(node) {
+  if (mapFilter === "ALL") return true;
+  const st = rawStatus(node);
+  if (mapFilter === "LANCAR") return st === "LANCAR";
+  if (mapFilter === "CONGESTED") return st === "PADAT" || st === "MACET";
+  return true;
 }
 
 function escapeHtml(s) {
@@ -222,25 +252,30 @@ function escapeHtml(s) {
   })[c]);
 }
 
-/* ---- Map -------------------------------------------------------- */
+/* ---- Map & Floating Preview ------------------------------------- */
 
 function initMap() {
   const prov = pickTileProvider();
   map = L.map("map", { center: MAP_CENTER, zoom: MAP_ZOOM });
-  L.tileLayer(prov.url, {
-    subdomains: prov.subdomains || "abc",
+  const tileOpts = {
     maxZoom: prov.maxZoom,
     detectRetina: true,
     attribution: prov.attr,
-  }).addTo(map);
+  };
+  if (prov.subdomains) tileOpts.subdomains = prov.subdomains;
+  L.tileLayer(prov.url, tileOpts).addTo(map);
+  map.on("click", () => closePreviewCard());
 }
-/* 44px hit box keeps the pin tappable; two staggered ping waves, the core and
-   the pill label all centre inside it. The name is escaped into the markup
-   directly — the divIcon is rebuilt on every status change, so an "add"
-   listener would only ever fill the label on the first render. */
-function markerIcon(node) {
+
+function markerIcon(node, isSelected, isFilteredOut) {
+  const cls = [
+    "veh-marker",
+    stClass(node),
+    isSelected ? "is-selected" : "",
+    isFilteredOut ? "is-filtered-out" : "",
+  ].filter(Boolean).join(" ");
   return L.divIcon({
-    className: "veh-marker " + stClass(node),
+    className: cls,
     html:
       '<div class="ping"></div><div class="ping ping-2"></div>' +
       '<div class="core"></div>' +
@@ -250,105 +285,211 @@ function markerIcon(node) {
   });
 }
 
-/* Hover card: identity, status, occupancy with a mini bar, vehicle counts.
-   Fixed row structure so refreshing the numbers on a poll cannot resize the
-   card under the cursor. */
-function tooltipHtml(node) {
-  const status = rawStatus(node);
+function renderPreviewCard() {
+  if (!el.previewCard) return;
+  const node = previewNodeId ? nodes.get(previewNodeId) : null;
+  if (!node) {
+    el.previewCard.hidden = true;
+    return;
+  }
+  const st = rawStatus(node);
+  const cls = stClass(node);
   const occ = Math.max(0, Math.min(100, Number(node.occupancy) || 0));
-  return (
-    '<div class="veh-tip-inner ' + stClass(node) + '">' +
-      '<div class="tip-head">' +
-        '<span class="tip-name">' + escapeHtml(node.nama) + "</span>" +
-        '<span class="tip-badge">' + status + "</span>" +
-      "</div>" +
-      '<div class="tip-occ-row">' +
-        "<span>Okupansi</span>" +
-        '<span class="tip-occ-val">' + occ + "%</span>" +
-      "</div>" +
-      '<div class="tip-bar"><i style="width:' + occ + '%"></i></div>' +
-      '<div class="tip-counts">' +
-        "<span><b>" + (Number(node.motor) || 0) + "</b>Motor</span>" +
-        "<span><b>" + (Number(node.mobil) || 0) + "</b>Mobil</span>" +
-        "<span><b>" + (Number(node.truk) || 0) + "</b>Truk/Bus</span>" +
-      "</div>" +
-    "</div>"
-  );
+
+  el.previewName.textContent = node.nama;
+  el.previewStatus.textContent = st;
+  el.previewStatus.className = "status-pill " + cls;
+  el.previewOccVal.textContent = occ + "%";
+  el.previewOccFill.style.width = occ + "%";
+  el.previewOccFill.className = "preview-occ-fill " + cls;
+  el.previewMotor.textContent = fmtNum(node.motor);
+  el.previewMobil.textContent = fmtNum(node.mobil);
+  el.previewTruk.textContent = fmtNum(node.truk);
+  el.previewCard.hidden = false;
 }
 
-/* Marker creation and refresh share one path so a poll can recolor a pin in
-   place. The icon is rebuilt only when the status class actually changed
-   (keeps the pulse from restarting every cycle); the tooltip content is
-   refreshed with every snapshot so occupancy stays live. */
+function openPreviewCard(id, pin) {
+  if (!nodes.has(id)) return;
+  previewNodeId = id;
+  if (pin) previewPinned = true;
+  renderPreviewCard();
+  upsertMarkers();
+  renderMenu();
+}
+
+function closePreviewCard() {
+  previewNodeId = null;
+  previewPinned = false;
+  renderPreviewCard();
+  upsertMarkers();
+  renderMenu();
+}
+
+if (el.previewCloseBtn) {
+  el.previewCloseBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    closePreviewCard();
+  });
+}
+
+if (el.previewOpenBtn) {
+  el.previewOpenBtn.addEventListener("click", () => {
+    if (previewNodeId) openCounting(previewNodeId);
+  });
+}
+
 function upsertMarkers() {
-  if (!map) return;   // Leaflet unavailable: sidebar still renders below.
+  if (!map) return;
+
   nodes.forEach((node) => {
     if (node.lat == null || node.lng == null) return;
 
     const status = stClass(node);
+    const isSel = node.id === previewNodeId;
+    const isOut = !matchesMapFilter(node);
+    const iconKey = status + "|" + (isSel ? "1" : "0") + "|" + (isOut ? "1" : "0");
     const existing = markers.get(node.id);
+
     if (!existing) {
       const marker = L.marker([node.lat, node.lng], {
-        icon: markerIcon(node),
+        icon: markerIcon(node, isSel, isOut),
         riseOnHover: true,
         keyboard: true,
         title: node.nama,
         alt: node.nama,
       });
 
-      marker.on("click", () => openCounting(node.id));
-      /* Anchored (not sticky) tooltip: it hangs off the marker instead of
-         chasing the cursor, which is what caused the jitter. */
-      marker.bindTooltip(tooltipHtml(node), {
-        className: "veh-tip",
-        direction: "top",
-        offset: [0, -16],
-        opacity: 1,
-        sticky: false,
-        interactive: false,
+      marker.on("mouseover", () => {
+        if (!previewPinned) openPreviewCard(node.id, false);
       });
+      marker.on("click", (ev) => {
+        L.DomEvent.stopPropagation(ev);
+        if (previewNodeId === node.id && previewPinned) {
+          openCounting(node.id);
+        } else {
+          openPreviewCard(node.id, true);
+        }
+      });
+      marker.on("dblclick", () => openCounting(node.id));
 
       marker.addTo(map);
-      marker._status = status;
+      marker._iconKey = iconKey;
       markers.set(node.id, marker);
       return;
     }
 
     existing.setLatLng([node.lat, node.lng]);
-    if (existing._status !== status) {
-      existing.setIcon(markerIcon(node));
-      existing._status = status;
+    if (existing._iconKey !== iconKey) {
+      existing.setIcon(markerIcon(node, isSel, isOut));
+      existing._iconKey = iconKey;
     }
-    existing.setTooltipContent(tooltipHtml(node));
   });
 }
 
-/* ---- Dashboard menu (VIEW 1) ------------------------------------ */
+/* ---- Map Filter Bar & Dashboard Drawer (VIEW 1) ----------------- */
+
+if (el.mapFilterBar) {
+  el.mapFilterBar.addEventListener("click", (event) => {
+    const btn = event.target.closest(".filter-chip");
+    if (!btn || !btn.dataset.filter) return;
+    mapFilter = btn.dataset.filter;
+    el.mapFilterBar.querySelectorAll(".filter-chip").forEach((chip) => {
+      const active = chip.dataset.filter === mapFilter;
+      chip.classList.toggle("is-active", active);
+      chip.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+    upsertMarkers();
+    renderMenu();
+  });
+}
 
 function renderMenu() {
   const list = [...nodes.values()];
   const grand = list.reduce((sum, node) => sum + total(node), 0);
+  const sumMotor = list.reduce((sum, node) => sum + (Number(node.motor) || 0), 0);
+  const sumMobil = list.reduce((sum, node) => sum + (Number(node.mobil) || 0), 0);
+  const sumTruk = list.reduce((sum, node) => sum + (Number(node.truk) || 0), 0);
 
-  el.totalKendaraan.textContent = grand;
+  el.totalKendaraan.textContent = fmtNum(grand);
   el.totalSimpang.textContent = list.length;
   el.menuCount.textContent = list.length + " titik";
+
+  const lancarCnt = list.filter((n) => rawStatus(n) === "LANCAR").length;
+  const congestedCnt = list.filter((n) => {
+    const st = rawStatus(n);
+    return st === "PADAT" || st === "MACET";
+  }).length;
+  if (el.filterCountAll) el.filterCountAll.textContent = list.length;
+  if (el.filterCountLancar) el.filterCountLancar.textContent = lancarCnt;
+  if (el.filterCountCongested) el.filterCountCongested.textContent = congestedCnt;
+
+  const classMap = { motor: sumMotor, mobil: sumMobil, truk: sumTruk };
+  ["motor", "mobil", "truk"].forEach((k) => {
+    const seg = el.classSplit[k];
+    if (!seg) return;
+    seg.dataset.count = classMap[k];
+    seg.style.flexGrow = classMap[k] || 0.001;
+  });
 
   STATUS_ORDER.forEach((status) => {
     const count = list.filter((node) => rawStatus(node) === status).length;
     const seg = el.split[status];
+    if (!seg) return;
     seg.dataset.count = count;
     seg.style.flexGrow = count || 0.001;
     seg.title = status + ": " + count + " simpang";
   });
 
-  el.menuList.innerHTML = list.map((node) => (
-    '<li><button type="button" class="menu-item" data-id="' + node.id +
-    '" data-status="' + rawStatus(node) + '">' +
-      '<span class="menu-dot"></span>' +
-      '<span class="menu-name">' + escapeHtml(node.nama) + "</span>" +
-      '<span class="menu-val">' + total(node) + "</span>" +
-    "</button></li>"
-  )).join("");
+  const visible = list.filter(matchesMapFilter);
+  if (!visible.length) {
+    el.menuList.innerHTML = '<li class="menu-empty">Tidak ada simpang pada filter ini.</li>';
+    return;
+  }
+
+  el.menuList.innerHTML = visible.map((node) => {
+    const st = rawStatus(node);
+    const cls = stClass(node);
+    const vol = total(node);
+    const occ = Math.max(0, Math.min(100, Number(node.occupancy) || 0));
+    const m = Number(node.motor) || 0;
+    const c = Number(node.mobil) || 0;
+    const t = Number(node.truk) || 0;
+    const denom = vol || 1;
+    const pm = vol ? (m / denom) * 100 : 33.4;
+    const pc = vol ? (c / denom) * 100 : 33.3;
+    const pt = vol ? (t / denom) * 100 : 33.3;
+    const selCls = node.id === previewNodeId ? " is-selected" : "";
+
+    return (
+      '<li><button type="button" class="menu-item' + selCls + '" data-id="' + node.id +
+      '" data-status="' + st + '">' +
+        '<div class="menu-card-top">' +
+          '<span class="menu-title-group">' +
+            '<span class="menu-dot"></span>' +
+            '<span class="menu-name">' + escapeHtml(node.nama) + "</span>" +
+          "</span>" +
+          '<span class="status-pill ' + cls + '">' + st + "</span>" +
+        "</div>" +
+        '<div class="menu-card-mid">' +
+          '<span class="menu-vol-wrap">' +
+            '<span class="menu-val">' + fmtNum(vol) + "</span>" +
+            '<span class="menu-unit">kendaraan</span>' +
+          "</span>" +
+          '<span class="menu-occ">Okupansi ' + occ + "%</span>" +
+        "</div>" +
+        '<div class="menu-class-bar" aria-hidden="true">' +
+          '<i class="cb-motor" style="width:' + pm.toFixed(1) + '%"></i>' +
+          '<i class="cb-mobil" style="width:' + pc.toFixed(1) + '%"></i>' +
+          '<i class="cb-truk" style="width:' + pt.toFixed(1) + '%"></i>' +
+        "</div>" +
+        '<div class="menu-breakdown">' +
+          '<span><i class="bd-motor"></i>' + fmtNum(m) + " Mtr</span>" +
+          '<span><i class="bd-mobil"></i>' + fmtNum(c) + " Mbl</span>" +
+          '<span><i class="bd-truk"></i>' + fmtNum(t) + " Trk</span>" +
+        "</div>" +
+      "</button></li>"
+    );
+  }).join("");
 }
 
 el.menuList.addEventListener("click", (event) => {
@@ -373,15 +514,11 @@ function showView(which) {
     return;
   }
 
-  /* The MJPEG connection lives in the img src, so dropping it on the way out
-     is what stops the stream and frees the browser's bandwidth. */
   attachStream(selectedId);
 }
 
 /* ---- Backend bridge (focus + MJPEG) ----------------------------- */
 
-/* Ask the worker to prioritise this node's inference. Fire-and-forget: the
-   endpoint is optional, so a missing backend must not break the UI. */
 function getApiKey() {
   try {
     const qp = new URLSearchParams(window.location.search).get("api_key");
@@ -409,7 +546,7 @@ async function postControlFetch(url, options, allowPrompt) {
   if (res.status === 401 && allowPrompt && typeof window.prompt === "function") {
     const entered = window.prompt("Masukkan API Key (ATCS_API_KEY) untuk kontrol:");
     if (entered && entered.trim()) {
-      try { sessionStorage.setItem("atcs_api_key", entered.trim()); } catch (err) {}
+      try { sessionStorage.setItem("atcs_api_key", entered.trim()); } catch (err) { }
       opts.headers = postHeaders(options && options.headers);
       res = await fetch(url, opts);
     }
@@ -425,7 +562,7 @@ function setFocus(nodeId) {
         el.controlStatus.textContent = "Akses stream ditolak (ATCS_API_KEY tidak valid).";
       }
     })
-    .catch(() => {});
+    .catch(() => { });
 }
 
 async function sendControl(action) {
@@ -456,18 +593,13 @@ async function sendControl(action) {
 el.resetCounterBtn.addEventListener("click", () => sendControl("reset"));
 el.toggleRecordBtn.addEventListener("click", () => sendControl("record"));
 
-/* ---- Zone drawing (VIEW 2) --------------------------------------- *
- *
- * The MJPEG <img> fills the stage with object-fit: contain, so the stream is
- * letterboxed inside the canvas. Clicks are only meaningful inside the video
- * box, and must be remapped to 0.0-1.0 ratios of the RAW frame before being
- * sent; the backend multiplies by the actual frame dimensions. */
+/* ---- Zone drawing (VIEW 2) --------------------------------------- */
 
 const ZONE_COLORS = { line: "#38BDF8", fill: "rgba(56, 189, 248, 0.18)" };
 
 const zoneDraw = {
   active: false,
-  points: [],          // [x, y] in raw-frame ratios (0.0-1.0)
+  points: [],
   raf: null,
 };
 
@@ -475,7 +607,6 @@ function zoneCanvas() {
   return document.getElementById("zone-canvas");
 }
 
-/* Actual displayed video box inside the letterboxing stage. */
 function videoBox() {
   const feed = el.feed;
   const stage = feed.parentElement;
@@ -517,7 +648,7 @@ function drawZonePreview() {
   ctx.beginPath();
   ctx.moveTo(pts[0][0], pts[0][1]);
   for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-  ctx.lineTo(pts[0][0], pts[0][1]);   // auto-close preview
+  ctx.lineTo(pts[0][0], pts[0][1]);
   ctx.closePath();
   ctx.fillStyle = ZONE_COLORS.fill;
   ctx.fill();
@@ -580,7 +711,7 @@ async function saveZone() {
     if (res.status === 401) throw new Error("API Key diperlukan / tidak valid (401)");
     if (!res.ok) throw new Error("HTTP " + res.status);
     cancelZoneDraw();
-    await loadRegistry().catch(() => {});
+    await loadRegistry().catch(() => { });
     await poll();
     el.controlStatus.textContent = "Zona baru disimpan & aktif.";
   } catch (err) {
@@ -601,20 +732,16 @@ zoneCanvas().addEventListener("click", (event) => {
   const rect = zoneCanvas().getBoundingClientRect();
   const cx = event.clientX - rect.left;
   const cy = event.clientY - rect.top;
-  /* Ignore clicks on the letterbox black bars outside the video box. */
   if (cx < box.x || cx > box.x + box.w || cy < box.y || cy > box.y + box.h) return;
   zoneDraw.points.push([(cx - box.x) / box.w, (cy - box.y) / box.h]);
   el.saveZoneBtn.disabled = zoneDraw.points.length < 3;
   scheduleZonePreview();
 });
 
-/* Re-fit on resize so the preview keeps mapping onto the letterboxed video. */
 window.addEventListener("resize", () => {
   if (zoneDraw.active) { fitZoneCanvas(); scheduleZonePreview(); }
 });
 
-/* MJPEG arrives as multipart/x-mixed-replace, which only an <img> renders.
-   Assigning src opens the stream; removing it closes the connection. */
 function attachStream(nodeId) {
   if (!nodeId) return;
   el.feed.src = API_BASE + "/video-feed/" + nodeId;
@@ -640,8 +767,6 @@ function openCounting(id) {
   renderAnalytics(node);
   loadHistoryDates();
 
-  /* Leaflet fires marker clicks after a double-click timeout, so a rapid tap
-     can arrive after Escape already returned to the map. Ignore the stale one. */
   if (performance.now() - lastEscapeAt < 500) return;
   showView("count");
 }
@@ -693,8 +818,12 @@ document.addEventListener("keydown", (event) => {
     closeCalendar();
     return;
   }
-  lastEscapeAt = performance.now();
-  if (el.viewCount.classList.contains("is-visible")) showView("map");
+  if (el.viewCount.classList.contains("is-visible")) {
+    lastEscapeAt = performance.now();
+    showView("map");
+    return;
+  }
+  if (previewNodeId) closePreviewCard();
 });
 
 /* ---- Analytics & Historical Date View (VIEW 2) ------------------ */
@@ -906,10 +1035,6 @@ function averagePerHour(node) {
   return total(node) > 0 ? Math.round(total(node) / activeHours) : 0;
 }
 
-/* Hourly buckets arrive as {motor, mobil, truk, total}; older snapshots carry
-   a bare number. An hour whose class split is missing (legacy total, or an
-   hour counted before per-class tracking) is apportioned by the node's
-   cumulative mix so the column still renders instead of collapsing to 0px. */
 function chartData(node) {
   const raw = node.hourlyCounts || {};
   const cm = Number(node.motor) || 0;
@@ -957,14 +1082,8 @@ const CLASS_META = [
   { key: "truk", label: "Truk/Bus" },
 ];
 
-/* Stack order, bottom -> top. .chart-stack is column-reverse, so the first
-   DOM child renders at the bottom. */
 const SEG_ORDER = ["motor", "mobil", "truk"];
 
-/* Indonesian thousands separator: 2114 -> "2.114" */
-const fmtNum = (n) => Number(n || 0).toLocaleString("id-ID");
-
-/* Hours currently in the DOM; a change means the structure must be rebuilt. */
 let chartKey = "";
 
 function chartBarHtml(p) {
@@ -975,19 +1094,16 @@ function chartBarHtml(p) {
     '<b data-v="' + m.key + '">0</b></span>').join("");
   return (
     '<div class="chart-bar" data-hour="' + p.hour + '" tabindex="0" role="img">' +
-      '<div class="chart-stack">' + segs + "</div>" +
-      '<div class="chart-tip" role="tooltip">' +
-        '<div class="tip-head"><span class="tip-name"></span>' +
-          '<span class="tip-total"></span></div>' +
-        '<div class="tip-breakdown">' + rows + "</div>" +
-      "</div>" +
+    '<div class="chart-stack">' + segs + "</div>" +
+    '<div class="chart-tip" role="tooltip">' +
+    '<div class="tip-head"><span class="tip-name"></span>' +
+    '<span class="tip-total"></span></div>' +
+    '<div class="tip-breakdown">' + rows + "</div>" +
+    "</div>" +
     "</div>"
   );
 }
 
-/* Heights and numbers are written onto the existing nodes, never rebuilt, so
-   the CSS height transition actually animates. A full innerHTML rebuild on
-   every poll would restart the animation from scratch each time. */
 function paintChart(points, peak) {
   const bars = el.chart.querySelectorAll(".chart-bar");
   const pct = (v) => (peak > 0 ? (v / peak) * 100 : 0);
@@ -1082,6 +1198,11 @@ function renderSlotDetail(node, points) {
 
   const slots = node.slotCounts || {};
   const starts = node.sessionStarts || [];
+  let sumM = 0;
+  let sumC = 0;
+  let sumT = 0;
+  let sumTot = 0;
+
   const rows = [0, 15, 30, 45].map((m) => {
     const skey = selectedHour + ":" + String(m).padStart(2, "0");
     const b = slots[skey] || {};
@@ -1089,20 +1210,37 @@ function renderSlotDetail(node, points) {
     const mobil = Number(b.mobil) || 0;
     const truk = Number(b.truk) || 0;
     const tot = Math.max(Number(b.total) || 0, motor + mobil + truk);
+    sumM += motor;
+    sumC += mobil;
+    sumT += truk;
+    sumTot += tot;
+
     const label = formatSlotInterval(skey, starts);
     const hasStart = label.includes("(system start)");
-    const cls = tot > 0 ? "is-active" : (hasStart ? "is-start" : "");
+    const cls = [tot > 0 ? "is-active" : "", hasStart ? "is-start" : ""]
+      .filter(Boolean).join(" ");
     return (
       '<tr class="' + cls + '">' +
-        "<td>" + label + "</td>" +
-        "<td>" + fmtNum(motor) + "</td>" +
-        "<td>" + fmtNum(mobil) + "</td>" +
-        "<td>" + fmtNum(truk) + "</td>" +
-        "<td><b>" + fmtNum(tot) + "</b></td>" +
+      "<td>" + label + "</td>" +
+      "<td>" + fmtNum(motor) + "</td>" +
+      "<td>" + fmtNum(mobil) + "</td>" +
+      "<td>" + fmtNum(truk) + "</td>" +
+      "<td><b>" + fmtNum(tot) + "</b></td>" +
       "</tr>"
     );
   });
   el.slotDetailBody.innerHTML = rows.join("");
+
+  if (el.slotDetailFoot) {
+    el.slotDetailFoot.innerHTML =
+      "<tr>" +
+        "<td>Total Jam " + selectedHour + ":00</td>" +
+        '<td class="ft-motor">' + fmtNum(sumM) + "</td>" +
+        '<td class="ft-mobil">' + fmtNum(sumC) + "</td>" +
+        '<td class="ft-truk">' + fmtNum(sumT) + "</td>" +
+        '<td class="ft-total">' + fmtNum(sumTot) + "</td>" +
+      "</tr>";
+  }
 }
 
 function selectChartHour(hour) {
@@ -1161,18 +1299,16 @@ function renderGauge(node) {
   const pct = Math.max(0, Math.min(100, node.occupancy));
 
   el.gauge.className = "gauge " + cls;
-  el.gaugeFill.style.strokeDashoffset = GAUGE_CIRCUMFERENCE * (1 - pct / 100);
+  el.gaugeFill.style.width = pct + "%";
   el.occValue.textContent = pct + "%";
 
-  el.gaugeStatus.className = "gauge-status " + cls;
+  el.gaugeStatus.className = "gauge-status occ-badge " + cls;
   el.occLabel.textContent = rawStatus(node);
   el.occNote.textContent = NOTES[node.status] || "";
 }
 
 /* ---- Dynamic node registry -------------------------------------- */
 
-/* /api/v1/nodes reads nodes.yaml fresh per request, so markers + sidebar
-   cover every configured simpang the moment the page boots. */
 async function loadRegistry() {
   const res = await fetch(API_BASE + "/nodes", { cache: "no-store" });
   if (!res.ok) throw new Error("HTTP " + res.status);
@@ -1241,8 +1377,6 @@ function mapNodePayload(id, incoming, prev) {
 
 /* ---- Live polling ----------------------------------------------- */
 
-/* Overlay tracker snapshots on the registry identity; unknown ids are added
-   so a node that appears in /traffic-data without /nodes still shows up. */
 function applyNodes(apiNodes) {
   Object.entries(apiNodes).forEach(([id, incoming]) => {
     nodes.set(id, mapNodePayload(id, incoming, nodes.get(id)));
@@ -1250,6 +1384,7 @@ function applyNodes(apiNodes) {
 
   upsertMarkers();
   renderMenu();
+  renderPreviewCard();
   if (selectedId && !selectedDate && nodes.has(selectedId)) {
     renderAnalytics(nodes.get(selectedId));
   }
@@ -1286,10 +1421,6 @@ function tickClock() {
 
 /* ---- Boot ------------------------------------------------------- */
 
-/* Chrome note: if the Leaflet CDN is blocked, `L` is undefined and every map
-   call throws. Letting that abort boot() is what froze the clock and left the
-   page blank, so each step below is isolated: a dead map or a dead backend
-   degrades that feature only, and the clock + poll always come up. */
 async function boot() {
   tickClock();
   setInterval(tickClock, 1000);
